@@ -1,0 +1,886 @@
+
+===== PDF PAGE 1 =====
+A general-purpose method for applying
+Explainable AI for Anomaly Detection
+John Sipple1,2 and Abdou Youssef2
+1 Google, Mountain View, California, USA
+2 The George Washington University, Washington DC, USA
+sipple@google.com {jsipple, ayoussef}@gwu.edu
+Abstract. The need for explainable AI (XAI) is well established but
+relatively little has been published outside of the supervised learning
+paradigm. This paper focuses on a principled approach to applying ex-
+plainability and interpretability to the task of unsupervised anomaly de-
+tection. We argue that explainability is principally analgorithmic task
+and interpretability is principally acognitive task, and draw on insights
+fromthecognitivesciencestoproposeageneral-purposemethodforprac-
+tical diagnosis using explained anomalies. We deﬁne Attribution Error,
+and demonstrate, using real-world labeled datasets, that our method
+based on Integrated Gradients (IG) yields signiﬁcantly lower attribution
+errors than alternative methods.
+Keywords: Anomaly Detection · Interpretability · Explainable AI
+1 Anomaly Detection and Interpretability
+Imagine you are a technician that maintains a system with thousands of net-
+worked devices. Chances are high that at any given time, somewhere in the ﬂeet
+there are faulty devices that require your attention. As a technician, you would
+like an anomaly detector to provide a rich explanation about the symptoms,
+allowing you to detect, diagnose, prioritize and ﬁx faulty devices. This paper is
+motivated by the unmet need to provide the technicianexplained anomalies. We
+combine insights from the cognitive sciences with explainable AI (XAI), and pro-
+pose a general-purpose approach to aid the technician in detecting the anomaly
+and understanding the fault behind the anomaly. We show comparative results
+with sensor failure on a Variable Air Volume (VAV) device, and a fuel pressure
+failure on a general aviation aircraft engine.
+Anomaly Detection(AD) is the machine learning task of detecting observa-
+tions that do not conform to expected or normal behavior [9], [38], [30], [28]. AD
+is susceptible to both false positive and false negative errors [2]. Adjudicating
+false positive errors is often time consuming and may even make an AD solution
+ineﬀective. A nondescript anomaly score provides little insight to understand-
+ing what caused the anomaly and choosing the best treatment. We hypothesize
+that integrating XAI techniques with AD can reduce the human workload in
+processing a stream of anomalies.
+arXiv:2207.11564v1  [cs.LG]  23 Jul 2022
+===== PDF PAGE 2 =====
+2 Sipple, J., Youssef, A.
+Relatively little about explainable AD has been published. An explainable
+ADmethodwasdevelopedbycombininganautoencoderwiththeSHAPexplain-
+ability method [3]. DIFFI [8] is an explainability technique for Isolation Forest
+(IF) [16] that generates attributions based on dimensions that contribute signif-
+icantly to isolating anomalous points and causing data imbalances by random
+data splits. MADI [35] combines a neural network classiﬁer that distinguishes
+between observed and randomized samples, and uses Integrated Gradients (IG)
+[37]. The One-Class Deep Taylor Decomposition (OC-DTD), uses a One-Class
+Support Vector Machine (OC-SVM) to train (“neuralize”) a feed-forward neural
+network [28]. Then, it applies Deep Taylor Decomposition [4] that yields variable
+attributions for anomalies [13]. Explaining anomalies in image data, FCDD [17],
+applies a convolutional upsampling technique to create an heatmap of anomalous
+regions detected by a neural network variant of OC-SVM.
+This work makes the following contributions to the ﬁeld of explainable AD:
+a. creates a clear distinction between explainability and interpretability;b. pro-
+poses a methodology that leads to meaningful anomaly explanations combining
+the cognitive sciences with XAI methods; andc. deﬁnes Attribution Error and
+provides two real-world datasets for evaluating anomaly explanations.
+2 Conventions and Basic Deﬁnitions
+A system is an observable, complex, and stateful process or object, which may
+be biological, physical, social, economic, etc. We deﬁneexpert broadly as a stake-
+holderofthesystemwhoappliesaknowledgebasetointerprettheexplanationto
+achieve a speciﬁc goal. Devices in systemS generates periodic observationsxs,t
+in RD at timet, where we omit subscriptssandtfor simplicity. The baseline set,
+or normal points, are indicated with an apostrophe,X′ =x′
+1,x′
+2,.... An anomaly
+detector is a classiﬁer modelF that scores each observation betweenanomalous
+(0) andnormal (1):F : RD→ [0, 1]. Anexplanation function,B : RD→ [0, 1]D
+maps an observationx to an explanation,attribution, orblame,B(x) = b, where
+bd∈ [0, 1] and∑D
+d=1bd≤ 1. With respect to a speciﬁc baseline pointx′, we shall
+include the baseline point as an argument,B(x,x′). Aninterpretation function
+is a mapping from explanations to the powerset of discretediagnostic conditions:
+I : [0, 1]D→P (C), whereC is a set of all diagnostic conditions known to the
+expert, C =c1,c 2,....
+3 Explainability vs. Interpretability
+Recent works on XAI have proposed various deﬁnitions of explainability and in-
+terpretability. [12] describes explainability as models that are ableto describe the
+internals of a system that is understandable to humans. [15] argues that inter-
+pretability reﬂects ontrust, causality, transferability, informativeness, and fair
+and ethical decision making. [10] deﬁne interpretability asthe ability to explain
+or to present in understandable terms to humans. [21] equates interpretability
+===== PDF PAGE 3 =====
+Explained Anomalies 3
+T able 1.Diﬀerences between Explainability and Interpretability.
+Explainability:Generate a prediction and
+explanation.
+Interpretability: Align the explanation
+with a knowledge base, and complete a task.
+Role of Transmitter Role of Receiver
+Algorithmic Task Cognitive Task
+Expressed by Model Generated and used by Expert
+Spatial, Temporal Correlation Root cause and Causation
+Observation to Attribution Attribution to Diagnostic Condition
+Expresses symptoms Diagnoses and treats
+with explainability as a mode in which an observer can understand a decision.
+According to [7] explainability is the model’s abilityto provide a description
+of how a model’s outcome came to be, and interpretability refers to a human’s
+ability to make sense, or derive meaning, from a given stimulus so that the hu-
+man can make a decision. Similar to [7], we propose that explainability and
+interpretability are two distinct ideas. The communication model with an in-
+formation source, a message, a transmitter, a noisy channel, a receiver, and
+a destination [31] provides a framework for describing the diﬀerence between
+explainability and interpretability, Table 1. The information source are the de-
+vices that stream multidimensional observations. The transmitter is the anomaly
+detector that generates an anomaly score and an explanation. The receiver is
+the expert, who applies her knowledge of the world to make judgments of the
+anomaly. Hence,Explainability is thealgorithmic taskof extracting an explana-
+tion from the model, andinterpretability is thecognitive taskof combining the
+explanation with the expert’s knowledge base, and forming a hypothesis.
+3.1 Explainability
+There are several ways to describe methods of XAI.Global methodsprovide gen-
+eral explanations generally true about all model predictions.Local methods[1],
+[29] provide explanations for individual observations. Since they are speciﬁc to
+individual observations,local explainabilitygenerally is more suitable for inter-
+preting anomalies. Some local model explainability techniques, such as LIME
+[26] and SHAP [18], treat models as black boxes and perturb the inputs and
+observe the prediction and can be applied to any classiﬁer model, and are called
+model-agnostic. In contrast,model-speciﬁcexplainability techniques often place
+speciﬁc requirements on the model, such as the gradients or network architec-
+ture, that make them compatible. Examples include IG, Layer-wise Relevance
+Propagation (LRP), and DeepLIFT.
+Variable attribution, orblame, bd =B(xd), quantiﬁes the importance of the
+value on dimensiond, xd, in directionality (sign) and weight (magnitude) on a
+===== PDF PAGE 4 =====
+4 Sipple, J., Youssef, A.
+prediction. In non-linear models, these variables are local approximations of a
+hyperplane ﬁt along the steepest gradient in feature space. Some local methods,
+such as IG [37] and Deep LIFT [34], require a neutral baseline point.
+3.2 Interpretablity
+Interpreting the model’s explanation requires the expert to align the observation,
+prediction, and explanation with the system’s context and a relevant knowledge
+base [27]. To be successful, the expert must associate the model’s explanation
+with a particular cause or fault, and then decide to take a corrective action.
+Anomaly Detection ExpertWe propose there are three kindes of experts
+that use eplainable AI:physicus,technicus, andsecularus, described in Appendix
+A. Technicus has a detailed knowledge base of the system, and aims to alter or
+inﬂuence the system in response to known conditions [29]. The explanations
+should describe the anomaly in its original state and enable the technicus to
+easily choose the most suitable treatment for the anomaly. The natural objective
+of XAI is to generate explanations that enable eﬀective interpretation for the
+expert. Therefore, it is helpful to consider how the human mind recognizes,
+generalizes and categorizes, and reasons about causality in order to better design
+explanations.
+Generalization. Empirical studies in cognitive sciences revealed that hu-
+mans assign objects to categories based on some notion of distance or dissimilar-
+ity between multidimensional stimuli [24]. One prominent generalization theory
+developed by [32], [33] suggested that distance can be well approximated with
+Euclidean L2 or City Block L1 distance measures, and stimuli are internalized in
+some internal metric space calledpsychological spaces. Experiments with human
+subjects also indicated that similarity generally follows an exponential decay
+with distance.
+Prototypes and Exemplars. It is well established that when categoriz-
+ing stimulus of a previously unseen object, humans will tend to use previously
+observed objects as a reference for making their decision. This gave rise to Pro-
+totype and Exemplar Theories [23] [14], where the former suggests that humans
+remember an anchoring object (i.e., a prototype) when categorizing, and the
+latter suggests that humans tend to retain multiple examples in memory for a
+category or concept.
+Contrastive Explanations.One of the most important conclusions from
+a review of explanations for AI drawn from the social sciences, was that good
+explanations arecontrastive [20]. Humans perform better in understanding ex-
+planations when presented with a contrastive, counterfactual event, and prefer
+explanations withwhy did event P happen, instead of counterfactual event Q.
+4 An Approach for Interpreting Anomalies
+In this section, we combine AD, explainability and interpretability concepts.
+The proposed approach provides an explanation with both a contrastive base-
+line pointx′ and a variable attribution or blame,B(x,x′). We assume that we
+===== PDF PAGE 5 =====
+Explained Anomalies 5
+have already trained a diﬀerentiable anomaly detectorF (x) = [0, 1], from which
+gradient∇F can be computed. The historic data for the unlabeled training
+dataset X is assumed to be available, and is representative of new observations
+from systemS. Each of the ﬁve steps is presented as a separate subsection next.
+4.1 Choose an exemplar baseline set
+As discussed in section 3, research in psychology suggests that humans retain
+and comprehend concepts with the support of exemplars, or reference points.
+We select baseline reference points from the training data that represent normal.
+The normal baseline sample from the training set have highest scores:F (x)≈ 1.
+Normal observations are suitable candidates for the baseline set.
+Proposition 1. If the training data is a statistically representative sample of
+the inference set, then points with the highest normal scores are suitable exem-
+plars.
+In many complex systems, devices operate in diﬀerent conﬁgurations (heat-
+ing/cooling,idle/active,takeoﬀ/landing,etc.),anddistributeobservationsacross
+multiple modes. Multiple modes occur when these device conﬁgurations gener-
+ate probability mass functions with multiple local maxima. In cases where there
+are multiple distinct baseline modes, and when the number of normal points is
+unbalanced across modes, as illustrated with modesA and B in Figure 1 (left),
+there is no guarantee that a baseline will represent all modes. Furthermore, it is
+usually not eﬃcient to oversample baseline points from dense regions. For these
+reasons, we propose a clustering-based approach for selectingN points randomly
+from each cluster, presented in Appendix B.
+Fig. 1. (Left) Multimodal distribution of the data, where modeA has more obser-
+vations than modeB. (Right) Selection of baseline points for anomalya with three
+equidistant point from two modes.
+===== PDF PAGE 6 =====
+6 Sipple, J., Youssef, A.
+4.2 Choose a measure of dissimilarity
+We must apply distance function for 1. selecting the baseline set, and 2. for
+selecting the baseline point for each anomaly. As discussed in Section 3.2, based
+on empirical evidence on human categorization of variables are correlated in
+complex systems, adopt a Euclidean L2 or City Block L1 distance function.
+Proposition 2. Euclidean L2 or City Block L1 are suitable for choosing a con-
+trastive baseline point.
+4.3 Select a baseline point
+Guided by Occam’s Razor, we seek the simplest, most eﬃcient explanation.
+Transforming an anomalous point into any baseline point yields an explanation,
+regardless of its distance from the anomaly. Since each dimension has been nor-
+malized, an equal-length displacement in any direction incurs the same cost.
+Therefore, a baseline point from the nearest mode leads to the most eﬃcient
+explanation. We apply explainability methods that use baselines as exemplars
+and choose the nearest exemplar, such as IG. The distance between each anoma-
+lous point and the baseline can be computed with the distance function, and the
+point with the minimum distance is chosen as the representative baseline point.
+Deﬁnition 1. Two baseline pointsx′
+1,x′
+2 result inequivalent attributionsif for
+any anomalous pointx, the blame attributionsB(x,x′
+1) andB(x,x′
+2) map to the
+same diagnostic condition, i.e.,I(B(x,x′
+1)) = I(B(x,x′
+2)).
+As will be shown in Theorem 1 below, two baseline points drawn from the
+same mode and separated by a small perturbation result in the same interpre-
+tation, i.e., result in equivalent attributions. This justiﬁes our next proposition:
+Proposition 3. A small perturbation in the baseline point yields an equivalent
+attribution.
+Before the formalization and proof of this proposition, we provide a simple
+illustration. Consider the two-dimensional case shown in Figure 1 (right) with
+anomalous observationa. Suppose that three possible baseline points were se-
+lected: pointb from one mode, and pointsc1, c2 are from a diﬀerent mode, and
+F (a) = 0, F (b) = F (c1) = F (c2) = 1.
+The attribution ofa with respect tob will be the vector[0, 1], but the attri-
+bution ofa with respect toc1 will be [1, 0]. The attribution ofa with respect to
+c2 will be [1, 0], i.e., nearly equal to the attribution with respect toc1. While the
+attributions onb andc1,c2, are diﬀerent, as long as all the points are equidistant
+from a and have the same classiﬁcation score, they are valid attributions.
+Theorem 1. The reference pointsc1 and c2 will generate equivalent attribu-
+tions if the following conditions are met: (a) the points are closec1≈ c2, (b)
+equidistant from anomalya, and (c) have the same classiﬁcation scoreF (c1) =
+F (c2). That is, under those conditions, the diﬀerence of attributions on each
+dimension will tend to zero asc1 and c2 become inﬁnitesimally close,
+lim∥c1−c2∥→0 (IG d(a,c 1)−IG d(a,c 2)) = 0.
+===== PDF PAGE 7 =====
+Explained Anomalies 7
+Proof is provided in Appendix C.1.
+Theorem 1 implies that a sparse sampling of reference points in the neigh-
+borhood x∈ X : F (x)≈ 1 as baseline points can be used to represent normal
+modes.
+4.4 Choose a path from the anomaly to the baseline
+According to [37], any path connecting the anomalyx and its baseline pointx′
+is valid. However, to be consistent with ﬁndings from cognitive tests performed
+on human cohorts, described in Section 3.2, it is most appropriate to prefer the
+L1 path (city block) or L2 path (Euclidean). According to the cognitive tests,
+human subjects preferred the L2 path when signiﬁcant correlation is manifested
+in two or more dimensions.
+Proposition 4. Both L1 and L2 paths connecting the anomaly and baseline
+are acceptable for interpretability.
+4.5 Apply an explanation function with the baseline
+As deﬁned in Section 2, an explanation function accepts an AD modelF, an
+observation x, and the model’s score of the observationF (x), and returns a
+variable attribution on the input data,B(x). In this section, we propose mul-
+tiple desirable properties of an explanation function, and then evaluate various
+methods for suitability. First, an explanation function must becontrastive, as
+deﬁned by [20]. In this work, we extend the deﬁnition with an approach that
+provides constructive explanations. In AD, observationx is anomalous, so the
+suitable explanation would be based on a contrastive normal pointx′, selected
+as discussed in 4.3 from the exemplar set. Second, an explanation function must
+be conservative (as in Deﬁnition 2, [22]) or, equivalently,complete (as in the the
+Completeness Axiom of [37] or Eﬃciency Axiom in [36], where the sum of at-
+tributions equals the diﬀerence in classiﬁcation scores between the baseline and
+observed points:∑
+d∈DBd(x,x′) = F (x′)−F (x). Third, an explanation func-
+tion for local explanations must satisfysensitivity, ﬁrst in the sense of [37], which
+states that any dimension that changes the prediction when its value is altered
+should also have a non-zero attribution. Further, any dimension that induces no
+change to the prediction when perturbed (i.e., dummy variable) should have a
+zero attribution. Fourth, the explanation should satisfyproportionality3; this is
+elaborated next.
+Deﬁnition 2. Given a pathP fromx to x′, dimensionu has a stronger inﬂu-
+ence on F than dimensionv over P if the average (or overall) rate of change of
+F along dimensionu is greater than the average (or overall) rate of change of
+F along dimensionv.
+3 Proportionality in this work is diﬀerent from Proportionality deﬁned in [37], since
+proportionality in the latter refers to a condition under which the dimensional com-
+ponents of the distance between a baseline point and an observation is proportional
+to the attribution.
+===== PDF PAGE 8 =====
+8 Sipple, J., Youssef, A.
+If P is the path deﬁned by z = x +α(x′−x) for α ∈ [0, 1], between x
+and x′, then the overall rate of change ofF along dimension u over path P
+is IG u(x,x′)≡
+∫ 1
+0 (x′−x)u∇uF (x +α(x′−x))dα. This is justiﬁed by taking
+G(α) = F (z) = F (x +α(x′−x)), and observing that
+G′(α) =
+∑
+u
+∇uF× ∂zu
+∂α =
+∑
+u
+∇uF× (x′−x)u
+that is, the sum of dimensional rates of change ofF over pathP. Therefore, the
+instantaneous rate of change ofF at a pointz =x +α(x′−x) along dimension
+u is∇uF× (x′−x)u, and thus the overall rate of change along dimensionu is
+the integral of the instantaneous rate of change ofF over the path.
+Therefore, Deﬁnition 2 becomes: Given a pathP = (x +α(x′−x)) from x
+to x′, dimensionu has astronger inﬂuenceon F than dimensionv overP if
+∫ 1
+0
+(x′−x)u∇uF (x +α(x′−x))dα
+>
+∫ 1
+0
+(x′−x)v∇vF (x +α(x′−x))dα
+(1)
+that is, dimensionu has astronger inﬂuenceon F than dimensionv overP if
+IG u(x,x′)>IG v(x,x′).
+Deﬁnition 3. An explanation functionB(x,x′) is proportional on observation
+x∈ RD if for any dimensionu that has a stronger inﬂuence onF than an-
+other dimensionv over a pathP from a pointx to a pointx′, thenBu(x,x′)>
+Bv(x,x′).
+In otherwords, dimensions thathavea strongerinﬂuence onthe anomaly pre-
+diction F should have greater attributions than dimensions that have a weaker
+inﬂuence. Proportionality enables ranking and thresholding of dimensions.
+WeevaluatedLIME[26],SHAP[18],LayerwiseRelevancePropagation(LRP)
+[4] [6], Deep Taylor Decomposition (DTD) [13], One Class Deep Taylor Decom-
+position (OC-DTD) [13] and Integrated Gradients (IG) against contrastive, con-
+servative, sensitivity and proportionality desiderata. Details and jstiﬁcation are
+provided in Appendix D. LIME, LRP, and most implementations of SHAP are
+notcontrastive[19].DTD,OC-DTDmakeapproximatethegradientasalinaerly,
+and are not guaranteed to satisfy proportionality. IG does not specify a fully de-
+ﬁned method for choosing a baseline point. Instead, its authors provided general
+guidelines for selecting a good baseline, where a good baseline point should have
+nearly opposite scores as the point of interest (i.e., ifF (x)≈ 1, thenF (x′)≈ 0,
+or vice-versa). Therefore, IG provides a contrastive explanation against the set
+of all baseline points that have signiﬁcantly contrastive scores. Because it applies
+a path integral betweenx and x′, IG accurately approximates the gradient, is
+conservative, and meets sensitivity criteria [37]. In addition, by computing the
+path gradient for each dimension, IG also satisﬁes proportionality (as shown in
+Theorem 2). Therefore, because it satisﬁes each desideratum, we propose IG is
+a suitable explanation function for AD.
+===== PDF PAGE 9 =====
+Explained Anomalies 9
+Theorem 2. Integrated Gradients satisﬁes proportionality, as deﬁned in Deﬁ-
+nition 3.
+Proof is provided in Appendix C.2.
+5 Experiments
+In this section, we ﬁx the anomaly detectorF and compare the proposes ap-
+proach, based on IG against two alternative explainability methods, SHAP and
+LIME.
+Attribution LabelsTo our knowledge, there are no standard datasets cu-
+rated for evaluating blame attributions for AD; therefore, we adopt the following
+labeling method. In addition to the familiar true binary anomaly class label,
+A(x) = [anomalous,notanomalous ], we append a vectorβ(x) of dimensionD,
+where βd(x) = 1/nA if xd is one ofnA relevant, explanatory dimensions of the
+defect selected by expert technicians for fault diagnosis, and0 otherwise; with∑
+d∈Dβd(x) = 1 .4 To score the attribution for methodi, B(i)(x), against the
+label β(x) for anomalous observationx, we compute theBlame Attribution
+Error as the mean absolute diﬀerence:ϵ(i)(x) = ∑
+d∈D
+⏐⏐⏐B(i)
+d (x)−βd(x)
+⏐⏐⏐/|D|
+for every pointx where A(x) = anomalous.
+VAV dataset(406 anomalous observations) A Variable Air Volume (VAV)
+device provides ventilation and heating using airﬂow dampers and a hot water
+heat exchanger, and are commonly installed in commercial oﬃce spaces. There
+are 12 dimensions reported by the VAV, including temperature and airﬂow set-
+points and measurements. Due to an intermittent failure of its the temperature
+sensor, during normal business hours the VAV’s airﬂow sensor reports values
+signiﬁcantly higher than the airﬂow setpoint. The hot water valve is consistently
+open, reporting around 100%, and the zone air temperature is below its setpoint.
+We trained one anomaly detector (AUC=0.99) based on [35] using unlabeled his-
+toric observations from a cohort of 203 similar VAVs.
+Aircraft dataset (448 anomalous observations) This dataset contains 16
+real-valued dimensions extracted from a small general aviation aircraft ﬂight
+data recorder, on which the fuel pump partially failed in ﬂight. During normal
+operations, the fuel pressure ranges between 50 and 80 psi, with only short
+bursts above 80. During the failure, the fuel pressure achieved pressures between
+80 and 120 psi. We trained an anomaly detector based on [35] (AUC=0.94) with
+unlabeled earlier ﬂight recordings of the same aircraft.
+We compare the proposed method using IG, with two model-agnostic expla-
+nation functions, SHAP and LIME and compute the average and standard de-
+viation of the explanation errors, shown in Table 2. In both datasets, IG yielded
+signiﬁcantly lower attribution errors than SHAP and LIME. LIME appears to
+4 We apply equal weighting to each relevant dimension inβ(x), because our technician
+labelers have found it impractical to to assign relative importance weights/preference
+to the relevant dimensions.
+===== PDF PAGE 10 =====
+10 Sipple, J., Youssef, A.
+T able 2. Mean and Standard Deviations of attribution error values % for labeled
+anomaly explanation datasets. Highlighted values are the top-scoring detectors based
+on a 5% signiﬁcance threshold (Mann-Whitney U test).
+IG SHAP LIME
+Aircraft 6.0±1.9 7.4±2.8 12.8 ±0.2
+V A V 7.5±2.8 13.1±1.0 13.8±0.1
+be vulnerable to larger because it of the local approximation aroundx, and in
+many cases the gradient in the neighborhood of the anomaly may be very small
+and noisy resulting in unstable attributions. We hypothesize that IG achieves
+the lowest anomaly attribution error because it traverses the entire gradient from
+the anomaly to the nearest baseline point avoiding local approximations.
+6 Discussion and Future Work
+This paper considers how XAI can be applied to AD to provide insightful, con-
+trastive explanations that enable the expert to understand an anomalous obser-
+vation. We proposed that explainability is analgorithmic transformation from
+prediction to the explanation, and interpretability is acognitive transformation
+from explanation to the diagnostic condition. We have considered numerous ex-
+plainability methods, and reviewed what aspects are important for a good expla-
+nation, inspired by the social sciences. We propose a novel method of choosing
+baseline points that enable contrastive explanations. We propose a method for
+evaluating blame attributions and show that IG has the lowest attrubution error
+in two real-world datasets.
+While this paper proposes an approach to scoring blame attributions, addi-
+tional work is needed in evaluating the accuracy and importance of a contrastive
+normal baseline. It will be beneﬁcial to demonstrate the general utility of this re-
+lationship across diﬀerent types of systems and AD models, such as Appendix E.
+With advances in wearable technology, is it possible for an explainable anomaly
+detector to predict illnesses by simply wearing a few commodity sensors?
+Acknowledgements The authors would like to thank Klaus-Robert Müller
+and Ankur Taly for instructive and practical advice and for their detailed tech-
+nical reviews, and the anonymous reviewers for identifying gaps and suggesting
+improvements.
+===== PDF PAGE 11 =====
+Explained Anomalies 11
+References
+1. Adadi, A., Berrada, M.: Peeking inside the black-box: A survey on explainable
+artiﬁcial intelligence (xai). IEEE Access6, 52138–52160 (2018)
+2. Aggarwal, C.C.: Outlier Analysis. Springer Publishing Company, Incorporated,
+2nd edn. (2016)
+3. Antwarg, L., Miller, R.M., Shapira, B., Rokach, L.: Explaining anomalies detected
+by autoencoders using shap (2020)
+4. Bach, S., Binder, A., Montavon, G., Klauschen, F., Müller, K.R., Samek, W.: On
+pixel-wise explanations for non-linear classiﬁer decisions by layer-wise relevance
+propagation. PLOS ONE10(7), 1–46 (07 2015)
+5. Baehrens, D., Schroeter, T., Harmeling, S., Kawanabe, M., Hansen, K., Müller,
+K.R.: How to explain individual classiﬁcation decisions. Journal of Machine Learn-
+ing Research 11(61), 1803–1831 (2010)
+6. Binder, A., Montavon, G., Lapuschkin, S., Müller, K.R., Samek, W.: Layer-wise
+relevance propagation for neural networks with local renormalization layers. In:
+Villa, A.E., Masulli, P., Pons Rivero, A.J. (eds.) Artiﬁcial Neural Networks and
+Machine Learning – ICANN 2016. pp. 63–71. Springer International Publishing,
+Cham (2016)
+7. Broniatowski, D.: Psychological foundations of explainability and interpretability
+in artiﬁcial intelligence (2021-04-12 04:04:00 2021)
+8. Carletti, M., Terzi, M., Susto, G.A.: Interpretable anomaly detection with diﬃ:
+Depth-based isolation forest feature importance (2020)
+9. Chandola, V., Banerjee, A., Kumar, V.: Anomaly detection: A survey. ACM Com-
+put. Surv. 41(3) (Jul 2009). https://doi.org/10.1145/1541880.1541882
+10. Doshi-Velez,F.,Kim,B.:Towardsarigorousscienceofinterpretablemachinelearn-
+ing (2017)
+11. Ester, M., Kriegel, H.P., Sander, J., Xu, X.: A density-based algorithm for discov-
+ering clusters in large spatial databases with noise. In: Proceedings of the Second
+International Conference on Knowledge Discovery and Data Mining. p. 226–231.
+KDD’96, AAAI Press (1996)
+12. Gilpin, L.H., Bau, D., Yuan, B.Z., Bajwa, A., Specter, M.A., Kagal, L.: Explain-
+ing explanations: An approach to evaluating interpretability of machine learning.
+CoRR abs/1806.00069 (2018)
+13. Kauﬀmann, J., Müller, K.R., Montavon, G.: Towards explaining anomalies: A deep
+taylor decomposition of one-class models. Pattern Recognition101, 107198 (May
+2020). https://doi.org/10.1016/j.patcog.2020.107198
+14. Lieto, A., Radicioni, D.P., Rho, V.: Dual peccs: a cognitive system for conceptual
+representation and categorization. Journal of Experimental & Theoretical Artiﬁcial
+Intelligence 29(2), 433–452 (2017)
+15. Lipton, Z.C.: The mythos of model interpretability. CoRR abs/1606.03490
+(2016), http://arxiv.org/abs/1606.03490
+16. Liu, F.T., Ting, K.M., Zhou, Z.: Isolation forest. In: 2008 Eighth IEEE
+International Conference on Data Mining. pp. 413–422 (Dec 2008).
+https://doi.org/10.1109/ICDM.2008.17
+17. Liznerski, P., Ruﬀ, L., Vandermeulen, R.A., Franks, B.J., Kloft, M., Müller, K.R.:
+Explainable deep one-class classiﬁcation (2021)
+18. Lundberg, S.M., Lee, S.I.: A uniﬁed approach to interpreting model predictions.
+In: Guyon, I., Luxburg, U.V., Bengio, S., Wallach, H., Fergus, R., Vishwanathan,
+S., Garnett, R. (eds.) Advances in Neural Information Processing Systems. vol. 30.
+Curran Associates, Inc. (2017)
+===== PDF PAGE 12 =====
+12 Sipple, J., Youssef, A.
+19. Merrick, L., Taly, A.: The explanation game: Explaining machine learning models
+with cooperative game theory. CoRRabs/1909.08128 (2019)
+20. Miller, T.: Explanation in artiﬁcial intelligence: Insights from the social sciences.
+Artiﬁcial Intelligence 267 (06 2017). https://doi.org/10.1016/j.artint.2018.07.007
+21. Miller, T.: Contrastive explanation: a structural-model approach. The Knowledge
+Engineering Review 36, e14 (2021). https://doi.org/10.1017/S0269888921000102
+22. Montavon, G., Bach, S., Binder, A., Samek, W., Müller, K.: Explaining nonlinear
+classiﬁcation decisions with deep taylor decomposition. CoRRabs/1512.02479
+(2015)
+23. Navarro, D.J.: On the interaction between exemplar-based concepts and a response
+scaling process. Mathematical Psychology51(2), 85–98 (2007)
+24. Nosofsky, R.M.: Attention, similarity, and the identiﬁcation-categorization rela-
+tionship. Journal of experimental psychology115(1), 39–61 (1986)
+25. Ras, G., van Gerven, M., Haselager, P.: Explanation Methods in Deep Learning:
+Users, Values, Concerns and Challenges, pp. 19–36 (01 2018)
+26. Ribeiro, M.T., Singh, S., Guestrin, C.: "why should I trust you?": Explaining the
+predictions of any classiﬁer. CoRRabs/1602.04938 (2016)
+27. Ricoeur, P.: Interpretation theory : discourse and the surplus of meaning. Texas
+Christian University Press, Fort Worth (1972)
+28. Ruﬀ, L., Kauﬀmann, J.R., Vandermeulen, R.A., Montavon, G., Samek, W., Kloft,
+M., Dietterich, T.G., Müller, K.: A unifying review of deep and shallow anomaly
+detection. CoRR abs/2009.11732 (2020)
+29. Samek, W., Wiegand, T., Müller, K.: Explainable artiﬁcial intelligence:
+Understanding, visualizing and interpreting deep learning models. CoRR
+abs/1708.08296 (2017)
+30. Schölkopf, B., Platt, J.C., Shawe-Taylor, J.C., Smola, A.J., Williamson, R.C.: Es-
+timating the support of a high-dimensional distribution. Neural Comput.13(7),
+1443–1471 (Jul 2001). https://doi.org/10.1162/089976601750264965
+31. Shannon, C.E., Weaver, W.: The Mathematical Theory of Communication. Uni-
+versity of Illinois Press, Urbana, IL (1949)
+32. Shepard, R.N.: Stimulus and response generalization: A stochastic model relating
+generalization to distance in psychological space. PsychometrikaR22 (1957)
+33. Shepard, R.N.: Toward a universal law of generalization for psychological science.
+Science 237(4820), 1317–1323 (1987). https://doi.org/10.1126/science.3629243
+34. Shrikumar, A., Greenside, P., Kundaje, A.: Learning important features through
+propagating activation diﬀerences (2017)
+35. Sipple, J.: Interpretable, multidimensional, multimodal anomaly detection with
+negative sampling for detection of device failure. In: III, H.D., Singh, A. (eds.)
+Proceedings of the 37th International Conference on Machine Learning. Proceed-
+ings of Machine Learning Research, vol. 119, pp. 9016–9025. PMLR (13–18 Jul
+2020)
+36. Sundararajan, M., Najmi, A.: The many shapley values for model explanation.
+In: III, H.D., Singh, A. (eds.) Proceedings of the 37th International Conference
+on Machine Learning. Proceedings of Machine Learning Research, vol. 119, pp.
+9269–9278. PMLR (13–18 Jul 2020)
+37. Sundararajan, M., Taly, A., Yan, Q.: Axiomatic attribution for deep networks.
+CoRR abs/1703.01365 (2017)
+38. Tax, D.M.J., Duin, R.P.W.: Uniform object generation for optimizing one-class
+classiﬁers. J. Mach. Learn. Res.2, 155–173 (March 2002)
+===== PDF PAGE 13 =====
+Explained Anomalies 13
+A Expert personas for Explainable AI.
+As with explainability, interpretability can be subdivided by their distinguishing
+characteristics. While the model is responsible for generating an explanation, the
+expert is responsible for forming an interpretation. The important characteristics
+can be largely subdivided into the expert’s knowledge base, the expert’s goals,
+and the expert’s action space. Table 3 shows how we expand on the foundational
+deﬁnitions by [25] that distinguished between the expert and the secularus. We
+propose each user of the explanation is an expert of their own kind, and can
+be broadly classiﬁed into three personas: physicus, technicus, and secularus5.
+Furthermore, we distinguish between a system-oriented expert and a model-
+oriented expert.
+Physicus interprets the explanation to discover natural laws, or uncover a
+deeper knowledge of the phenomenology of the observed system that produced
+the interesting observation, and hence, the expert’s goal is epistemological. [29]
+refers to the goal of the physicus as learning from the system. This expert’s
+knowledge base of the system is extensive, and is focused on discovery and ex-
+panding the existing knowledge base of the system. Like an astronomer, clima-
+tologist, or macro-economist, the system-oriented physicus may not have a direct
+inﬂuence on the system. In contrast, the model-oriented expert seeks to discover
+new knowledge of the model, perhaps discovering new methods and techniques
+that will yield better, more accurate, insightful, fair, reliable, and transparent
+models.
+Like physicus, technicus has a detailed knowledge base of the system, but
+unlike physicus, the goal of technicus is to directly alter or inﬂuence the sys-
+tem in response to known conditions, and may choose a response, i.e. the goal
+is to improve the system (or model) [29]. In order to choose the response to
+the model’s explanation, technicus must choose an action or treatment in re-
+sponse to the explanation. Technicus is able to perform an eﬀective diagnosis
+and treatment when the observed system is well understood and mostly static,
+such that past successful treatments can be repeated to yield similarly beneﬁcial
+results. The model-oriented technicus trains, validates, and deploys the model
+without attempting to alter the system; the system oriented technicus uses the
+explanation to alter the system.
+Secularus is an observer with the least detailed knowledge of the system or
+model compared to either the technicus or the physicus, and has a limited capa-
+bility to interpret the explanation. Secularus’s perspective is ego-centric: while
+not able to alter the system, secularus can choose a response that is beneﬁcial to
+his interests. For example, secularus may interpret an explanation from a model
+observing the stock market, and may choose a response to buy or sell. Secularus
+may consider the current cloud cover, temperature, dew point, barometric pres-
+5 We prefer the Latin terms over scientist, technician, and layperson to encompass a
+broad range of experts without specifying the type of system. For example, technicus
+is meant to include both technicians that ﬁx devices and medical professionals that
+treat patients.
+===== PDF PAGE 14 =====
+14 Sipple, J., Youssef, A.
+sure and decide to leave home with an umbrella, or may determine whether the
+model outputs are compliant with legislation [29].
+Each system-oriented expert would like to know how the model’s decisions
+and explanations evolve over time. The physicus establishes governing laws that
+predict a future outcome by observing the prediction and explanation, the tech-
+nicus anticipates a favorable change in the system following a treatment, and
+the secularus may choose their next action based on the explanation. In each
+case, the change in explanation over time plays a critical role.
+B A clustering-based algorithm to selecting exemplar
+baseline set.
+Algorithm 1 provides details of the proposed method of selecting a baseline,
+given the training sampleX, an anomaly detection classiﬁerF, the maximum
+numbern of points per mode, and a tolerance threshold,ϵ.
+While any clustering algorithm is suitable, density-based clustering such as
+DBScan [11] works well in practice since (1) it does not require the number of
+clusters to be speciﬁed, (2) it performs well clustering arbitrarily shaped modes,
+and (3) it is robust to noisy data.
+The baseline setX′ may then be considered the exemplar set and used as
+contrastive, normal points.
+Algorithm 1Select Multimodal Baseline
+procedure Select Multimodal Baseline (X,F,n,ϵ ) ⊿ normalized training set
+X, anomaly detectorF, max points per noden, tolerance thresholdϵ
+ˆX =X :F (x∈X)> 1−ϵ ⊿ Choose observations with nearly normal scores.
+H =Cluster ( ˆX,d Euclidean) ⊿ Cluster the points using L2 distance function.
+X ′ =Choose(n,H ) ⊿ Randomly select up ton points from each cluster inH.
+return baseline setX ′
+end procedure
+A side-by-side comparison of pair plots between the naive approach, as pro-
+posed in [35], and the proposed mode clustering baseline selection algorithm is
+shown in Figure 2. The plot indicates that the proposed algorithm creates a
+baseline sample that is less than half the size of the naive sampling strategy, yet
+provides much better coverage of the high-conﬁdence region.
+C Proofs
+C.1 Proof for Equivalent Attributions
+Theorem 3. The reference pointsc1 and c2 will generate equivalent attribu-
+tions if the following conditions are met: (a) the points are closec1≈ c2, (b)
+===== PDF PAGE 15 =====
+Explained Anomalies 15
+Fig. 2. (best viewed in color). Pairwise scatter plots of three-dimensional observations
+obtained from 36 VAV devices (discharge air temperature, zone air temperature, heat-
+ing water valve percentage). Grey points represent low-conﬁdence points with anomaly
+score F (x) < 0.9, and are not eligible for baseline points; conversely, blue points are
+eligible to be chosen as baseline points with F (x) ≥ 0.9. The red points were se-
+lected as the baseline sample using (left) Naive sampling approach, and (b) proposed
+clustering-based approach. Note that (a) and (b) had the same observationsX and
+same anomaly detection classiﬁerF. Even with a baseline size less than half of the
+naive baseline sample, the proposed mode-clustering approach provides much better
+coverage of the high-conﬁdence regions.
+equidistant from anomalya, and (c) have the same classiﬁcation scoreF (c1) =
+F (c2). That is, under those conditions, the diﬀerence of attributions on each
+dimension will tend to zero asc1 and c2 become inﬁnitesimally close,
+lim∥c1−c2∥→0 (IG d(a,c 1)−IG d(a,c 2)) = 0.
+Proof. Explicitly deﬁne IG as a function of two points, anomalya and baselineb
+for dimensiond:IG d(a,b ) = (b−a)d
+∫ b
+a∇dF (x)dα. We’ll drop thedsubscript for
+simplicity, but dimensionality is implied. Letδ(c1,c 2) = IG d(a,c 1)−IG d(a,c 2)
+be the diﬀerence in attribution with respect to anomalya on dimensiond for
+two pointsc1 and c2:
+δd(c1,c 2) = (c1−a)d
+∫ c1
+a
+∇dF (x)dα− (c2−a)d
+∫ c2
+a
+∇dF (x)dα (2)
+Applythestandardpropertyofchainedintegralsto2:
+∫ w
+u f (x)dα =
+∫ v
+u f (x)dα+∫ w
+v f (x)dα
+δd(c1,c 2) = (c1−a)d
+[∫ c2
+a
+∇dF (x)dα +
+∫ c1
+c2
+∇dF (x)dα
+]
+− (c2−a)d
+∫ c2
+a
+∇dF (x)dα
+(3)
+===== PDF PAGE 16 =====
+16 Sipple, J., Youssef, A.
+Rearrange terms:
+δd(c1,c 2) = (c1−c2)d
+∫ x=c2
+x=a
+∇dF (x)dα + (c1−a)d
+∫ x=c1
+x=c2
+∇dF (x)dα (4)
+The gradient∇F is assumed bounded inside the region betweena and c2,
+that is, there is a constantM where|∇dF|≤ M inside the region betweena
+and c2.
+Therefore,
+⏐⏐⏐⏐
+∫ c2
+a
+∇F (x)dα
+⏐⏐⏐⏐≤
+∫ c2
+a
+|∇F (x)| dα≤
+∫ c2
+a
+Mdα =M (c2−a) (5)
+Hence,
+⏐⏐⏐⏐(c1−c2)d
+∫ c2
+a
+∇dF (x)dα
+⏐⏐⏐⏐≤| (c1−c2)M (c2−a)d|→ 0 (6)
+Similarly,
+∫ c1
+c2
+∇dF (x)dα→ 0 as∥c1−c2∥→ 0 because|∇dF| is bounded in
+the region betweenc1 and c2.
+This implies that
+(c1−a)d
+∫ c1
+c2
+∇dF (x)dα→ 0
+as∥c1−c2∥→ 0.
+It follows thatδd(c1,c 2)→ 0 as∥c1−c2∥→ 0, i.e.,
+lim
+∥c1−c2∥→0
+(IG d(a,c 1)−IG d(a,c 2)) = 0
+C.2 Proof of Proportionality
+Theorem 4. IG satisﬁes proportionality, as deﬁned in Deﬁnition 3.
+Proof. Consider an anomalous observationx (i.e.,F (x) is near0), and a normal
+baseline point x′. Let u and v be two dimensions where dimension u has a
+stronger inﬂuence onF than dimensionv over pathP (α) = x +α(x′−x) from
+x to x′, we need to prove thatBu(x)>B v(x).
+By deﬁnition of IG,Bu(x,x′) with respect to exemplarx′ is IG u(x,x′), and
+Bv(x,x′) is IG v(x,x′). As indicated Equation 1, the fact that dimensionu has
+a stronger inﬂuence onF than dimensionv means thatIG u(x,x′)>IG v(x,x′),
+which trivially implies thatBu(x,x′)>B v(x,x′).
+Remark: The above derivations give a new insight into IG, i.e., IG deﬁnes the
+blame/attribution to each dimension/featureu to be the overall rate of change
+of the classiﬁerF along that dimension/feature over a path from an anomalyx
+to an baseline pointx′.
+===== PDF PAGE 17 =====
+Explained Anomalies 17
+D Evaluation of Explainability Methods for Anomaly
+Detection
+We consider which explanation functions satisfy contrastive, conservative, sen-
+sitivity, and proportionality desiderata. All explanation functions that do not
+apply a contrastive baseline point, such as LIME, SHAP, and LRP, do not meet
+the contrastive desideratum, and are eliminated. It is worth mentioning that
+recent work has adapted these approaches to contrastive baselines. Such as, [19]
+proposed reformulating SHAP with blended coalition sets from multiple base-
+line points to form an averaged attribution. The authors clarify that when using
+multiple baseline points one must attend to attribution errors when the data
+distribution is multimodal, and propose techniques to group the baseline points
+by clustering them by their attribution. Additional investigation may be re-
+quired to determine how well this approach works under arbitrary multimodal
+distributions.
+First-order Taylor Decomposition techniques [5], [22], apply a Taylor expan-
+sion of the gradients from a root pointx′: F (x′)−F (x) = ∂F
+∂x|x′(x′−x) + ϵ,
+where ϵ≈ 0 denotes the second- and higher-order terms. Because these tech-
+niques apply a linear approximation for the gradient, they are only suitable for
+comparing points in close proximity. Since the observed point and the contrastive
+baseline points are on extreme ends of the classiﬁcation range, (i.e.,F (x′)≈ 1
+andF (x)≈ 0), the gradient approximation at either point is, in general, not rep-
+resentative of the gradient along the path betweenx andx′, and thus ﬁrst-order
+Taylor approximations do not satisfy sensitivity and proportionality.
+Deep Taylor Decomposition (DTD) [22] is an extension of the ﬁrst-order
+Taylor approximation for deep neural networks, where the ﬁrst-order approxi-
+mation is applied for each neuron, progressively from the output node to the
+input nodes. DTD is conservative and also applies a positivity constraint. How-
+ever, its authors select a singular baseline (root) point at the origin by applying
+the positivity constraint. Therefore, by specifying the root point, no exemplar
+set is applied, and therefore, DTD is not contrastive6.
+A notable application of DTD to anomaly detection also worth considering
+is One-Class Deep Taylor Decomposition (OC-DTD) [13]. The authors proposed
+ﬁrst training a One-Class SVM as an anomaly detector, thenneuralizing the OC-
+SVM into a neural network, and then applying DTD for variable attribution. The
+authors proposed a relevance model to approximate the layerwise attributions
+(relevances). The proposed relevance model computes a power-raised distance
+from the support vectors, rather than contrasting the observed point with an
+exemplar set. Since the basis of comparison are the support vectors and not an
+exemplar, OC-DTD also is not contrastive.
+Diﬀerent from DTD and OC-DTD, IG [37] does not specify a fully deﬁned
+methodforchoosingabaselinepoint.Instead,itsauthorsprovidedgeneralguide-
+lines for selecting a good baseline, where a good baseline point should have nearly
+6 Even though DTD approximates the decision surface, it is not clear how a contrastive
+explanation may be formed.
+===== PDF PAGE 18 =====
+18 Sipple, J., Youssef, A.
+opposite scores as the point of interest (i.e., ifF (x)≈ 1, thenF (x′)≈ 0, or vice-
+versa). Therefore, IG provides a contrastive explanation against the set of all
+baseline points that have signiﬁcantly contrastive scores. Because it applies a
+path integral betweenx andx′, IG accurately approximates the gradient, is con-
+servative, and meets sensitivity criteria. In addition, by computing the path gra-
+dient for each dimension, IG also satisﬁes proportionality (as shown in Theorem
+4). Therefore, because it is contrastive, conservative, and satisﬁes sensitivity and
+proportionality, we propose selecting IG as the contrastive explanation function.
+E A practical illustration of interpretable anomaly
+detection
+We illustrate explained anomaly detection with the Variable Air Volume (VAV)
+device, illustrated in Figure 3. The VAV maintains oﬃce room temperature
+Troom above heating and below cooling setpoints,Theating, Tcooling. Fresh air
+at temperatureTair,in ﬂows through the VAV. Hot water circulates through a
+heat exchanger to heat the air,Tair,out. Air ﬂow is controlled with a mechanical
+damper, and water ﬂow is regulated with a mechanical valve.
+Fig. 3. Schematic of a Variable Air Volume (VAV) device.
+Anomaly Diagnosis.We trained a neural network with negative sampling
+anomaly detector [35] on 50 identical VAVs, and followed the approach from Sec-
+tion 4 to generate explanations. The attribution time series of an actual water
+ﬂow failure is shown in Figure 4. Initially, the device exhibits normal behav-
+ior as indicated by the anomaly score. However, at 11:40 am the supply water
+temperature drops, causing VAV’s anomaly score to increase. The attribution
+is assigned to the heating water valve, which responds by opening beyond its
+normal condition. At 12:00, as the zone air temperature starts to cool, the attri-
+butions change indicating that the supply air ﬂow rate changes to compensate
+for the insuﬃcient water temperature.
+A closer inspection shortly after the failure, Figure 5, reveals at 11:54 74%
+blame is assigned to the heating water valve with an anomalous value of 100%
+===== PDF PAGE 19 =====
+Explained Anomalies 19
+Fig. 4. Time series of anomaly scores and blame attributions on an anomalous VAV.
+The black line represents the anomaly score,1−F (x), where 0 is normal and 1.0 is
+anomalous (this reverse in convention makes it easier to visualize). The colored lines
+indicate the attributions for each observation.
+(expected 50%). However, at 12:24, the air supply ﬂowrate confounds the root
+causebyincreasingﬂowrateto1.2,(expected0.5)cubicfeetperminute,resulting
+shared blame (43% and 41%).
+This example illustrates two rules of attributions. First, an insuﬃcient num-
+ber of independent observable dimensions leads to an ambiguous diagnosis. Sec-
+ond, over time the evolving state of a system may obscure the root cause, making
+it necessary to attend to the attributions from the earliest anomalous observa-
+tions.
+Empirical EvaluationWe evaluated attributions for actual failures on real
+VAVs. Trained technicians labeled each instance with the subcomponent that
+was replaced or reconﬁgured as part of the repair. Each example was labeled a
+success if the attributions correctly identiﬁed at least one dimension associated
+with the fault. For example, if the damper failed, a successful attribution must
+include air ﬂow set point or measurement. Of the 53 examples, 51 were successful
+attributions (96% accuracy). The two unsuccessful were associated with devices
+that were repaired well after the initial failure occurred.
+===== PDF PAGE 20 =====
+20 Sipple, J., Youssef, A.
+Fig. 5. Blames at 11:54 and 12:24. The anomaly score,1−F (x), and the time are
+shown in the interior circle, the blame attributions are shown on the outside ring, and
+the anomalous values is shown next to their baseline values in parenthesis.
+===== PDF PAGE 21 =====
+Explained Anomalies 21
+T able 3.Three types of experts and how they interpret model explanations.
+Expert
+Physicus T echnicus Secularus
+to discover to diagnose to decide
+System-oriented Researcher in econmocs, as-
+tronomy, biology, climatol-
+ogy...
+"What makes the sys-
+tem exhibit this behav-
+ior?"
+Medical doctor, automobile
+technician, power plant
+operator, mechanic, traﬃc
+monitor...
+“What went wrong and
+how can I ﬁx the sys-
+tem?”
+“Has the treatment im-
+proved the system’s con-
+dition?”
+Day trader, investor,
+medical patient, crimi-
+nologist/police, driver,
+homeowner...
+“Should I buy shares in
+XYZ”
+“Am I compliant with
+laws and regulations?”
+Model-oriented AI researcher, Computer
+Scientist...
+“Why is Deep Learn-
+ing architecture X better
+than Y?”
+AI practitioner, Software
+Engineer...
+“When I deploy the
+model to production,
+will it be accurate,
+fair, trustworthy and
+reliable?”
+Law enforcement profes-
+sional, hiring manager,
+passenger of self-driving
+vehicle...
+“Do I trust the model
+enough to inﬂuence my
+decision?”
+“Is my legal right to
+an explanation guaran-
+teed?”.
+“Does the model dis-
+criminate against any
+group?”

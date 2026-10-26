@@ -1,0 +1,1389 @@
+--- PDF PAGE 1 ---
+Nezha: Interpretable Fine-Grained Root Causes Analysis for
+Microservices on Multi-modal Observability Data
+GuangbaYu YufengLi XiaoyunLi
+PengfeiChen∗ HongyangChen ZibinZheng
+SunYat-senUniversity SunYat-senUniversity SunYat-senUniversity
+China China China
+ABSTRACT 100
+metric
+Rootcauseanalysis(RCA)inlarge-scalemicroservicesystemsis
+acriticalandchallengingtask.Tounderstandandlocalizeroot 0
+causesofunexpectedfaults,modernobservabilitytoolscollectand trace
+preservemulti-modalobservabilitydata,includingmetrics,traces,
+⚠(cid:1)
+c
+r
+a
+o
+u
+o
+s
+t
+e
+andlogs.Sincesystemfaultsmaymanifestasanomaliesindifferent
+datasources,existingRCAapproachesthatrelyonsingle-modal log "timestamp":"08:04:33",
+dataareconstrainedinthegranularityandinterpretabilityofroot "mess " a s g e e v " e : r " i r t e y q ": u " e d s e t b c u o g m ", plete" }
+causes.Inthisstudy,wepresentNezha,aninterpretableandfine-
+Figure1:Multi-modalobservabilitydata(i.e.,metrics,traces,
+grainedRCAapproachthatpinpointsrootcausesatthecoderegion
+andlogs)areusedtolocalizefine-grainedrootcauses(e.g.,
+andresourcetypelevelbyincorporativeanalysisofmulti-modal
+regionsofcodedefectsorresourcetypes).
+data. Nezha transforms heterogeneous multi-modal data into a
+homogeneouseventrepresentationandextractseventpatternsby 1 INTRODUCTION
+constructingandminingeventgraphs.ThecoreideaofNezhais Microservicearchitecturedecomposesanapplicationintomany
+tocompareeventpatternsinthefault-freephasewiththosein smallpiecesofservices,allowingdeveloperstomodifyandredeploy
+thefault-sufferingphasetolocalizerootcausesinaninterpretable specificservicesratherthantheentireapplication[23,70].However,
+way.Practicalimplementationandexperimentalevaluationson interconnectedservicesaredeployedacrossmultiplehostsandthe
+twomicroserviceapplicationsshowthatNezhaachievesahigh numberofservicesinproductionincreasesrapidlyasthebusiness
+top1accuracy(89.77%)onaverageatthecoderegionandresource develops.Manyfactors(e.g.,dynamiccontainerenvironmentand
+typelevelandoutperformsstate-of-the-artapproachesbyalarge complexserviceinvocations)canaffecttheperformanceandavail-
+margin.Twoablationstudiesfurtherconfirmthecontributionsof abilityofmicroserviceapplications,leadingtomoreperformance
+incorporatingmulti-modaldata. andavailabilityissues[67,71].
+TohelpSiteReliabilityEngineers(SREs)betterunderstandthe
+CCSCONCEPTS performanceandavailabilityofapplications,observabilityispro-
+•Softwareanditsengineering→Softwarereliability;Soft- posedwithacapabilityofcomprehensivevisibilityintodistributed
+wareperformance;Cloudcomputing. applications[58].Theprimarydatausedinobservabilityaremet-
+rics,logs,andtraces,whicharereferredtoas“multi-modalobserv-
+KEYWORDS abilitydata”[58].AsshowninFig.1,whenafaultoccurs,SREs
+RootCauseAnalysis,Multi-modalObservabilityData,Microservice typicallyneedtocombinecluesextractedfrommulti-modalobserv-
+abilitydatatolocalizetherootcause,whichisthemostfundamental
+ACMReferenceFormat:
+reasonforthefault[62].
+GuangbaYu,PengfeiChen,YufengLi,HongyangChen,XiaoyunLi,andZibin
+Manuallytroubleshootingrootcausesbasedonmulti-modaldata
+Zheng.2023.Nezha:InterpretableFine-GrainedRootCausesAnalysisfor
+istime-consuminganderror-proneincomplexmicroserviceappli-
+MicroservicesonMulti-modalObservabilityData.InProceedingsofthe
+cationsduetotheexplosionandheterogeneityoftheobservability
+31stACMJointEuropeanSoftwareEngineeringConferenceandSymposium
+ontheFoundationsofSoftwareEngineering(ESEC/FSE’23),December3–9, data.Overtheyears,manymetrics-basedapproaches[6,26,35,
+2023,SanFrancisco,CA,USA.ACM,NewYork,NY,USA,13pages.https: 61,63,64],trace-basedapproaches[8,9,13,22,32,66,67,71],and
+//doi.org/10.1145/3611643.3616249 log-basedapproaches[3,20,36,45,51,55]havebeendevotedtoau-
+tomaticallylocalizerootcauses.However,weidentifythreeprimary
+∗PengfeiChenisthecorrespondingauthor
+limitationsofexistingrootcauseanalysis(RCA)approaches.
+Permissiontomakedigitalorhardcopiesofallorpartofthisworkforpersonalor (1) Insufficientexploitationonmulti-modaldata.Mostofthe
+classroomuseisgrantedwithoutfeeprovidedthatcopiesarenotmadeordistributed
+forprofitorcommercialadvantageandthatcopiesbearthisnoticeandthefullcitation state-of-the-artRCAapproaches[3,32,35,55,64,67]onlyuse
+onthefirstpage.Copyrightsforcomponentsofthisworkownedbyothersthanthe single-modaldatatopinpointrootcauses.Sincesystemfailures
+author(s)mustbehonored.Abstractingwithcreditispermitted.Tocopyotherwise,or
+maymanifestasanomaliesindifferentmodaldata,adopting
+republish,topostonserversortoredistributetolists,requirespriorspecificpermission
+and/orafee.Requestpermissionsfrompermissions@acm.org. singlemodaldatacouldlosekeyRCAcluesandthusimpact
+ESEC/FSE’23,December3–9,2023,SanFrancisco,CA,USA theaccuracyofRCAapproaches(detailsin§2.2).
+©
+AC
+2
+M
+023
+IS
+C
+B
+o
+N
+py
+97
+ri
+9
+g
+-
+h
+8
+t
+-4
+h
+0
+e
+0
+l
+7
+d
+-0
+b
+3
+y
+2
+t
+7
+h
+-
+e
+0/
+o
+2
+w
+3/
+n
+1
+e
+2
+r
+.
+/
+.
+a
+.
+u
+$1
+th
+5
+o
+.0
+r
+0
+(s).PublicationrightslicensedtoACM. (2) Coarse-grainedrootcauses.Existingsingle-modalstudies
+https://doi.org/10.1145/3611643.3616249 mainlylocalizetherootcausesofmicroserviceapplications
+
+--- PDF PAGE 2 ---
+ESEC/FSE’23,December3–9,2023,SanFrancisco,CA,USA GuangbaYu,PengfeiChen,YufengLi,HongyangChen,XiaoyunLi,andZibinZheng
+attheservicelevel[3,6,35,51,64,66].Suchcoarse-grained whenidentifyingrootcausesattheservicelevel.Whenidentifying
+rootcausesrequireSREstomanuallytroubleshootthetrueroot rootcausesattheinner-servicelevel(i.e.,coderegionorresource
+causes(e.g.,specificcoderegionorresourcetype)ofthefaulty type),Nezhaoutperformsadvancedbaselinesby67.47%∼74.85%
+services,whichdelaysthefailurerecoveryprocess. inahightop-1accuracy.Moreover,twoablationstudiesfurther
+(3) Weakinterpretabilityofrootcauses.ExistingRCAtech- confirmthecontributionofincorporatingmulti-modaldata.
+niquesplaceinsufficientemphasisontheinterpretabilityofroot Contributions.Thisstudymakesthefollowingcontributions,
+causes,whichiscrucialforSREstofullyunderstandtheunder- • Weintroduceanovelapproachtorepresentheterogeneousmulti-
+lyingissues.Forexample,PDiagnose[21]takesmulti-modal modalobservabilitydata(i.e.,metrics,traces,andlogs)inauni-
+dataasinputbytransformingheterogeneouslogsandtraces fiedhomogeneouseventformat.Thisrepresentationenablesthe
+intotimeseries.However,thisapproachsacrificesthedetailed constructionofeventgraphsandfacilitatesthefutureintegrated
+executioncontextofrequests(e.g.,logcontentsandtracepaths). analysisacrossmulti-modalobservabilitydata.
+Asaresult,itfailstoprovidedetailedexplanationsregarding • WepresentNezha,aninterpretableandfine-grainedmicroservice
+whereandwhythefaultyrequestsoccurred. RCAapproach.Nezhaisastatisticalmethodtolocalizemore
+granularandactionablerootcauses(i.e.,coderegionorresource
+NezhaApproach.Toovercometheabovelimitations,wepro- type)withhighinterpretability,whichfacilitatesSREstotake
+poseNezha,whichisaprotectiondeitywithmultiplearmsinChi- mitigationactionsinconfidence.
+nesemythology,aninterpretableandfine-grainedRCAframework • WeimplementtheprototypeofNezha[69]andconductextensive
+byincorporativeanalysisofmulti-modaldata.WhenAnomalyDe- experimentsontwowidely-usedmicroserviceapplicationstoval-
+tector (§ 4.1) detects an anomaly on front-end service requests, idatetheeffectivenessandefficiencyofNezha.Theresultsshow
+DataIntegrator(§4.2)takesheterogeneousmetrics,traces,and thatNezhaoutperformsthestate-of-the-artRCAapproachesat
+logsfromthefault-freeconstructionandfault-sufferingproduc- bothserviceandinner-servicelevel.
+tionphaseasinputsandtransformsthemintothehomogeneous • Weenhancetheobservabilityoftwowidely-usedmicroservice
+eventrepresentation.Eventsinthesameserviceinstancearethen applicationsOnlineBoutiqueandTrainticket,andopensource
+orderedaccordingtotheirtimestampsandeventgroupsacross themat[46]and[47],whichwillfacilitatethefutureanomaly
+serviceinstancesareconnectedaccordingtospanIDstoconstruct detectionandRCAresearchonmulti-modaldata.
+eventgraphswhileovercomingclocksynchronizationproblems.
+PatternMiner(§4.3)thenextractsthecommonexecutionpatterns
+2 BACKGROUNDANDMOTIVATION
+oftheapplicationfromtheeventgraphs.
+Aftertransformingmulti-modaldataintoevents(i.e.,excluding 2.1 Background
+specificrequestparameters),theeventpatternsintheconstruction Observability.Observabilityisameasureofhowwelltheinternal
+phasearesimilartothoseintheproductionphase.Duringthefault- statesofasystemcanbeinferredfromknowledgeofitsexternal
+sufferingphase,faultsmanifestthemselvesinoneormoredata outputs[58].Ithasbeenincreasinglyappliedtomicroservicesbe-
+sources,whichcausessomeeventpatternstodeviatefromtheir causecloud-nativeenvironmentsbecomemoreandmorecomplex,
+expectedexecutionpaths.Therefore,thecriticalproblemofNezha andthepotentialrootcausesoffaultsbecomemorechallenging
+istoidentify(1)whicheventpatternsdeviatefromexpectedexecution topinpoint.Observabilitytypicallyusesthreetypesoftelemetry
+paths,and(2)howthesepatternschangeintheactualfault-suffering data—metrics,traces,andlogs—toprovidedeepvisibilityinto
+phase. To localize such faulty event patterns, Expected Pattern distributedsystems.ObservabilityallowsSREstomonitorsystems
+Ranker(§4.4.1)isproposedtosolvetheproblem(1)bypinpointing moreeffectively,helpingthemidentifyandconnecttheeffectsin
+exceptedpatternsthatfrequentlyoccurinthefault-freephasebut complexchainsandtracethembacktotheircauses.
+rarelyhappeninthefault-sufferingphase.Thefaultyeventpatterns Metric.Metricsarenumericalvaluesthatdescribethestatusof
+reflectwhichcoderegionsorresourcestypeareculprits,whichis themicroservicesandinfrastructureoveraperiodoftime.Metrics
+morefine-grainedthantheexistingRCAapproachesofpinpointing canbefurtherclassifiedassystem-levelmetricsandapplication-
+faultsattheservicelevel(solutionoflimitation2). levelmetrics[27].System-levelmetricssuchasmemoryandCPU
+ActualPatternRanker(§4.4.2)isusedtosolveproblem(2)bylo- usageareimmediateconcernswheneverSREsidentifyaperfor-
+catingtheactualpatternsthatfrequentlyoccurinthefault-suffering mancedegradation.SREscanidentifyissuescausedbyinsufficient
+phasebutrarelyhappeninthefault-freephase.Suchnewlyemerg- resourcesbyanalyzingsystem-levelmetrics.However,system-level
+ingpatternsinthefault-sufferingphasefacilitateSREstounder- metricscannothelpsolveproblemscausedbycodedefects.
+standfaults.Eventually,PatternAggregator(§4.5)correlatesex- Application-levelmetrics(e.g.,requestlatencyorsuccessratio)
+pected patterns with actual patterns and takes pattern pairs as arederivedfrommonitoringrequeststodescribetheapplication
+rootcausecandidates.Nezhaoutputsactionablerootcauseswith status.Suchmetricstypicallyreflectthefaults’surfaceratherthan
+highinterpretabilitybycomparingexpectedpatternswithactual rootcausesoffaults.Forexample,adecreaseinsuccessratereflects
+patterns(solutionoflimitation3). adecreaseinavailability,andSREsneedtofurtheranalyzesystem-
+WeconductedextensivestudiestoevaluateNezhaontwopop- levelmetrics,traces,andlogstoidentifytherootcause.Therefore,
+ularmicroserviceapplications,namelyTrainTicket[12]andOn- weanalyzeapplication-levelmetricswhenperforminganomaly
+lineBoutique[14].Benefitingfromtheuseofmulti-modalobserv- detectionandfocusonsystem-levelmetricsinRCA.
+abilitydata,Nezhaachievesahightop-1accuracy(89.77%)andsur- Log.Logsaretextualrecordsofwhatoperationsareperformed
+passesallcomparedapproachesbyalargemargin(61.45%∼74.63%) duringprogramruntime.Alogconsistsofatimestampthattells
+
+--- PDF PAGE 3 ---
+Nezha:InterpretableFine-GrainedRootCausesAnalysisforMicroservicesonMulti-modalObservabilityData ESEC/FSE’23,December3–9,2023,SanFrancisco,CA,USA
+Front Product Front/Recv. Front Product
+08:09:23 Serve Pd. 08:09:23 Query Pd. ab5 Recommend/ListRecommend TraID: 12df 08:09:23 INFO Serve Pd. TraID: 12df 08:09:23 INFO Query Pd. ab5
+08:09:24 Serve Pd. 08:09:24 Query Pd. ef2 TraID: 14bj 08:09:24 INFO Serve Pd. TraID: 14bj 08:09:24 INFO Query Pd. ef2
+Product/ListProduct
+08:09:24 Serve Pd. 08:09:24 Query Pd. Err log1 log2 log3 log4 log5log6 TraID: 249e 08:09:24 INFO Serve Pd. TraID: 12df 08:09:24 ERR Query Pd. Err
+08:09:25 Req. Fail 08:09:24 Query Pd. hg8 TraceID Time LogLevel LogContext TraID: 12df 08:09:25 ERR Req. Fail TraID: 249e 08:09:24 INFO Query Pd. hg8
+(a) Before integrating logs and traces (b) Integrating logs and traces (c) After integrating logs and traces
+Figure2:Anexampleofintegrationwithtracesandlogs.(a)SREscannotdistinguishwhichrequestthefailedlogsbelongto.(b)
+Thecontentsofthelogsafterintegration.(c)SREscantracklogsbelongingtoeachrequestafterintegration.
+whenitoccurred,withastaticstructureandfree-formtext.The
+system-level metric anomaly log anomaly trace anomaly
+logtemplateistheconstantpartofalogstatementinthecode[68].
+Althoughlogsprovidevaluableinformationabouttheindividual
+Normal CPU Error Network
+serviceinstance,thislocalizedknowledgelacksassociationsoflogs Phase Contention Return Jam time
+for the same request across different services. Analysis logs on
+differentservicesindependentlycannotcharacterizethebehavior Figure3:Theoccurrencesofrelatedsystem-levelmetrics,
+oftheoverallsystem. tracesandlogsthatcanreflectanomaly.
+Trace.Tracesrepresenttheend-to-endpathsofrequeststhrough widelyadoptedframeworks(e.g.,SpringCloud).Byemployingthis
+adistributedsystem.Asarequestmovesthroughasystem,every approach,whenarequestencountersafault(e.g.,theredlinein
+operationperformediscalleda“span”,whichrecordsthecaller Fig.2(c)),RCAapproachescantracktherequest-leveldescriptive
+service,thecalleeservice,andtheoperationtime.Eachtracecorre- information(e.g.,logs)toeffectivelyidentifytherootcause.
+spondstoarequestandhasauniqueidentifier(e.g.,traceID).A
+Motivation2:EnhancingRCAthroughtheIntegrationof
+spanisanamedandtimedoperationthatsharesthesametrace Metrics,Logs,andTraces.Whilelogsandtracesofferabundant
+IDwithinthesametrace.EachspanalsohasauniquespanIDto cluesforRCA,certainanomaliesmaynotbeapparentinthese
+signifyit.Therootspan(e.g.,Front/Recv.inFig.2(b))isthefirst sources,leadingtoapotentiallossofcriticalinformationpertaining
+spaninatrace,whiletheotherspansarecorrelatedbyparent-child torootcauses.Fig.3showsthreeexamplesoftheoccurrencesof
+relationshipsbasedontheparentspanIDproperties(e.g.,Fron- system-levelmetrics,traces,andlogsthatcanreflectanomalies
+t/Recv.istheparentofRecommend/ListRecommendinFig.2(b)).The whenCPUcontention,errorreturn,andnetworkjamfaultswere
+contributionoftracesislimitedinRCAbecausetheyonlyrecord injectedintotheOnlineBoutiqueproductservice.Theanomaliesin
+thecoarse-grainedserviceoperation-levelinformation. metricswereidentifiedusingthe𝑘-𝜎rules,withfurtherdetailsto
+bepresentedin§4.1.Logsandtracespansthatexclusivelyoccur
+2.2 Motivation duringthefault-sufferingphase,butnotinthefault-freephase,are
+Thissectionpresentsfourmotivationswithexamplesfromawidely- consideredabnormal.
+usedmicroserviceapplication,OnlineBoutique[14].Detailsonthe AsdemonstratedinFig.3,logandtraceanomaliesareabsent
+applicationanddatacollectionwillbedescribedin§5.1. whenCPUcontentionandnetworkjamfaultsareinjected,because
+Motivation1:EnhancingRCAthroughLogandTraceInte- thesefaultsdonotaltertheexecutionpathsofOnlineBoutique.
+gration.Logsserveasavaluableresourcetocapturetheinternal Inthesecases,thelog-basedortrace-basedRCAapproachesmay
+statesandbehaviorsofindividualmicroservices.However,analyz- misstherootcauses.Fortunately,system-levelmetricscanprovide
+inglogsforeachmicroserviceinisolationmayresultinalossof valuableinsightstolocatefaultsthatremainundetectedinlogsand
+globalcontext,leadingtoineffectiveRCA[72].ForanefficientRCA traces.Forinstance,anomaliesinCPUusageweredetectedwhen
+approach,itisessentialtocombinelogsfromdifferentmicroser- CPUcontentionfaultswereintroduced.However,solelyrelyingon
+vices.Nonetheless,asillustratedinFig.2(a),logsgeneratedbya metrics-basedRCAapproachesmaynotidentifyfaultsthatarenot
+singlemicroservicecaninterleave,asthemicroservicemayconcur- reflectedinmetrics(e.g.,errorreturnfaultinFig.3).Theexamples
+rentlyservemultiplerequestsassociatedwithdistinctlogentries. inFig.3underscorethenecessityofintegratingmetricswithlogs
+Forafailedrequest,existentRCAapproachescannotdetermine andtracestoeffectivelyidentifyrootcauses.
+whichlogsspreadingacrossmultipleservicesareassociatedwith Motivation3:EnhancingRCAthroughtheIntegrationof
+thefailedrequesttodeducetherootcause. Multi-modalDatainaUnifiedRepresentation.Ashighlighted
+Tracescaptureglobalserviceinteractionsacrossvariousservers inTable1,asignificantportionofexistingstudiesprimarilyfo-
+butofferlimitedinsightintolocalbehaviorswithinindividualspans. cusesonsingle-modaldataforrootcauseidentification.SREsare
+Tocapitalizeonthebenefitsofbothlogsandtraces,weproposean naturallyinclinedtomerge theresultsofmetrics-based,traces-
+integrationoftraces,representingacoarse-grainedglobalview,and based,andlogs-basedmethodstoaccuratelypinpointtrueroot
+logs,providingafine-grainedlocalview,tofurnishadetailedglobal causes.However,thisintegrationprocesscanbelabor-intensive
+perspectiveforeachrequest.AsdepictedinFig.2(b),weaccomplish andineffectiveduetoseveralreasons.(1)Whenindividuallyana-
+thisintegrationbyinsertingtraceIDsintologmessages,leveraging lyzinglogs,correlationbetweenlogsondifferentmachinesisnot
+distributedtracingframeworkssuchasOpentelemetry[48]and achievable,andasimilarissueariseswithmetrics.Consequently,
+SkyWalking[57].InsertingtraceIDsinlogmessagesisapreva- single-modaltechniquesarelikelytoproducelessaccurateresults
+lentpracticeinnumerousindustrialsystems(e.g.,WeChat)and comparedtomulti-modalapproaches.(2)InsituationswhereSREs
+
+--- PDF PAGE 4 ---
+ESEC/FSE’23,December3–9,2023,SanFrancisco,CA,USA GuangbaYu,PengfeiChen,YufengLi,HongyangChen,XiaoyunLi,andZibinZheng
+Table1:Comparisonofstate-of-the-artRCAapproaches. GiventhedataΘC collectedfromfault-freeconstructionphase
+Approach Metrics Logs Traces RCALevel
+CandΘP collectedfromfault-sufferingproductionphaseP,we
+first unify the multi-modal data in ΘC and ΘP as events and
+MicroScope[35] (cid:34) (cid:37) (cid:37) Service
+MicroRCA[64] (cid:34) (cid:37) (cid:37) Service
+extracteventpatternsP = {𝑝1,...,𝑝 𝑘}viaconstructingandmin-
+ingeventgraphs.Weattempttoidentifyfine-grainedrootcauses
+SBLD[55] (cid:37) (cid:34) (cid:37) ErrorLog
+throughthreephases:1)weidentifywhicheventpatternsdonot
+LogFaultFlagger[1] (cid:37) (cid:34) (cid:37) ErrorLog
+MicroRank[67] (cid:37) (cid:37) (cid:34) ServiceOperation followexpectedexecutionpathsandrankthemintoexpectedpat-
+TraceAnomaly[37] (cid:37) (cid:37) (cid:34) ServiceOperation ternlist𝐿𝑖𝑠𝑡 E ,where𝐿𝑖𝑠𝑡 E ={...,(𝑝 𝑖 ,𝑆𝑐𝑜𝑟𝑒 E (𝑝 𝑖)),...,};2)wepin-
+Dejavu[33] (cid:34) (cid:37) (cid:34) FaultType pointhowexpectedpatternschangeintheactualfault-suffering
+CloudRCA[74] (cid:34) (cid:34) (cid:37) Service phaseandrankthemintoactualpatternlist𝐿𝑖𝑠𝑡 A ,where𝐿𝑖𝑠𝑡 A =
+PDiagnose[21] (cid:34) (cid:34) (cid:34) ResourceTypeorErrorLog {...,(𝑝
+𝑗
+,𝑆𝑐𝑜𝑟𝑒
+E
+(𝑝 𝑗)),...,};3)wecorrelateexpectedpatternswith
+CodeRegionor actual patterns and takes pattern pairs as final root cause list
+Nezha(ours) (cid:34) (cid:34) (cid:34)
+ResourceType
+𝐿𝑖𝑠𝑡 R = {...,(𝑝 𝑖 ,𝑝 𝑗 ,𝑆𝑐𝑜𝑟𝑒 E (𝑝 𝑖)),...}.SREscancheckwhy𝑝 𝑖 turn
+into𝑝 todeterminethefinalsolutiontorecoverapplications.
+𝑗
+employmetrics-based,traces-based,andlogs-basedapproachesto
+3 OVERVIEW
+determinerootcauses,eachmethodmayproposeadistinctroot
+cause.Thereiscurrentlynoeffectivestrategytoconsolidatethese Inthisstudy,wepresentNezha,anunsupervisedfine-grainedRCA
+outcomes or distinguish the true root cause among them. As a approachbyincorporativeanalysisofmulti-modaldatainaninter-
+result,SREsarecompelledtomanuallyverifyeachresultoneby pretablemanner.Figure4showstheoverallstructureofNezha.The
+one,whichisalabor-intensivetask.(3)Independentlymanaging activitiesofNezhacanbedividedintothefault-freeconstruction
+multiplesingle-modalRCAapproachesnecessitatesincreasedef- phaseandthefault-sufferingproductionphase.Intheconstruction
+fort.Inlightofthesechallenges,weadvocatefortheintegrationof phase,Nezhatakesthefault-freeobservabilitydataasinput,which
+multi-modaldataintoaunifiedrepresentation,whichwillenhance containsallrequesttypesoftheapplicationwithinatimewindow.
+theefficiencyandaccuracyofRCA. Obtainingashortwindowoffault-freedataistrivialforSREsbe-
+causemostofthetimeisinnormalstatusandfaultsarescarcein
+Motivation4:FacilitatingFaultMitigationthroughUnsu-
+productionenvironment[30].Werecommendsettingthewindow
+pervisedFine-grainedRCAwithEnhancedInterpretability.
+Dejavu[33]andCloudRCA[74]aretwosupervisedmulti-modal sizetothesameintervalasthemetriccollection(1minutebyde-
+RCAapproachesthatnecessitateasubstantialtrainingdatasetwith faultinthisstudy).Nezhaintegratestheseobservabilitydataand
+labels.However,acquiringsuchadatasetcanbecostlyandimprac- minestheirpatternsoffline.Dataintegrationandpatternmining
+ticalforeachapplication.Themulti-modalmethodPDiagnose[21] intheconstructionphasearethesameasintheproductionphase.
+convertsheterogeneousmulti-modaldataintotimeseriesandiden- In the production phase, ○1 Anomaly Detector (§4.1) detects
+tifiesrootcausesbyevaluatingabnormaltimeseries.Althoughthis whethertheperformanceandavailabilityofthesystemareabnor-
+transformationcanyieldeffectiveresults,theprocessmayresult malinrealtime.Ifananomalyoccurs,○2 DataIntegrator (§4.2)
+inalossofexecutioncontext,whichisessentialfordevelopers unifiesthemulti-modaldataintheabnormaltimewindowinto
+tocomprehendtheunderlyingrootcause.Preservingtheoriginal eventsandconsolidatestheeventsintoeventgraphs.○3 Pattern
+executioncontextenhancesinterpretabilityinrootcauseidentifi- Miner(§4.3)extractscommonpatternsandcalculatessupportfor
+cation,subsequentlyincreasingSREs’confidenceintheobtained themfromtheeventgraphsinparallel.○4 ExpectedRankerinPat-
+results.Moreover,localizingrootcausesattheservicelevelrequires ternRanker(§4.4)ranksthepatternsthatfrequentlyoccurinthe
+amorecoarse-grainedapproach.SREsmustexpendconsiderable fault-freephasebutrarelyinthefault-sufferingphaseastheex-
+efforttodeterminethespecificcoderegionorresourceaccountable pectedpatterns.ActualRankerranksthepatternsthatfrequently
+forfaults.FromtheSREs’perspective,afine-grainedrootcause occurinthefault-sufferingphasebutrarelyinthefault-freephase
+identificationcanalleviatetheirworkloadandreducethemean astheactualpatterns.○5 PatternAggregator(§4.5)aggregatesthe
+timetomitigation.Therefore,wetrytoproposeanunsupervised expectedpatternsandactualpatternstodeterminetherankedlist
+fine-grainedRCAapparoachwithimprovedinterpretability,which ofrootcausecandidateswithinterpretability.Comparedwithex-
+facilitatesmoreeffectivefaultmitigation. istentRCAapproaches,Nezha providesfine-grainedrootcause
+candidates(i.e.,regionofcodedefectorresourcetype)andtells
+SREswhycandidatesareanomalous.
+2.3 ProblemFormulation
+Weformalizetheproblemoffine-grainedrootcauselocalization
+4 DETAILEDDESIGN
+usingmulti-modalobservabilitydata.Supposethatalarge-scale
+microservicesystemwith𝑁 microservices,metrics,traces,andlogs 4.1 AnomalyDetector
+areaggregatedindividuallyateachmicroservice.Inaslidingtime Asdescribedin§2.1,Nezhakeepsmonitoringapplication-level
+window(e.g.,1minute),wehavemulti-modalobservabilitydata metricsofsystemstodetectanomalies.Guaranteeingtheuserexpe-
+(cid:110)(cid:16) (cid:17)(cid:111)𝑁 rience,whichistypicallyreflectedinavailabilityandperformance,
+definedasΘ= 𝜃
+𝑛
+M,𝜃
+𝑛
+T,𝜃
+𝑛
+L
+𝑛=1
+,whereatthe𝑛-thmicroservice,
+isacriticalrequirementforcloudapplications.Theavailabilityof
+𝜃 𝑛 M ={M1,...,M𝑚}indicates𝑚metrics,𝜃 𝑛 T ={T1,...,T𝑡}denotes systemscanbereflectedbytherequestsuccessratio,whichisthe
+𝑡 traces,and𝜃
+𝑛
+L ={L1,...,Lℓ}representsℓlogs. fractionofthenumberofsuccessfulrequeststototalrequestsover
+
+--- PDF PAGE 5 ---
+Nezha:InterpretableFine-GrainedRootCausesAnalysisforMicroservicesonMulti-modalObservabilityData ESEC/FSE’23,December3–9,2023,SanFrancisco,CA,USA
+Constrution Phase
+(fault-free) Data Graphs Pattern Patterns Pattern Fault-free Patterns
+Integrator Miner Storer Rank List
+Log E P x a p tt e e c r t n e s d ① Expected: e 1 e 3
+Trace e 5 e e 1 2 e e 7 6 e 6 e 3 e 4 Events e 1 e e 7 2 e e 3 5 e e 4 5 Graphs e e e 1 1 1 e e e 2 2 7 e 5 ④ E A x p P c e a tu c tt t a e e l r d R n R a R n a a n k n k e k r e e r r P A a c tt t e u r a n l s A ⑤ gg P r a e t g t a e t r o n r ② ③ A A E ... c x c . t . t p . u u e a a c l l t e d : : : e e e 1 3 3 e e e 7 6 4
+Metric ①Anomaly ② Data ③ Pattern
+Production Phase Detector Trigger Integrator Graphs Miner Fault-suffering Patterns Span Event Log Event Alert Event
+Figure 4: The overview of Nezha. Nezha uses the multi-modal observability data as input and outputs the ranked list of
+suspiciousfine-grainedrootcauses.
+aperiodoftime.Theperformanceissuesmanifestthemselvesas
+long-timerequestduration.Tocapturethetaillatency,weuseP90 Front/Recv Front/Recv_Start
+Product/GetProduct_Start
+latency,whichistheaveragelatencyfortheslowest10%ofrequests Transform
+Product/GetProduct_End
+overaperiodoftime.Comparedtotheaveragelatency,P90can Product/GetProduct
+Front/Recv_End
+showthetaillatencyexplicitly.Asaforementioned,thesuccess
+Raw Trace Trace Event
+ratioandP90latencydelineatethesystem’shealthstatus.Weuse
+timeinterval todenotehowoftenthemetricsarecollected.The Figure5:Transformationfromarawtracetotraceevents.
+timeintervalvalueissetforoneminuteinthisstudy.
+Group A: Front Group B: Front Group E: Product
+AnomalyDetectoruses𝑘-𝜎rules[35]todeterminewhetherthe Front/Recv_start Front/GetProd_start Product/ListProd_start
+targetapplicationisinanabnormalstatus.Wecalculatethemean
+𝜇andstandarddeviation𝜎ofsuccessratioandP90latencyinthe Request failed Front/GetProd_end Start list product
+constructionphase.Intheproductionphase,AnomalyDetector Front/Recv_end
+Product/ListProd_end
+continuallymonitorsthesuccessratioandP90latencyoffront-end Group C: Front
+serviceinaslidingtimewindow.Ifthesuccessratioislessthan𝜇− Group D: Cart Front/GetCart_start
+Cart/GetCart_asyn Group F: Product
+𝑘𝜎orP90latencyisgreaterthan𝜇+𝑘𝜎(𝑘 =3bydefault),Anomaly Front/GetCart_end Product/ParseCa_start
+Detectordeclaresthecurrenttimewindowisabnormalandtriggers Mem_Alert
+arootcauseanalysis.𝑘-𝜎 ruleisasimplebuteffectiveapproach Log Event Alert Event Parse catalog failed
+CPU_Alert
+andiswidelyusedinacademiaandindustry[35,67,75].InNezha, Server Span Event
+thismodulecanbeeasilyreplacedwithotheranomalydetection GetCart with user Client Span Event Product/ParseCa_end
+approaches(e.g.,USAD[2],RRCF[31]andJumpStarter[43]). Figure6:AnexampleofeventgraphinOnlineBoutique.All
+traceeventsandlogeventshavethesametraceID.
+4.2 DataIntegrator
+Thetimebetweenthestartandendofanalertiscalledalerttime.
+After Anomaly Detector determines whether the application is
+Wetreatalertsaseventsthatrepeatedlyoccurwithinthealerttime.
+under abnormal status, Data Integrator first queries ΘP of the Asdiscussedin§2.1,application-levelmetricstypicallyreflect
+application in the abnormal time window. Considering the het-
+faults’symptomsratherthantherootcausesoffaults.Therefore,
+erogeneityofobservabilitydata,DataIntegratortransformsthe
+weonlyconsiderthesystem-levelmetricsinRCA.Inaddition,we
+observabilitydatainthetimewindowsintoevents,whichisthe
+foundthatsomealertsfrequentlyoccurnomatterwhetherthere
+basicunitofNezha.Theseeventsinthesameserviceinstanceare
+isafaultornot.SuchregularalertsarenothelpfultoRCAand
+thenorderedaccordingtotheirtimestampsandspanIDswhile
+sometimesevenmisleadSREs.Tofilterouttheseirrelevantmetric
+overcomingclocksynchronizationproblems.Eachrequestinthe
+alerts,Nezhaexcludesthealertsintheproductionphasethatalso
+timewindowcorrespondstoaneventgraph.
+occurintheconstructionphase.
+4.2.1 UniqueEventGeneration.
+Log.NezhafirstextractsandrecordsthetraceIDs,spanIDs
+(detailshownin§2.2),andtimestampsfromrawlogmessages.Data
+Definition1(Event𝑒). Anevent𝑒recordstheexecutionstatus
+Integratoradoptsastate-of-the-artlogparsingapproachDrain[19]
+ofasystematapointintime.Weuseeventset𝐸 𝑖 = {𝑒0,...,𝑒 𝑛}to toextractthestaticlogtemplatesanddynamiclogparametersfrom
+denotethesetofalleventsforrequest𝑖.
+therawlogmessagesinastreamingmanner.Afterlogparsing,
+Metric.Ineachtimewindow,aservicehasmanylogsbutonly wetreatthestaticlogtemplatesaslogevents.Todistinguishthe
+onemetricsample.Toovercometheheterogeneitybetweennu- log events associated with different requests, each log event is
+mericalmetricsandtext-structuredlogs,DataIntegratorreplaces accompaniedbyitscorrespondingtraceID,spanID,andtimestamp.
+thesetofmetricswithsuspiciousmetricalerts.Thisisreasonable Trace.Therelationbetweenparentandchildspancanbedi-
+becauseanomalousmetricsthatcausealertsprovidemoreinforma- videdintosynchronousandasynchronouscalls.Withregardto
+tiontoRCAthannormalmetrics.Metricsalertsaregeneratedwhen synchronouscalls,weconsiderthestartandendofaspanastwo
+metricvaluesviolatethe𝑘-𝜎ruleorstaticthresholds.Nezhaisalso traceevents.Thesetwoeventmessagescanberepresentedasacon-
+compatiblewithalarmsystemssuchasPrometheusAlertmanager. catenationofthespannamewith“start”or“end”string.Figure5
+
+--- PDF PAGE 6 ---
+ESEC/FSE’23,December3–9,2023,SanFrancisco,CA,USA GuangbaYu,PengfeiChen,YufengLi,HongyangChen,XiaoyunLi,andZibinZheng
+showsanexampleoftransformingtraceswiththesynchronous
+Construction Phase G Production Phase G
+C P
+calltotraceevents.Intermsofasynchronouscalls,DataIntegrator
+representsthemaseventsconsistingofspannameandthe“asyn” Req 1 e 1 e 2 e 3 e 5 Req 1 e 1 e 2 e 6
+string,e.g.,𝑒 =“Cart/GetCart_asyn”.Eachtraceeventisaccompa- e e e
+3 5 6
+niedbyitstraceID,spanID,andtimestampfromspanrecords. Req 2 e 1 e 2 Req 2 e 1 e 2
+e e
+4 4
+4.2.2 EventGraphConstruction.
+Req 1 e 1 e 2 e 3 e 5 Req 1 e 1 e 2 e 3 e 5
+Definition2(EventGraph𝑔). Aneventgraph𝑔
+𝑖
+=(𝐸
+𝑖
+,𝐿𝑖𝑛𝑘)
+Figure7:Examplesofeventgraphsinconstructionandpro-
+𝑒 i t s h 𝑗 a e a d e n x i d r e e 𝑒 c c 𝑗 u t + e t 1 i d o ( g n i. r . e a . W , p 𝑒 h e 𝑗 o u → f s e e v 𝑒 𝐺 e 𝑗 n + C t 1 s a ) i n d n e d t n h 𝐺 o e t P e e v s t e t o n h t a d s t e e 𝑒 n t 𝑗 o 𝐸 t i 𝑖 e s . f t A o h l e d lo i s w r e e e t c d t o e f b d y e l v i 𝑒 n e 𝑗 n k + t 1 b g e d t r u w a r p e in e h n g s 𝑒 d o 2 u r → c q t u io 𝑒 e n 6 ry i p n h p 𝐺 a r s o P e d . w u 𝑅 c h 𝑒𝑞 t e ) 𝑖 n . d T a e h n f e a o u t p e l a s t t t o t h e c e r c n u 𝑖t r h 𝑒 r 2 e k d → i . nd 𝑒 o 3 f i r n eq 𝐺 u C es t t u ( r e n .g e . d ,lo in g t in o
+fortheconstructionandproductionphase,respectively.
+Table2:ExampleofNezhatoperformRCAfromFig.7.
+Foreachrequestinatimewindow,DataIntegratorconstructs
+aneventgraphinthefollowingthreesteps. Support Score
+Pattern Deepth Rank(𝑆𝑐𝑜𝑟𝑒 )
+(1) Ordereventsinthesamespan.Foreachspan,DataIntegrator 𝑆
+C
+𝑆
+P
+𝑆𝑐𝑜𝑟𝑒
+E
+𝑆𝑐𝑜𝑟𝑒
+A
+E
+obtainsalllogandtraceeventswhichoccurredwithinthatspan. 𝑒1→𝑒2 3 3 0.5 0.5 1 2
+DataIntegratorthenchronologicallyordersthelogandtrace 𝑒2→𝑒3 3 1 0.75 0.25 2 1
+eventsintoaneventgroupbasedontheirtimestampsandadds 𝑒2→𝑒4 1 1 0.5 0.5 2 -
+asequencerelationshipfromaneventtoitsnexteventinthe 𝑒3→𝑒5 3 1 0.75 0.25 3 -
+group.Fig.6showssomeexamplesofeventgroups. 𝑒2→𝑒6 0 2 0.0 1 2 3
+(2) Insertmetriceventstoeventgroups.DataIntegratorinserts
+“-”meansthatthepatternisaggregatedbyNezha.
+thealerteventsafterthefirsteventoftheeventgroupifthe
+correspondingservicehasalerteventswithoutlossofgenerality. 4.3 PatternMiner
+It can also be inserted in other fixed locations as agreed. If
+Definition3(Pattern𝒑). Apattern𝒑isasubgraphofcontigu-
+multiplealerteventsofthesameservicearedetected,allalarm
+ouseventsinthesetofeventgraphs𝐺.
+eventswillbesequentiallyinsertedafterthefirstevent.For
+instance,DataIntegratorinsertsMem_AlertandCPU_Alertof After integrating multi-modal data into event graphs, Nezha
+cartserviceintoitseventgroupinFig.6. extractsthefault-freeandfault-sufferingpatternsfrom𝐺 and𝐺
+C P
+(3) Insertchildgroupstoparentgroups.Ifthechildspanis bytraversingalleventgraphsinparallel.Thepatternsintheevent
+inthesameserviceinstanceastheparentspan(i.e.,internal graphsarefinitebecauselogshavebeenparsedintotemplatesand
+functioncalls),DataIntegratorinsertschildgroupsafterthe onlythedirectlyconnectedeventsareconsidered.Asanexample
+lasteventinparentgroupswhosetimestampislessthanthe intheleftpartofFig.7,apattern𝑒1→𝑒2→𝑒3 matchestheevent
+firsteventinthechildgroup(e.g.,therelationbetweenGroupE graphofthefirstrequestbecausethegraphhas𝑒1 followedby𝑒2
+andF inFig.6).Weusetimestampsdirectlybecausethesetwo and𝑒2 followedby𝑒3 withoutothereventsinvolved.
+groupsareonthesameserviceinstanceandonthesamenode,
+sotheydonothavetheproblemofclockdrift.ForRPCcall
+Definition4(Support𝑠). Givenapattern𝒑’scountset𝐶
+𝒑
+=
+spansacrossservices,DataIntegratorinsertsthechildgroup
+{𝑐1,...,𝑐 𝑘},where𝑐 𝑖 denotes𝒑occurs𝑐 𝑖 timesintheeventgraph𝑔 𝑖,
+thesupport𝑠(𝒑)ofpattern𝒑isthesumofthecountsinallgraphs,
+afterthefirsteventofitsparentgroupbasedontheparentspan
+IDtoovercometheclockdrift(e.g.,therelationbetweenGroup
+i.e.,𝑠(𝒑)=(cid:205)𝑘
+𝑖=0
+𝑐 𝑖.𝑠
+C
+(𝒑)and𝑠
+P
+(𝒑)denotethesupportof𝒑in𝐺
+C
+BandEinFig.6). and𝐺 P,respectively.WeuseS C andS P todenotethesupportsetof
+allpatternsinthe𝐺 C and𝐺 P,respectively.
+Afterthesesteps,werepresenttheheterogeneousmulti-modal
+dataashomogeneouseventsandconstructtherelationshipsamong Afterextractingpatterns,PatternMinercountstheoccurrences
+eventsasgraphs.ThoughDeepTraLog[72],whichfocusesonanom- ofeachpatterntocalculatethesupportofeachpattern.Table2
+aly detection rather than RCA, integrates logs and traces into showsanexampleofPatternMinerminingpatternsandcalculating
+graphs,itdoesnotconsidermetricclues.Nezha overcomesthe supportsinFig.7.Intermsofpattern𝑒2→𝑒3 ,itoccursinallthree
+shortcomingofDeepTraLogbyinnovativelytransformingmetrics graphsintheconstructionphase.Therefore,𝑠 C (𝑒2 →𝑒3) =3in
+intoeventsandincorporatingthemintotheeventgraph.Thereason theconstructionphase.TopreventrepeatedcalculationsofS C ,
+whyweusegraphsratherthansequenceslikeMinesweeper[44] wepersisttheresultsofS C intoPatternStorer.Whendiagnosing
+torepresenttherelationshipsbetweeneventsisthatmicroservice faults,weareinterestedinidentifyingtherootcausesthatresultin
+applicationsmaycontainasynchronouscalls.Theeventlocation alargeportionofoverallabnormalbehavior.Therefore,wediscard
+ofasynchronouscallsmaychangeuncertainlyinthesequential thosepatternthatrarelyoccursbyfilteringpatternswhosesupport
+sequences,makingitdifficultforNezhatomineforstablepatterns. lessthan𝑠 𝑚𝑖𝑛 (𝑠 𝑚𝑖𝑛 =5bydefault).
+Compared with PDiagnose [18] that transforms heterogeneous
+multi-modaldataastimeseries,Nezharetainstheexecutioncontext 4.4 PatternRanker
+ofrequestswhentransformingmulti-modaldataashomogeneous After transforming multi-modal data as generalized events (i.e.,
+events,whichallowsforimprovedinterpretabilityinRCA. excludingspecificrequestparameters),theeventpatternsinthe
+
+--- PDF PAGE 7 ---
+Nezha:InterpretableFine-GrainedRootCausesAnalysisforMicroservicesonMulti-modalObservabilityData ESEC/FSE’23,December3–9,2023,SanFrancisco,CA,USA
+constructionphasearesimilartothoseintheproductionphase. Ranking List Anomaly Graph Aggregated List
+Duringthefault-sufferingphase,faultsmanifestthemselvesinone e 1 e 2 : 0.8 e 3
+o In r o m t o h r e e r d w a o ta rd s s o , u s r o c m es e ,w ev h e i n ch tp c a au tt s e e r s n s s o d m o e n e o v t e f n o t ll p o a w tte th rn e s ir to ex c p h e a c n t g ed e. e 2 e 3 : 0.8 e 1 e 2 e e 1 e 2 : 0.8
+executionpathsinthefault-freephase.Suchpatternsarelikelyto e 2 e 4 : 0.8 4 e 5 e 6 : 0.7
+revealinsightsintoeventsassociatedwithrootcauses.Forexample, e 5 e 6 : 0.7 e 6 e 7
+w SR h E e s n c a an fau ch lt e o ck cc t u h r e s e b v e e tw nt e g en ra t p h h e s c o o n d e e b r y eg o io n n ea o n f d 𝑒2 id a e n n d ti 𝑒 f 3 y i t n ha F t ig t . h 7 e , e e 6 5 e e 7 8 : : 0 0 . . 6 6 e 5 e 8 e 5 e 8 : 0.6
+pattern𝑒2 →𝑒3 in𝐺
+C
+turnsinto𝑒2 →𝑒6 in𝐺
+P
+.SREsthentake
+thecoderegionbetween𝑒2 and𝑒3 astherootcausecandidateand Figure8:Exampleofconstructinganomalygraphstogetan
+inspectthereasonwhy𝑒2 →𝑒3 turnsinto𝑒2 →𝑒6 todetermine aggregatedlistinPatternAggregator.
+thefinalsolution.Wedesignedtworankers:ExpectedRankerand
+Nezha search... admin
+ActualRankertoautomatetheaboveRCAprocess.
+Root Cause Analysis>>
+Root Cause Results Anomaly Time: 2023-01-02 10:00:01 RCA Time: 2023-01-02 10:00:30
+4.4.1 ExpectedPatternRanker. ExpectedPatternRankeraimsto 1. Root Cause Service: adservice
+identifywhicheventpatternsdonotfollowexpectedexecutionpaths ExceptedPattern: adservice/GetAdsStart àadservice.java:130 àadservice.java:140
+Actual Pattern: adservice/GetAdsStart àadservice.java:130 àadservice.java:151
+andtakethemasexpectedpatterns.ThenSREscancheckwhythese 2. Root Cause Service: cartservice
+MetricAlert:CPU Usage
+patternsdonotfollowexpectedexecutionpathstosolvefaults. Monitor Result:
+ThecoreideaofExpectedRankeristorankeventpatternsthat
+occurmultipletimesinthefault-freephasebutrarelyinthefault-
+Figure9:Ademoforinspectingrootcausecandidate.
+sufferingphaseaboveothereventpatterns.Arankingscore𝑆𝑐𝑜𝑟𝑒
+E
+isdefinedtomeasurehowmuchutilityeachpatterncontributes Actually,notallpatternsinExpectedPatternRankerandActual
+torootcausediagnosis.Foreachpattern𝒑inC,ExpectedPattern PatternRankerprovideusefulinformationforrootcausediagnoses.
+Rankercomputesitsrankingscore𝑆𝑐𝑜𝑟𝑒 E (𝒑)asfollows, For example, the pattern𝑒1 → 𝑒2 is given a score 0.5 in Fig. 7.
+𝑆𝑐𝑜𝑟𝑒
+E
+(𝒑)=Pr(𝑔∈𝐺
+C
+|𝒑 ⊑𝑔) B
+he
+u
+l
+t
+p
+𝑒
+fu
+1
+l
+→
+for
+𝑒
+a
+2
+n
+o
+al
+c
+y
+c
+z
+u
+i
+r
+n
+s
+g
+3
+th
+t
+e
+im
+u
+e
+n
+s
+d
+i
+e
+n
+rly
+b
+i
+o
+n
+t
+g
+h
+c
+𝐺
+au
+C
+se
+a
+.
+n
+T
+d
+h
+𝐺
+er
+P
+ef
+,
+o
+w
+re
+h
+,
+i
+w
+ch
+e
+i
+s
+s
+p
+h
+ec
+a
+i
+r
+f
+d
+y
+ly
+a
+= 𝑠 C (𝒑) . (1) minimumscorethreshold𝑆𝑐𝑜𝑟𝑒 min toexcludesuchuselesspatterns.
+𝑠
+P
+(𝒑)+𝑠
+C
+(𝒑) Inthisway,thepattern𝒑 isplacedintherankedscorelistonly
+The𝑆𝑐𝑜𝑟𝑒
+E
+(𝒑)ofthepattern𝒑quantifieshowdistinctive𝒑isto w
+re
+h
+fe
+e
+r
+n
+t
+𝑆
+o
+𝑐
+t
+𝑜
+h
+𝑟
+e
+𝑒 E
+ra
+(
+n
+𝒑
+k
+)
+ed
+≥
+p
+𝑆
+a
+𝑐
+t
+𝑜
+t
+𝑟
+e
+𝑒
+rn
+mi
+l
+n
+is
+.
+t
+A
+o
+f
+u
+te
+t
+r
+pu
+e
+t
+xc
+b
+l
+y
+ud
+E
+i
+x
+n
+p
+g
+e
+u
+ct
+s
+e
+e
+d
+le
+P
+ss
+at
+p
+te
+a
+r
+tt
+n
+er
+R
+n
+a
+s
+n
+,
+k
+w
+e
+e
+r
+the𝐺
+C
+asopposedtothe𝐺
+P
+.Ifpattern𝒑occursmultipletimesin
+astheexpectedpatternslistandtherankedpatternlistoutputby
+𝐺
+C
+whilerarelyin𝐺
+P
+,𝒑willbeassignedahigherscore.Therefore,
+ActualPatternRankerastheactualpatternslist.
+thepatternswithhigherrankingscoresaremoresuspicioustobe
+rootcauses.Asanexample,anexceptionfaultoccursinthecode
+4.5 PatternAggregator
+regionof𝑒2 and𝑒3 intheproductionphaseinFig.7.FromFig.7,
+AlthoughExpectedRankerrankspatternsthatpointtowardsroot
+wecanfindthat𝑒2 isalwaysfollowedby𝑒3 in𝐺
+C
+butrarelyin
+causes,itcansometimesreturnalonglistwhichisunfriendlyto
+𝐺 .Thus,itisintuitivetoinferthatthereisafaultinthecode
+P
+SREs.Thisisbecausefaultsmaycausedownstreampatternsofroot
+regionbetween𝑒2 and𝑒3 ,causing𝑒2 nottofollow𝑒3 . Interms
+causesin𝐺 tochange,resultinginalldownstreampatternsof
+ofPatternRanker,itcomputestherankingscoreof𝑒2 → 𝑒3 as P
+𝑆 m 𝑐 o 𝑜 s 𝑟 t 𝑒 s E u ( s 𝑒 p 2 ic → iou 𝑒 s 3 ) ) in = th 3 e + 3 e 1 xa = m 0 p .7 le 5 . ,whichisthehighestscore(i.e., r in oo th t e ca e u x s a e m s p in le 𝐺 in C F h ig a . v 7 i , n t g he a p h a ig tt h er s n c s o 𝑒 re 2 a → sr 𝑒 o 3 o a t n c d au 𝑒 s 3 e → s.F 𝑒 o 5 r s i h n a s r ta e n th ce e ,
+samescoreasoneexceptionfaultbetween𝑒2 and𝑒3 causesneither
+4.4.2 Actual Pattern Ranker. Though Expected Pattern Ranker 𝑒3 nor𝑒5 tooccurin𝐺 P .Actually,𝑒2 →𝑒3 and𝑒3 →𝑒5 pointto
+presentseventpatternsthatdonotfollowexpectedexecutionpaths, thesamefault.Checkingallpatternspointingtothesamefaultis
+SREsalsoexpecttoknowhowthesepatternschangeintheactual unnecessaryandburdensomeforSREs.Inthisstudy,werefertothe
+fault-sufferingphase,whichwillfacilitateSREstounderstandfaults. downstreampatternswiththesamescorelike𝑒3→𝑒5 asredundant
+Therefore,ActualPatternRankerisdesignedtopinpointthenewly patterns.PatternAggregatoraimstoexcludetheredundantpatterns
+emergingpatternsthatbreaktheirexpectedexecutionpathsand ofExpectedRankertoprovideamorevaluablelistforSREstospeed
+takethemasactualpatterns.ThecoreideaofActualRankeristo uptroubleshooting.
+rankeventpatternsthatoccurmultipletimesinthefault-suffering PatternAggregatorconstructsanomalygraphsbyassociating
+phasebutrarelyinthefault-freephaseaboveothereventpatterns. expectedpatternsandfilteringredundantpatternsbyretainingthe
+Foreachpattern𝒑inP,ActualPatternRankerdefinesitsranking rootpatternsofgraphs.Ifbothpatterns𝑒
+𝑖
+→𝑒
+𝑗
+and𝑒
+𝑗
+→𝑒
+𝑘
+arein
+score𝑆𝑐𝑜𝑟𝑒 A (𝒑)asfollows, thelistand𝑆𝑐𝑜𝑟𝑒(𝑒 𝑖 →𝑒 𝑗) ≥𝑆𝑐𝑜𝑟𝑒(𝑒 𝑗 →𝑒 𝑘),PatternAggregator
+𝑆𝑐𝑜𝑟𝑒
+A
+(𝒑)=Pr(𝑔∈𝐺
+P
+|𝒑 ⊑𝑔) w
+al
+i
+l
+l
+p
+l
+a
+jo
+tt
+i
+e
+n
+rn
+𝑒 𝑘
+si
+i
+n
+nt
+t
+o
+he
+𝑒 𝑖
+lis
+→
+t,Pa
+𝑒
+t
+𝑗
+te
+(
+r
+i.
+n
+e.
+A
+,𝑒
+g
+𝑖
+gr
+→
+ega
+𝑒
+to
+𝑗
+r
+→
+obt
+𝑒
+a
+𝑘
+in
+).
+s
+A
+so
+ft
+m
+er
+e
+i
+a
+t
+n
+e
+o
+ra
+m
+ti
+a
+n
+l
+g
+y
+= 𝑠 P (𝒑) . (2) graphsconstructedfromthesepatterns.Phase○1 inFig.8shows
+𝑠
+C
+(𝒑)+𝑠
+P
+(𝒑) anexampleofconstructinganomalygraphs.PatternAggregator
+thenchoosestherootpatternsoftheseanomalygraphsasfinal
+
+--- PDF PAGE 8 ---
+ESEC/FSE’23,December3–9,2023,SanFrancisco,CA,USA GuangbaYu,PengfeiChen,YufengLi,HongyangChen,XiaoyunLi,andZibinZheng
+expectedpatterns.Phase○2 inFig.8showsthatthepatternnumber
+log.error('Req Failed') Source Code
+decreasedfrom6to3afterexcludingredundantpatterns.
+ToimprovetheinterpretabilityofNezha,wecorrelatetheex- trace_id = '{trace:032x}'.format(trace=ctx.trace_id) Modified Code
+span_id = '{span:016x}'.format(span=ctx.span_id)
+pectedpatternswithactualpatternstoprovidethecompletefault
+log.error('Trace_id=%s Span_id=%s Req Failed', trace_id, span_id)
+scene.Fortheexpectedpattern,weidentifyitsassociatedactual
+patternwiththecommonprefix.Forinstance,theexpectedpattern Figure10:Exampleofcorrelationtracewithlogs.
+𝑒1→𝑒2→𝑒3 hasthecommonprefix𝑒1→𝑒2 astheactualpattern
+collect traces and store them in Grafana Tempo [17]. Logs are
+𝑒1→𝑒2→𝑒6 inFig.7.Ifthereismorethanoneactualpatternwith
+collectedbyGrafanaPromtail[16]andstoredinGrafanaLoki[15].
+thecommonprefix,weselecttheactualpatternwiththehighest
+Formetrics,weusecAdvisor[5]tocollectsystem-levelmetricsand
+scoreastheactualpattern.
+Istio[24]tocollectapplication-levelmetrics(e.g.,requestlatency).
+Eventually,Nezhaoutputsarankedlistofrootcausescandidates
+Moreover,PrometheusNodeExporter[54]oneachnodeisusedto
+tobechecked.Candidatesarerankedindescendingorderbasedon
+exportmetricstoPrometheus[53]databasetopersistthem.
+thescoreofthecandidate’sexpectedpattern.Forexpectedpatterns
+withthesamescore,weplacethepatternwiththedeeperdepthin
+DataCollection.Weusefaultinjectiontomimicapplication
+issuesfollowingthepreviouswork[35,37,42,67,72,73].Tomimic
+theeventgraphfurtherupthelistbecausepatternswithshallower
+resourceissues,weinjectCPUcontentionandnetworkjamfaults
+depthsaremorelikelytobecausedbyanomalypropagations.
+inthesamewayastheexistingwork[35,37,67].Mimickingcode
+Moreover,weimplementademoofNezha,shownasFig.9,to
+defectsatprogramruntimeischallengingbecausewecannotstopor
+demonstraterootcausescandidatesforSREs.AsshowninFig.9,
+restartservices.Toachievethis,wedesignsomelanguage-specific
+onepairofexpectedandactualpatternsconstitutesarootcause
+faultinjectorsforthecharacteristicsofprogramlanguageforJava,
+candidate.Forcandidateswithoutmetricalertevents,Nezhashows
+Golang,andPythonservices[4,28,52].Weusetheaboveinjectors
+the service name and the code region between events (e.g., 1st
+toinjecterrorreturnandexceptioncodedefectsfollowingprevious
+candidateinFig.9).Otherwise,Nezhadisplaysthemetricalertevent
+work[42,72,73].Weseteachfaultdurationto3minutestoemulate
+andcorrespondingmonitoringview(e.g.,2ndcandidateinFig.9).
+theprocessbetweenfaultoccurrencetofix.Werandomlyinjectone
+Tosumup,Nezhaisabletoprovidefine-grainedandactionableroot
+faultintoonemicroservicefollowingpreviouswork[35,72,73].In
+causecandidatesandtellsSREswhycandidatesareanomalous.
+total,weinject56faults(42resourceissuesand14codedefects)into
+OnlineBoutiqueandobtaintracesandapplicationlogs.Weinject45
+5 EXPERIMENTALEVALUATION
+faults(20resourceissuesand25codedefects)intoTrainTicketand
+Inthissecion,weaimtoevaluateNezhatoanswerthefollowing gettracesandapplicationlogs.Thecollectedmetricsencompass
+researchquestions(RQs): application-levelmeasurements(e.g.,successratio)andsystem-
+• RQ1:HoweffectiveisNezhainservice-levelRCA? levelmetrics(e.g.,CPUusagerate).
+• RQ2:HoweffectiveisNezhaininner-service-levelRCA? EvaluationMetric.Weusethefollowingtwometricstomea-
+• RQ3:Howmuchdoesmulti-modaldatacontributetoRCA? suretheeffectivenessofNezhaandbaselinesbecausesomebase-
+linescanonlylocalizerootcausesattheservicelevel.
+5.1 ExperimentSetup • Top-kaccuracyatservicelevel(𝐴𝑆@𝑘)referstotheprobabil-
+MicroserviceApplications.Wedeploytwoopen-sourcemicroser- itythatrootcauseservicesareincludedinthetop-kresults.
+viceapplications:OnlineBoutique(OB)andTrainTicket(TT)inour • Top-kaccuracyatinner-servicelevel(𝐴𝐼𝑆@𝑘)referstothe
+testbed.OnlineBoutiqueisamicroservicesystemfore-commerce probabilitythattheinner-servicerootcauses(resourcetypeor
+andTrainTicketprovidesarailwayticketingservicewhereusers coderegion)areincludedinthetop-kresults.
+cancheck,book,andpayfortraintickets.Bothofthemhavebeen
+ImplementationandSettings.Weimplementtheprototype
+widelyusedinmanypreviousstudies[7,29,37,67,70,72,76].The
+ofNezhabuiltonPython3.6.Allexperimentsareconductedona
+open-sourcedOnlineBoutiqueandTrainTicketarenotequipped
+LinuxserverwithIntelXeonGold5318Y2.10GHzCPU,256GB
+withadequateobservability(e.g.,tracesareincompleteandlogsdo
+RAM,1TBSSDDisk,andrunningUbuntu18.04.Theminimum
+notcontaintraceID).Inthisstudy,wefirstinstrumenttheOpen-
+scorethreshold𝑆𝑐𝑜𝑟𝑒 ,whichisusedtoavoidtheinfluenceof
+min
+telemetrySDK[48]foreachservicetoobtaincompletetraces.We normalfluctuations,issetto0.67(i.e., 2)bydefault.Inthiscase,a
+3
+thenmodifyonelineofloggingpatternintheloggingconfigu-
+pattern𝒑inExpectedPatternRankerissuspiciousifthesupport
+rationofJavaservice[39]toinserttraceandspanIDsintologs.
+of𝒑infault-sufferingphaseislessthanhalfofthesupportof𝒑in
+Forservicesimplementedinotherlanguages,weneedtoinsert
+fault-freephase.Theinfluenceof𝑆𝑐𝑜𝑟𝑒 isdiscussedin§5.3.5.
+min
+2linesofcodeintothesourcecodebasedonOpentelemetryto
+obtaintraceandspanIDsandmodifytheexistentlogstatement
+5.2 Baselines
+foreachlog(e.g.,Fig.10).WiththestandardOpentelemetrytoolkit
+Weusethefollowingsixstate-of-the-artunsupervisedmetric-based,
+andexamplesinmanyprogramminglanguages[38–41],itisnot
+trace-based,andlog-basedRCAapproachesasthebaselines.Wedo
+difficultfordeveloperstoinserttraceandspanIDsintothelogs.
+notconsiderthesupervisedapproachesbecausetheyneedalarge
+ExperimentalPlatform.WedeploytheOnlineBoutiqueand
+trainingdatasetwithlabels,whichishardtoobtaininpractice.
+TrainTicketonaKubernetesplatformwith12virtualmachines,
+eachofwhichhasa8-core2.10GHzCPU,16GBmemory,andruns • MicroScope[35]isametric-basedRCAapproachthatidentifies
+withUbuntu18.04OS.WeuseOpentelemetryCollector[49]to rootcausesbasedonthecorrelationofmetricsalongdependency.
+
+--- PDF PAGE 9 ---
+Nezha:InterpretableFine-GrainedRootCausesAnalysisforMicroservicesonMulti-modalObservabilityData ESEC/FSE’23,December3–9,2023,SanFrancisco,CA,USA
+Table3:Comparisonofbaselinesatservicelevel. Table4:Comparisonofbaselinesatinner-servicelevel
+OnlineBoutique TrainTicket OnlineBoutique TrainTicket
+Approach Approach
+𝐴𝑆@1 𝐴𝑆@3 𝐴𝑆@5 𝐴𝑆@1 𝐴𝑆@3 𝐴𝑆@5 AIS@1 AIS@3 AIS@5 AIS@1 AIS@3 AIS@5
+MicroScope 12.5 41.07 55.35 17.78 26.67 35.56 SBLD 14.28 17.85 17.85 15.56 22.22 24.44
+MicroRCA 16.07 62.5 92.75 20.00 31.11 44.44 LogFaultFlagger 19.64 21.42 21.42 15.56 24.44 24.44
+SBLD 19.64 23.21 25.00 15.56 22.22 24.44 PDiagnose 35.71 53.57 71.42 8.89 13.33 15.56
+LogFaultFlagger 19.64 21.42 23.21 17.78 24.44 24.44 Nezhaw/oM 26.78 33.92 35.71 55.56 62.22 68.89
+MicroRank 41.07 48.21 62.5 15.56 24.44 35.56
+Nezhaw/oL 64.28 64.28 64.28 42.22 44.44 44.44
+TraceAnomaly 30.35 33.92 48.21 13.33 28.89 33.33 Nezha 92.86 96.43 96.43 86.67 97.78 97.78
+PDiagnose 41.07 73.21 82.14 8.89 13.33 22.22
+Theaverage𝐴𝑆@5oftwotrace-basedapproaches(i.e.,MicroRank
+Nezhaw/oML 14.28 17.85 17.85 6.67 8.89 11.11
+Nezhaw/oM 26.78 33.92 35.71 55.56 62.22 68.89 andTraceAnomaly)reachalmost50%and40%,respectively.Both
+Nezhaw/oL 64.28 64.28 64.28 42.22 44.44 44.44 approachestaketracesasinputandusethelatencyofspansto
+Nezha 92.86 96.43 96.43 86.67 97.78 97.78 findrootcauses.Therefore,theycanonlylocalizethefaultsthat
+havesignificantimpactsonlatency.However,theerrorreturnand
+• MicroRCA[64]presentsametric-basedRCAapproachthatlo-
+exceptionfaultsdonotmanifestasanomaliesinlatency,which
+calizessuspiciousservicesbyapplyingaPageRankmethod[50]
+resultsinlowaccuracyforMicroRankandTraceAnomaly.
+ontheextractedanomalysub-graph.
+Multi-modalapproachPDiagnoseachievesbetteraccuracythan
+• LogFaultFlagger[1]isalog-basedRCAapproachthatcompares
+single-modalbaselinesinOnlineBoutique.However,theaccuracyof
+passingandfailinglogstofindfaultsinfailinglogs.
+PDiagnosedegradesdramatically(from82.14%to22.22%at𝐴𝑆@5)
+• SBLD[55]isalog-basedRCAapproachthatanalyzesthecover-
+inTrainTicket.ThepoorperformanceofPDiagnoseisattributed
+ageoflogeventsusingSpectrumalgorithms[25]tofindsuspi-
+totworeasons.(1)PDiagnosetransformsmulti-modaldataastime
+ciouslogevents.
+seriesandlocalizesrootcausesbasedontheanomaloustimeseries.
+• MicroRank[67]proposesatrace-basedRCAapproachthatcom-
+However, not all faults cause time series anomalies, leading to
+binesthepersonalisedPagerankmethodandSpectrummethod
+missingsomerootcauses.(2)PDiagnoseperformsRCAbasedon
+tolocatesuspiciousrootcauses.
+asimplevotingmechanismthatignorestheservicedependency
+• TraceAnomaly[37]providesatrace-basedRCAapproachthat
+andanomalypropagation,whichischallengingtogetconsensus
+adoptsadeeplearningmethodtolearnnormalpatternsoftraces
+inTrainTicketwith41microservices.
+offlineanddetectanomaloustracesonlinetoperformRCA.
+• PDiagnose[21]takesmetrics,traces,andlogsasinputandtrans-
+Inconclusion,Nezhaiseffectiveinmicroservicerootcausediag-
+formsthemintotimeseries.ThenPDiagnosedeterminesroot
+nosisattheservicelevelandimproves𝐴𝑆@1by61.45%∼74.63%
+causesthroughvotingabnormaltimeseries.
+and𝐴𝑆@5by28.51%∼73.28%onaveragecomparedtobaselines.
+Theseresultsalsovalidateourmotivationtointegratemulti-modal
+datatofacilitaterootcauselocalizationin§2.2.
+5.3 EvaluationResults
+5.3.1 RQ1:EffectivenessatServiceLevel. Thegroundtruthsatthe 5.3.2 RQ2:EffectivenessatInner-serviceLevel. Thegroundtruthsat
+servicelevelaretheknowninjectedservices.Table3showstheef- theinner-servicelevelarethecoderegionorresourcetypeextracted
+fectivenessevaluationresultsofdifferentapproachesattheservice fromthefault-injectedoperation.WeonlycompareNezhawith
+level.FromTable3,wecanobservethatNezhaoutperformsallthe SBLD,LogFaultFlagger,andPDiagnosebecauseonlythesethree
+baselineapproachessignificantlyandachieveshighaccuracyin baselineshavetheabilitytoidentifyrootcausesattheinner-service
+𝐴𝑆@1(90%),𝐴𝑆@3(97%),𝐴𝑆@5(97%)onaverage,illustratingthat level.Consideringthattheabovethreebaselinesaredesignedto
+Nezhacansuccessfullylocalizerootcausesatservicelevelmostof pinpointerrorlogsratherthancoderegions,theirresultwouldbe
+thetime.TheexcellentperformanceofNezhaismainlyattributed determinedtobecorrectiftheiroutputerrorlogsarewithinthe
+tothefactthatNezhatakesmulti-modaldataasinputandfuses coderegionofrootcauses.
+themsothatitcancapturetheabnormalbehavioursofawider Table4showstheeffectivenessofdifferentapproachesatthe
+rangeoffaultsituations. inner-service level. Nezha performs the best by taking all base-
+Themetric-basedapproachesMicroScopeandMicroRCAachieve linesintoconsideration,achieving𝐴𝐼𝑆@1of87%,𝐴𝐼𝑆@3of97%,
+low𝐴𝑆@1and𝐴𝑆@5onaverage.Afteradetaileddissectionoftheir and𝐴𝐼𝑆@5of97%onaverage.Withtheincorporationofmulti-
+RCAresults,wefindthatMicroScopeandMicroRCAareadeptat modaldatawhileretainingexecutioncontexts,Nezhacanlocalize
+locatingtherootcausesofresourceissuesbutnotgoodatcodede- rootcausesattheinner-servicelevelmoreaccurately.SBLDand
+fects.ThisisbecauseMicroScopeandMicroRCAonlytakemetrics LogFaultFlaggerusethedifferencesinfrequencyandcoverageof
+intoaccount,butmanycodedefectsdonotmanifestthemselves logstolocaterootcauses.Resourcefaultsdonotcauseasignif-
+inmetrics.TheaccuracyofMicroScopeislowerthanMicroRCA icantdifferenceinfrequencyandcoverageoflogs,soSBLDand
+becausethedesignofMicroScopeneverplacesthefrontendservice LogFaultFlaggercannotaccuratelyidentifytheserootcauses.PDi-
+astherootcause. agnoseperformsbetterthanSBLDandLogFaultFlaggerbecause
+Thetwolog-basedapproaches(i.e.,SBLDandLogFaultFlagger) itconsidersvaluablemetricsandtracesignoredbySBLDandLog-
+obtain𝐴𝑆@1and𝐴𝑆@5lessthan30%.Thesetwoapproachesdonot FaultFlagger.However,theperformanceofPDiagnosedegrades
+considermetrics.Thus,theymisstherootcausesoffaultscausedby dramaticallyinTrainTicketdatasetbecausethevotingmechanism
+resourcesbecausethesefaultswouldnotchangethelogsequences. ofPDiagnoseisdifficulttogetconsensusinasystemwithmany
+
+--- PDF PAGE 10 ---
+ESEC/FSE’23,December3–9,2023,SanFrancisco,CA,USA GuangbaYu,PengfeiChen,YufengLi,HongyangChen,XiaoyunLi,andZibinZheng
+3 0
+2 0
+1 0
+1 0 0 0 0 2 0 0 0 0 3 0 0 0 0 4 0 0 0 0 5 0 0 0 0
+) d
+n
+o c
+e S(
+e
+mi
+T
+A C
+R
+O B T T
+9 6
+9 2
+8 8
+8 4
+8 0
+E v e n t N u m b e r / M in u te 0 .2 0 .4 0 .6 0 .8
+Figure11:Changeofdiagnosistimewitheventnumber.
+services.ToovercomethedrawbacksofSBLD,LogFaultFlagger,
+andPDiagnose,Nezhainsertsmetricsalerteventsintologsevents
+sothatNezhacanhandleboththecodedefectsandresourcefaults
+whileretainingexecutioncontext.
+Tosumup,theresultsdemonstratetheeffectivenessofNezha
+inlocalizingrootcausesattheinner-servicelevelandimproves
+𝐴𝐼𝑆@1by67.47% ∼ 74.85%and𝐴𝐼𝑆@5by53.61% ∼ 75.96%on
+averagecomparedtobaselines.
+5.3.3 ContributionofMulti-modalData. Weperformtwoablation
+studies to explore the contribution of multi-modal data, so we
+derivethefollowingvariants:Nezhaw/oMLthatdropsmetrics
+andlogs,Nezhaw/oMthatdropsmetricsandNezhaw/oLthat
+dropslogs.Theablationstudyresultsonserviceandinner-service
+levelareshownatthebottomofTable3andTable4,respectively.
+Weobservethateachdatasourcecontributestotheeffectivenessof
+NezhabecauseNezhawithallmulti-modaldataperformsthebest.
+Inaddition,weobservethatthecontributionsdegreesoflogs
+andmetricsarenotexactlythesameindifferentdatasets.Nezha
+w/oListhesecond-bestinOnlineBoutiquedatasetwhileNezha
+w/oMperformsthesecond-bestinTrainTicketdataset.Webelieve
+thisdifferenceisduetothedistributionoffaulttypes.IntheOn-
+lineBoutiquedataset,therearemoreresourceissues,soNezhaw/o
+Lperformsbetter.However,intheTrainTicketdataset,thereare
+morecodedefects,soNezhaw/oMperformsbetter.ThoughNezha
+w/oMLperformstheworstinablationstudies,itdoesnotmean
+thatthecontributiondegreeoftracedataislowbecausetraceisthe
+coreoflinkinglogsofdifferentservicesandbuildingeventgraphs.
+5.3.4 EfficiencyofNezha. ThediagnosistimeofNezhaisessential
+forachievingtimelyRCA.Itdependshighlyonthesizeofeventsin
+atimewindow.ToevaluatethescalabilityofNezhawitheventsize,
+weconductanexperimentonthechangesofdiagnosistimewith
+theincreaseofevents.Thetimetocalculatefault-freepatternsisnot
+includedinthediagnosistimebecausethepatternsinthefault-free
+phaseiscalculatedonceandusedmultipletimes.Fig.11showsthe
+diagnosistimeofNezhaunderthedifferenteventnumbersinatime
+window.Itcanbeseenthatthediagnosistimeincreaseslinearly
+with the number of events. In a time window of 50,000 events,
+OnlineBoutiqueandTrainTickettake16secondsand30seconds
+todeterminerootcauses,respectively.AnalysingTrainTicketdata
+needslongerthanOnlineBoutiquebecauseTrainTickethasalarger
+numberofspanspertraceandmorecomplexdependencies.Thus,
+Nezhatakeslongertotraverseallspansoftraces.
+5.3.5 SensitivityofNezha. Theminimumscorethreshold𝑆𝑐𝑜𝑟𝑒 min
+isonecrucialfactorthatmayimpacttheperformanceofNezha.As
+statedinSec.4.3,𝑆𝑐𝑜𝑟𝑒 controlstheminimumscoreofpatterns
+min
+thatwillbeconsideredasrootcauses.Fig.12showstheimpactof
+)
+%(
+t
+n e c
+r e P
+O B A S I@ 1 A S I@ 3 T T A S I@ 1 A S I@ 3
+S c o re m in
+Figure12:Impactofminimumscorethreshold𝑆𝑐𝑜𝑟𝑒 min.
+𝑆𝑐𝑜𝑟𝑒 min on𝐴𝐼𝑆@1and𝐴𝐼𝑆@3ofNezhaontwodatasets.Smaller
+𝑆𝑐𝑜𝑟𝑒 usuallyleadstoloweraccuracyassomeeventpatterns min
+withlowscorescausedbynormalfluctuationofthesystemaffect
+thefinalresults.AccordingtoFig.12,𝑆𝑐𝑜𝑟𝑒 min =0.67achievesthe
+bestaccuracyinbothtwodatasets.Theresultsalsodemonstrate
+thatNezhaexhibitslesssensitivityto𝑆𝑐𝑜𝑟𝑒 min whenitissetabove
+0.6.Notethatthebestconfigurationof𝑆𝑐𝑜𝑟𝑒 highlydependson min
+thecharacteristicsofdatasets.
+6 DISCUSSION
+6.1 LimitationsandFutureWork
+NezhareliesontheanomalydetectionapproachtriggersforRCA,
+thusitcannotidentifyrootcausesforfaultsthatescapeanomaly
+detection.Futureworkcanintegratemorerobustanomalydetection
+algorithms(e.g.,USAD[2])andmonitoradditionalmetricsbeyond
+theP90latencyandsuccessratiotoavoidmissingfaults.
+TheapplicabilityofNezhaislimitedtotroubleshootingfaults
+thatexhibitabnormalpatternsinmulti-modaldata.Somebyzan-
+tinefaults,suchasreturninganunreasonableresulttotheuser,
+cannotbeidentifiedbyNezhabecausethesefaultsdonotmanifest
+themselvesasanyabnormalpatterns.Troubleshootingforsuch
+byzantinefaultslike[65]isthefutureworktoimproveNezha.
+Thusifanon-changefaultisnotfilteredbyme,wealsogenerate
+asuspicionlistforSREtocheck,whichincreasesthechecking
+burdenonSRE.However,SREbelievesthatthisfalsealarmburden
+isacceptablecomparedtoamissedalarm.Inthefuturewewill
+addmorepluggablecomponentstofilteroutnon-changefaultsas
+muchaspossible.
+6.2 ThreatstoValidity
+Thethreatstotheinternalvaliditymainlylieinthefault-freedata
+collectionandminimumscorethreshold𝑆𝑐𝑜𝑟𝑒 ,whichcanintro-
+min
+ducebiasontheeffectivenessofNezha.(1)TheaccuracyofNezha
+canbeaffectediffault-freedataisnoisyorlackscertaintypesof
+requests.Tomitigatethisthreat,itisrecommendedtoconstruct
+fault-freedatathatincludesawiderangeofrequesttypesandhas
+asimilarnumberofrequeststotheproductionphase.Capturing
+workloadsofsystemsandreplayingtheseworkloadsisacommon
+approachinthesoftwaretestphase.SREscaneasilycollectsuch
+fault-freedatawhenreplayingworkloads.Evenwithoutreplaying
+workloads,collectingfault-freedatawithinashorttimewindowis
+notdifficultastheproductionenvironmentispredominantlyina
+normalstatuswithlimitedfaults[30].(2)Asthepatternofasimilar
+numberofoccurrencesinthefaultandfault-freephaseshardly
+providesaclueforRCA,theminimumscorethreshold𝑆𝑐𝑜𝑟𝑒
+min
+isusedtoexcludesuchuninformativepatterns.Werecommended
+setting𝑆𝑐𝑜𝑟𝑒
+min
+above0.6becauseapattern𝒑isconsideredmore
+
+--- PDF PAGE 11 ---
+Nezha:InterpretableFine-GrainedRootCausesAnalysisforMicroservicesonMulti-modalObservabilityData ESEC/FSE’23,December3–9,2023,SanFrancisco,CA,USA
+suspiciousifthesupportof𝒑infault-sufferingphaseislessthan Trace-basedRCA.Variousworkandtools[10,48,56,57,59]
+thesupportof𝒑infault-freephase. havebeenproposedtogeneratetracesbyinstrumentingtracecode
+Theexternalthreatmainlycomesfromthemicroservicemodifi- intothesourcecodeofapplications.Theempiricalstudyin[76]
+cationandexperimentalenvironment.(1)Theintegrationanalysis showsthatmicroservicedebuggingcanbeimprovedbyemploying
+ofNezhareliesontheinsertionoftraceIDintologs,whichmaynot propertracingandvisualizationtechniquesandstrategies.Butthe
+beavailableinsomepracticalsystems.However,withthestandard studydoesnotprovideanautomaticRCAapproachbasedontraces.
+Opentelemetrytoolkitandexamplesinvariousprogramminglan- GMTA[18]isagraph-basedtraceanalysisapproachimplemented
+guages[38–41],itiseasyfordeveloperstoinserttraceandspanIDs anddeployedineBay.Itabstractstracesintodifferentpathsandfur-
+intothelogs.Forexample,forJavaapplications,weonlyneedto thergroupsthemintobusinessflowsforarchitectureunderstanding
+modifyonelineofloggingpatternintheloggingconfiguration[39]. andproblemdiagnosis.Nevertheless,suchaggregatedtraceanal-
+(2)Nezhaisevaluatedontwowidely-usedmicroservicesystemsin ysisapproachmaymaskasmallnumberofabnormaltracesthat
+aKubernetesplatform.Itneedsfurtherefforttovalidatetheeffec- arecriticaltorootcauselocalization.Basedontheinsightthata
+tivenessofNezhainmorecomplexreal-worldsystems.However,it microservicethatistraversedbymoreabnormalandfewernor-
+isreasonabletobelieveNezhacanworkinsuchasystemaccord- maltracesislikelytobetherootcause,T-Rank[66]proposesa
+ingtocurrentresults.Thecomplexityofthesystemsisalleviated lightweightperformancediagnostictoolbuiltonspectrumanalysis.
+byconstructingdatasetsthatincludemorethan600eventsfora However,iftwodifferentmicroserviceshavesimilarcoverageinfor-
+singlerequestandinvolvesparallelandasynchronousservicecalls. mation,T-Rankcannotdistinguishbetweenthem.MicroRank[67]
+Typically,arequestinvolvingdozensofservicecallsinindustrial andTraceRank[71]combinePageRankandspectrumalgorithms
+microservicesystemscontainshundredsoflogevents[72].There- todistinguishtwodifferentmicroserviceswithsimilarcoverage.
+fore,theamountofeventsiscomparable.Thecomplexityoffault Nevertheless,therootcausesoutputbyMicroRankandTraceRank
+scenariosisalleviatedbyinjectingresourceissuesandcodedefects (i.e.,serviceinstanceleveloroperationlevel)aremorecoarsethan
+fromrealfaultsinindustrialsystems[33,76]intomicroservices. Nezha.Overall,traces-basedRCAapproachesarelimitedbythe
+Thus,thefaultscenariosinourevaluationarerepresentative. granularityoftraces,whichismostlyattheoperationlevelrather
+thanthecoderegionlevel.Moreover,theabsenceofsystem-level
+7 RELATEDWORK metricsalsomakestraces-basedapproachesimpossibletospecify
+Metric-basedRCA.Metric-basedRCAapproachescommonlydi- whetherthefaultsarecausedbyresources.
+agnoseproblemsbyminingtherelationsbetweendifferentmet-
+rics[6,26,35,61,63,64].CauseInfer[6]andMicroscope[35]con- 8 CONCLUSION
+structacausalitygraphusingthePC-algorithm,andidentifyroot
+Inthisstudy,wepresentNezha,aninterpretableandfine-grained
+causesbasedonthecorrelationofdifferentmetricsalongthecausal
+RCAapproachbasedonmulti-modalobservabilitydata.Nezhauni-
+paths.MicroRCA[64]firstextractsananomaloussub-graphfrom
+fiesmulti-modaldataaseventswithinasinglesolutionandmines
+anattributegraphincludingservicedependenciesandperformance
+eventpatternsbyconstructingeventgraphs.Nezhacorrelatesand
+metrics.ApersonalisedPageRankmethodisthenusedontheanom-
+rankseventpatternsbyidentifyingwhicheventpatternsdonot
+alysub-graphtolocaterootcauses.MicroDiag[63]firstderivesa
+followexpectedexecutionpathsandhowthesepatternschange
+metriccausalitygraphbyGrangerCausalitytests.Thenitweighs
+inthefault-sufferingphasetolocalizerootcauses.Wehaveimple-
+thecausalitygraphwiththepearsoncorrelationcoefficientbetween
+mentedaprototypeofNezhaandconductedextensiveevaluations
+twometricsandrankstherootcauseswithPageRank.GROOT[60]
+ontwowidely-usedmicroserviceapplications.Ourresultsshow
+constructsthecausalitygraphusingmonitoringeventssuchas
+thatNezhaachievesahightop1accuracyatboththeserviceand
+performancemetricsdeviationeventsandranksthemostprobable
+inner-servicelevelandoutperformsstate-of-the-artapproaches
+rootcausesfromtheeventcausalitygraphbasedonacustomized
+byalargemargin.Moreover,Nezhadealswitheventswithhigh
+PageRankalgorithm.Animportantdrawbackofmetrics-basedRCA
+scalability,whichmakesitpracticalforindustrialsystems.
+approachesisthatanalyzingmetricsprovidesasuperficialanalysis
+ofthesystem’soperationsbutnotadissectionofhowthesystem
+9 DATA-AVAILABILITYSTATEMENT
+isactuallyrunning.
+Log-basedRCA.Mostoflog-basedRCAmethodslocalizeroot
+ThedataandtheimplementationofNezhaarepubliclyavailable
+atZenodo[69]andGithub1.TheaugmentedOnlineBoutiqueand
+causesbycomparingfrequentpatternsbetweenlogsofnormal
+TrainTicketareavailableat[46]and[47].
+andabnormalphase[1,11,34,36,55].SBLD[55]appliesspectrum
+algorithms [25] to the logging domain by abstracting logs into
+eventsandlocatingrootcausesbyanalyzingthecoverageofevents. ACKNOWLEDGMENTS
+Facebookproposesafastdimensionalanalysisframeworktolocate Wegreatlyappreciatetheinsightfulfeedbackfromtheanonymous
+thefrequentitemsmostlikelytobetherootcausebyminingthe reviewers.TheresearchissupportedbytheNationalKeyResearch
+differencebetweenthefrequentitemsetsofnormalandabnormal andDevelopmentProgramofChina(2019YFB1804002),theNational
+log[34].LogCluster[36]useslogclusteringtominelogsequences NaturalScienceFoundationofChina(No.62272495),theGuangdong
+andcomparesproductionwithtestlogsequencestofindpreviously BasicandAppliedBasicResearchFoundation(No.2023B1515020054),
+unseenones.However,currentlogs-basedRCAapproachesdonot andtheCCF-LenovoBlueOceanResearchFund.
+takeintoaccountthecontextualinformationofrequestsandcannot
+identifyfaultswherelogshavenotchanged. 1https://github.com/IntelligentDDS/Nezha
+
+--- PDF PAGE 12 ---
+ESEC/FSE’23,December3–9,2023,SanFrancisco,CA,USA GuangbaYu,PengfeiChen,YufengLi,HongyangChen,XiaoyunLi,andZibinZheng
+REFERENCES [27] Kmaork. 2023. Hypno. https://docs.aws.amazon.com/prescriptive-
+[1] AnunayAmarandPeterC.Rigby.2019. Mininghistoricaltestlogstopredict guidance/latest/implementing-logging-monitoring-cloudwatch/configure-
+bugsandlocalizefaultsinthetestlogs.InICSE2019.IEEE/ACM,140–151. cloudwatch-ec2-on-premises.html. AccessedJan.6,2023.
+https://doi.org/10.1109/ICSE.2019.00031 [28] Kmaork.2023.Hypno.https://github.com/kmaork/hypno. AccessedJan.6,2023.
+[2] JulienAudibert,PietroMichiardi,FrédéricGuyard,SébastienMarti,andMariaA. [29] XingLi,YanChen,andZhiqiangLin.2019. Towardsautomatedinter-service
+Zuluaga.2020.USAD:UnSupervisedAnomalyDetectiononMultivariateTime authorizationformicroserviceapplications.InSIGCOMM2019.ACM,3–5. https:
+Series.InKDD2020.ACM,3395–3404. https://doi.org/10.1145/3394486.3403392 //doi.org/10.1145/3342280.3342288
+[3] ChetanBansal,SundararajanRenganathan,AshimaAsudani,OlivierMidy,and [30] XiaoyunLi,GuangbaYu,PengfeiChen,HongyangChen,andZhekangChen.2022.
+MathruJanakiraman.2020.DeCaf:diagnosingandtriagingperformanceissues GoingthroughtheLifeCycleofFaultsinClouds:GuidelinesonFaultHandling.
+inlarge-scalecloudservices.InICSE-SEIP2020.ACM,201–210. https://doi.org/ InISSRE2022.IEEE,121–132. https://doi.org/10.1109/ISSRE55969.2022.00022
+10.1145/3377813.3381353 [31] YufengLi,GuangbaYu,PengfeiChen,ChuanfuZhang,andZibinZheng.2022.
+[4] Byteman.2023. JavaByteman. https://github.com/bytemanproject/byteman. MicroSketch:LightweightandAdaptiveSketchBasedPerformanceIssueDetec-
+AccessedJan.6,2023. tionandLocalizationinMicroserviceSystems.InICSOC2022(LectureNotesin
+[5] cAdvisor.2023.cAdvisor.https://github.com/google/cadvisor. AccessedJan.6, ComputerScience,Vol.13740).Springer,219–236. https://doi.org/10.1007/978-3-
+2023. 031-20984-0_15
+[6] PengfeiChen,YongQi,PengfeiZheng,andDiHou.2014.CauseInfer:automatic [32] ZeyanLi,JunjieChen,RuiJiao,NengwenZhao,ZhijunWang,ShuweiZhang,
+anddistributedperformancediagnosiswithhierarchicalcausalitygraphinlarge YanjunWu,LongJiang,LeiqinYan,andZikaiWang.2021.PracticalRootCause
+distributedsystems.InINFOCOM2014.IEEE,1887–1895. https://doi.org/10.1109/ LocalizationforMicroserviceSystemsviaTraceAnalysis.InIWQoS2021.IEEE,
+INFOCOM.2014.6848128 1–10. https://doi.org/10.1109/IWQOS52092.2021.9521340
+[7] YufuChen,MengYan,DanYang,XiaohongZhang,andZiliangWang.2022.Deep [33] ZeyanLi,NengwenZhao,MingjieLi,XianglinLu,LixinWang,DongdongChang,
+AttentiveAnomalyDetectionforMicroserviceSystemswithMultimodalTime- XiaohuiNie,LiCao,WenchiZhang,KaixinSui,YanhuaWang,XuDu,Guoqiang
+SeriesData.InICWS2022.IEEE,373–378. https://doi.org/10.1109/ICWS55610. Duan,andDanPei.2022. Actionableandinterpretablefaultlocalizationfor
+2022.00062 recurringfailuresinonlineservicesystems.InESEC/FSE2022.ACM,996–1008.
+[8] MichaelChow,DavidMeisner,JasonFlinn,DanielPeek,andThomasF.Wenisch. https://doi.org/10.1145/3540250.3549092
+2014.TheMysteryMachine:End-to-endPerformanceAnalysisofLarge-scale [34] FanFredLin,KeyurMuzumdar,NikolayPavlovichLaptev,Mihai-ValentinCure-
+InternetServices.InOSDI2014.USENIXAssociation,217–231. lea,SeunghakLee,andSriramSankar.2020.FastDimensionalAnalysisforRoot
+[9] FrancoisDorayandMichelDagenais.2017.DiagnosingPerformanceVariations CauseInvestigationinaLarge-ScaleServiceEnvironment.Proc.ACMMeas.Anal.
+byComparingMulti-LevelExecutionTraces.IEEETPDS28,2(2017),462–474. Comput.Syst.4,2(2020),31:1–31:23. https://doi.org/10.1145/3392149
+https://doi.org/10.1109/TPDS.2016.2567390 [35] JinjinLin,PengfeiChen,andZibinZheng.2018.Microscope:PinpointPerfor-
+[10] RodrigoFonseca,GeorgePorter,RandyH.Katz,ScottShenker,andIonStoica. manceIssueswithCausalGraphsinMicro-serviceEnvironments.InICSOC2018.
+2007.X-Trace:APervasiveNetworkTracingFramework.InNSDI,2007.USENIX, Springer,3–20. https://doi.org/10.1007/978-3-030-03596-9_1
+271–284. [36] QingweiLin,HongyuZhang,Jian-GuangLou,YuZhang,andXueweiChen.2016.
+[11] XiaoyuFu,RuiRen,SallyA.McKee,JianfengZhan,andNinghuiSun.2014. Logclusteringbasedproblemidentificationforonlineservicesystems.InICSE
+Diggingdeeperintoclustersystemlogsforfailurepredictionandrootcause Companion2016.ACM,102–111. https://doi.org/10.1145/2889160.2889232
+diagnosis.InCLUSTER2014.IEEE,103–112. https://doi.org/10.1109/CLUSTER. [37] PingLiu,HaowenXu,andetal.2020.Unsuperviseddetectionofmicroservice
+2014.6968768 traceanomaliesthroughservice-leveldeepbayesiannetworks.InISSRE2020.
+[12] FudanSELab.2023. TrainTicket. https://github.com/FudanSELab/train-ticket. IEEE,48–58. https://doi.org/10.1109/ISSRE5003.2020.00014
+AccessedJan.6,2023. [38] Sumologic.2023. GoTraceIdandSpanIdinjectionintologsconfiguration.
+[13] YuGan,MingyuLiang,SundarDev,DavidLo,andChristinaDelimitrou.2021. https://help.sumologic.com/docs/apm/traces/get-started-transaction-tracing/
+Sage:practicalandscalableML-drivenperformancedebugginginmicroservices. opentelemetry-instrumentation/go/traceid-and-spanid-injection-into-logs/.
+InASPLOS2021.ACM,135–151. https://doi.org/10.1145/3445814.3446700 AccessedJune6,2023.
+[14] GoogleCloudPlatform. 2023. OnlineBoutique. https://github.com/ [39] Sumo logic. 2023. Java TraceId and SpanId injection into logs configura-
+GoogleCloudPlatform/microservices-demo. AccessedJan.6,2023. tion. https://help.sumologic.com/docs/apm/traces/get-started-transaction-
+[15] Grafana.2023.Grafanaloki.https://github.com/grafana/loki. AccessedJan.6, tracing/opentelemetry-instrumentation/java/traceid-spanid-injection-into-
+2023. logs-configuration/. AccessedJune6,2023.
+[16] Grafana.2023.Grafanapromtail.https://grafana.com/docs/loki/latest/clients/ [40] Sumologic.2023.JavaScriptTraceIdandSpanIdinjectionintologsconfiguration.
+promtail/. AccessedJan.6,2023. https://help.sumologic.com/docs/apm/traces/get-started-transaction-tracing/
+[17] Grafana.2023.GrafanaTempo.https://github.com/grafana/tempo. Accessed opentelemetry-instrumentation/javascript/traceid-spanid-injection-into-logs/.
+Jan.6,2023. AccessedJune6,2023.
+[18] XiaofengGuo,XinPeng,HanzhangWang,WanxueLi,HuaiJiang,DanDing, [41] Sumologic.2023.PythonTraceIdandSpanIdinjectionintologsconfiguration.
+TaoXie,andLiangfeiSu.2020. Graph-BasedTraceAnalysisforMicroservice https://help.sumologic.com/docs/apm/traces/get-started-transaction-tracing/
+ArchitectureUnderstandingandProblemDiagnosis.InESEC/FSE2020.ACM, opentelemetry-instrumentation/python/traceid-spanid-injection-into-logs/.
+1387–1397. https://doi.org/10.1145/3368089.3417066 AccessedJune6,2023.
+[19] PinjiaHe,JiemingZhu,ZibinZheng,andMichaelR.Lyu.2017. Drain:An [42] ChangLou,PengHuang,andScottSmith.2020.Understanding,Detectingand
+OnlineLogParsingApproachwithFixedDepthTree.InICWS2017.IEEE,33–40. LocalizingPartialFailuresinLargeSystemSoftware.InNSDI2020.USENIX
+https://doi.org/10.1109/ICWS.2017.13 Association,559–574.
+[20] ShilinHe,QingweiLin,Jian-GuangLou,HongyuZhang,MichaelR.Lyu,and [43] MinghuaMa,ShenglinZhang,JunjieChen,JimXu,HaozheLi,YongliangLin,
+DongmeiZhang.2018.Identifyingimpactfulservicesystemproblemsvialog XiaohuiNie,BoZhou,YongWang,andDanPei.2021.Jump-StartingMultivariate
+analysis.InESEC/FSE2018.ACM,60–70. https://doi.org/10.1145/3236024.3236083 TimeSeriesAnomalyDetectionforOnlineServiceSystems.InUSENIXATC2021.
+[21] ChuanjiaHou,TongJia,YifanWu,YingLi,andJingHan.2021.DiagnosingPer- USENIXAssociation,413–426.
+formanceIssuesinMicroserviceswithHeterogeneousDataSource.InISPA/BD- [44] VijayaraghavanMurali,EdwardYao,UmangMathur,andSatishChandra.2021.
+Cloud/SocialCom/SustainCom,2021.IEEE,493–500. https://doi.org/10.1109/ISPA- ScalableStatisticalRootCauseAnalysisonAppTelemetry.InICSE(SEIP)2021.
+BDCloud-SocialCom-SustainCom52081.2021.00074 IEEE,288–297. https://doi.org/10.1109/ICSE-SEIP52600.2021.00038
+[22] LexiangHuangandTimothyZhu.2021.tprof:PerformanceProfilingviaStruc- [45] KarthikNagaraj,CharlesEdwinKillian,andJenniferNeville.2012.Structured
+turalAggregationandAutomatedAnalysisofDistributedSystemsTraces.In ComparativeAnalysisofSystemsLogstoDiagnosePerformanceProblems.In
+SoCC2021.ACM,76–91. https://doi.org/10.1145/3472883.3486994 NSDI2012.USENIXAssociation,353–366.
+[23] ZichengHuang,PengfeiChen,GuangbaYu,HongyangChen,andZibinZheng. [46] Nezha.2023.Augmented-OnlineBoutique.https://github.com/IntelligentDDS/
+2021.Sieve:Attention-basedSamplingofEnd-to-EndTraceDatainDistributed Augmented-OnlineBoutique. AccessedJan.6,2023.
+MicroserviceSystems.InICWS2021.IEEE,436–446. https://doi.org/10.1109/ [47] Nezha. 2023. Augmented-TrainTicket. https://github.com/IntelligentDDS/
+ICWS53863.2021.00063 Augmented-TrainTicket. AccessedJan.6,2023.
+[24] Istio.2023.Istio.https://istio.io. AccessedJan.6,2023. [48] Opentelemetry.2023.Opentelemetry.https://opentelemetry.io. AccessedJan.6,
+[25] JamesA.Jones,MaryJeanHarrold,andJohnT.Stasko.2002.Visualizationof 2023.
+testinformationtoassistfaultlocalization.InICSE2002.ACM,467–477. https: [49] Opentelemetry.2023. OpenTelemetryCollector. https://github.com/open-
+//doi.org/10.1145/581339.581397 telemetry/opentelemetry-collector. AccessedJan.6,2023.
+[26] SrikanthKandula,RatulMahajan,PatrickVerkaik,SharadAgarwal,Jitendra [50] LawrencePage,SergeyBrin,RajeevMotwani,andTerryWinograd.1999.The
+Padhye,andParamvirBahl.2009.Detaileddiagnosisinenterprisenetworks.In PageRankcitationranking:Bringingordertotheweb.TechnicalReport.Stanford
+SIGCOMM2009.ACM,243–254. https://doi.org/10.1145/1592568.1592597 InfoLab.
+[51] YichengPan,MengMa,XinruiJiang,andPingWang.2021.Faster,deeper,easier:
+crowdsourcingdiagnosisofmicroservicekernelfailurefromuserspace.InISSTA
+
+--- PDF PAGE 13 ---
+Nezha:InterpretableFine-GrainedRootCausesAnalysisforMicroservicesonMulti-modalObservabilityData ESEC/FSE’23,December3–9,2023,SanFrancisco,CA,USA
+2021.ACM,646–657. https://doi.org/10.1145/3460319.3464805 [67] GuangbaYu,PengfeiChen,HongyangChen,ZijieGuan,ZichengHuang,Linxiao
+[52] Pingcap.2023.GolangFailpoint.https://github.com/pingcap/failpoint. Accessed Jing,TianjunWeng,XinmengSun,andXiaoyunLi.2021.MicroRank:End-to-End
+Jan.6,2023. LatencyIssueLocalizationwithExtendedSpectrumAnalysisinMicroservice
+[53] Prometheus.2023. Prometheus. https://github.com/prometheus/prometheus. Environments.InWWW2021.ACM,3087–3098. https://doi.org/10.1145/3442381.
+AccessedJan.6,2023. 3449905
+[54] Prometheus.2023.Prometheusnodeexporter.https://github.com/prometheus/ [68] GuangbaYu,PengfeiChen,PairuiLi,TianjunWeng,HaibingZheng,andYuetang
+node_exporter. AccessedJan.6,2023. Deng.2023.LogReducer:IdentifyandReduceLogHotspotsinKernelontheFly.
+[55] CarlMartinRosenbergandLeonMoonen.2020.Spectrum-BasedLogDiagnosis. InICSE2023.IEEE,1763–1775. https://doi.org/10.1109/ICSE48619.2023.00151
+InESEM2020.ACM,18:1–18:12. https://doi.org/10.1145/3382494.3410684 [69] GuangbaYu,PengfeiChen,YufengLI,HongyangChen,XiaoyunLi,andZibin
+[56] BenjaminHSigelman,LuizAndreBarroso,MikeBurrows,PatStephenson,Manoj Zheng.2023. ArtifactofPaper"Nezha:InterpretableFine-GrainedRootCauses
+Plakal,DonaldBeaver,SaulJaspan,andChandanShanbhag.2010. Dapper,a AnalysisforMicroservicesonMulti-modalObservabilityData". https://doi.org/10.
+large-scaledistributedsystemstracinginfrastructure.(2010). 5281/zenodo.8276375
+[57] ApacheSkyWalking.2023.ApacheSkyWalking.https://skywalking.apache.org. [70] GuangbaYu,PengfeiChen,andZibinZheng.2019. Microscaler:Automatic
+AccessedJan.6,2023. ScalingforMicroserviceswithanOnlineLearningApproach.InICWS2019.IEEE,
+[58] CindySridharan.2018.Distributedsystemsobservability:aguidetobuildingrobust 68–75. https://doi.org/10.1109/ICWS.2019.00023
+systems.O’ReillyMedia. [71] GuangbaYu,ZichengHuang,andPengfeiChen.2021. TraceRank:Abnormal
+[59] AvishayTraeger,IvanDeras,andErezZadok.2008.DARC:dynamicanalysis servicelocalizationwithdis-aggregatedend-to-endtracingdataincloudnative
+ofrootcausesoflatencydistributions.InSIGMETRICS2008.ACM,277–288. systems.JournalofSoftware:EvolutionandProcess(2021),e2413. https://doi.org/
+https://doi.org/10.1145/1375457.1375489 10.1002/smr.2413
+[60] HanzhangWang,ZhengkaiWu,HuaiJiang,YichaoHuang,JiamuWang,Selcuk [72] ChenxiZhang,XinPeng,ChaofengSha,KeZhang,ZhenqingFu,XiyaWu,
+Kopru,andTaoXie.2021.Groot:Anevent-graph-basedapproachforrootcause QingweiLin,andDongmeiZhang.2022. DeepTraLog:Trace-LogCombined
+analysisinindustrialsettings.InASE2021.IEEE,419–429. https://doi.org/10. MicroserviceAnomalyDetectionthroughGraph-basedDeepLearning.InICSE
+1109/ASE51524.2021.9678708 2022.IEEE,623–634. https://doi.org/10.1145/3510003.3510180
+[61] PingWang,JingminXu,MengMa,WeilanLin,DishengPan,YuanWang,and [73] ChenxiZhang,XinPeng,TongZhou,ChaofengSha,ZhenghuiYan,YiruChen,
+PengfeiChen.2018. Cloudranger:rootcauseidentificationforcloudnative andHongYang.2022. TraceCRL:contrastiverepresentationlearningformi-
+systems.InCCGRID2018.IEEE/ACM,492–502. https://doi.org/10.1109/CCGRID. croservicetraceanalysis.InESEC/FSE2022.ACM,1221–1232. https://doi.org/10.
+2018.00076 1145/3540250.3549146
+[62] PaulFWilson,LarryDDell,andGaylorFAnderson.1996.Rootcauseanalysis: [74] YingyingZhang,ZhengxiongGuan,HuajieQian,LeiliXu,HengboLiu,Qingsong
+atoolfortotalqualitymanagement.TheJournalforHealthcareQuality(JHQ)18, Wen,LiangSun,JunweiJiang,LuntingFan,andMinKe.2021. CloudRCA:A
+1(1996),40. RootCauseAnalysisFrameworkforCloudComputingPlatforms.InCIKM2021.
+[63] LiWu,JohanTordsson,JasminBogatinovski,ErikElmroth,andOdejKao.2021. ACM,4373–4382. https://doi.org/10.1145/3459637.3481903
+MicroDiag:Fine-grainedPerformanceDiagnosisforMicroserviceSystems.In [75] NengwenZhao,JunjieChen,ZhaoyangYu,HonglinWang,JiesongLi,BinQiu,
+CloudIntelligence2021.IEEE,31–36. HongyuXu,WenchiZhang,KaixinSui,andDanPei.2021. Identifyingbad
+[64] LiWu,JohanTordsson,ErikElmroth,andOdejKao.2020.MicroRCA:RootCause softwarechangesviamultimodalanomalydetectionforonlineservicesystems.
+LocalizationofPerformanceIssuesinMicroservices.InNOMS2020.IEEE/IFIP, InESEC/FSE’21.ACM,527–539. https://doi.org/10.1145/3468264.3468543
+1–9. https://doi.org/10.1109/NOMS47738.2020.9110353 [76] XiangZhou,XinPeng,TaoXie,JunSun,ChaoJi,WenhaiLi,andDanDing.
+[65] HiroyukiYamadaandJunNemoto.2022. ScalarDL:ScalableandPractical 2021.FaultAnalysisandDebuggingofMicroserviceSystems:IndustrialSurvey,
+ByzantineFaultDetectionforTransactionalDatabaseSystems. Proc.VLDB BenchmarkSystem,andEmpiricalStudy.IEEETSE47,2(2021),243–260. https:
+Endow.15,7(2022),1324–1336. //doi.org/10.1109/TSE.2018.2887384
+[66] ZihaoYe,PengfeiChen,andGuangbaYu.2021.T-Rank:ALightweightSpectrum
+basedFaultLocalizationApproachforMicroserviceSystems.InCCGrid2021. Received2023-03-02;accepted2023-07-27
+IEEE/ACM,416–425. https://doi.org/10.1109/CCGrid51090.2021.00051

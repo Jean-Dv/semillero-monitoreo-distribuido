@@ -1,0 +1,1017 @@
+--- PDF PAGE 1 ---
+Robust Multimodal Failure Detection for Microservice Systems
+ChenyuZhao* MinghuaMa∗ ZhenyuZhong ZhiyuanTan
+NankaiUniversity Microsoft ShenglinZhang† XiaoXiong
+Tianjin,China Beijing,China NankaiUniversity NankaiUniversity
+Tianjin,China Tianjin,China
+LuLuYu YongqianSun DanPei QingweiLin
+JiayiFeng YuzhiZhang TsinghuaUniversity DongmeiZhang
+NankaiUniversity NankaiUniversity Beijing,China Microsoft
+Tianjin,China Tianjin,China Beijing,China
+ABSTRACT 1 INTRODUCTION
+Proactivefailuredetectionofinstancesisvitallyessentialtomi- AsanincreasingnumberofInternetapplicationsmigratetothe
+croservicesystemsbecauseaninstancefailurecanpropagateto cloud,themicroservicearchitecture,whichallowseachmicroser-
+thewholesystemanddegradethesystem’sperformance.Overthe vicetobeindependentlydeveloped,deployed,upgraded,andscaled,
+years,manysingle-modal(i.e.,metrics,logs,ortraces)data-based hasattractedwidespreadattentionrecently[47].Amicroservicesys-
+anomalydetectionmethodshavebeenproposed.However,they temistypicallyalarge-scalesystemwithmanyinstances(e.g.,vir-
+tendtomissalargenumberoffailuresandgeneratenumerous tualmachinesorcontainers).Correlationsamonginstances,e.g.,ser-
+falsealarmsbecausetheyignorethecorrelationofmultimodaldata. viceinvocationsandresourcecontention,areusuallycomplexand
+Inthiswork,weproposeAnoFusion,anunsupervisedfailurede- dynamic[42].Whenaninstancefails,itmaydegradetheperfor-
+tectionapproach,toproactivelydetectinstancefailuresthrough manceofthewholemicroservicesystem,impactuserexperience
+multimodaldataformicroservicesystems.ItappliesaGraphTrans- andevenleadtorevenueloss.Forexample,somefailedinstances
+formerNetwork(GTN)tolearnthecorrelationoftheheteroge- resultedinasurgeofconnectionactivitythatoverwhelmedthenet-
+neousmultimodaldataandintegratesaGraphAttentionNetwork workingdevicesbetweentheinternalnetworkandthemainAWS
+(GAT)withGatedRecurrentUnit(GRU)toaddressthechallenges networkinDecember2021[2].Therefore,itiscrucialtoproactively
+introducedbydynamicallychangingmultimodaldata.Weevaluate detectinstancefailurestomitigatefailurestimely.
+theperformanceofAnoFusionthroughtwodatasets,demonstrat- Operatorscontinuouslycollectthreetypesofmonitoringdata,
+ingthatitachievesthe𝐹 1-scoreof0.857and0.922,respectively, includingmetrics,logs,andtracesforproactivelydetectinginstance
+outperformingthestate-of-the-artfailuredetectionapproaches. failures[30].Themetricsincludesystem-levelmetrics(e.g.,CPU
+utilization,memoryutilization,andnetworkthroughput)anduser-
+CCSCONCEPTS perceivedmetrics(e.g.,averageresponsetime,errorrate,andpage
+•Softwareanditsengineering→Maintainingsoftware;• viewcount).Alogrecordsthehardwareorsoftwareruntimein-
+Computingmethodologies→FailureDetection;GraphNeu- formation,includingstatechanges,debuggingoutput,andsystem
+ralNetworks. alerts. For an API request, a trace records its invocation chain
+throughinstances,whereeachserviceinvocationiscalledaspan.
+KEYWORDS Weadoptfailureandanomalytocharacterizethefaultybehav-
+iorsofinstancesandmonitoringdata:1)ananomalyisadeviation
+MicroserviceSystem,Multimodal,FailureDetection
+fromthenormalsystemstate(oftenreflectedinmonitoringdata),
+ACMReferenceFormat: and2)afailureisaneventwheretheservicedeliveredbyanin-
+ChenyuZhao,MinghuaMa,ZhenyuZhong,ShenglinZhang,ZhiyuanTan,
+stancegoeswrong,anduserexperienceisdegraded[23].Table1
+XiaoXiong,LuLuYu,JiayiFeng,YongqianSun,YuzhiZhang,DanPei,
+listssometypesofanomaliesandfailures.Forexample,whena
+QingweiLin,DongmeiZhang.2023.RobustMultimodalFailureDetection
+“loginfailure”occurs,userscannotlogintothesystemsuccessfully.
+forMicroserviceSystems.InProceedingsofthe29thACMSIGKDDConference
+Anomaliesinlogsandtracescanbedetectedwhenthisfailurehap-
+onKnowledgeDiscoveryandDataMining(KDD’23),August6–10,2023,Long
+Beach,CA,USA.ACM,NewYork,NY,USA,11pages.https://doi.org/10. pens:many“ERROR”swillbeprintedinlogs,andsometracedata
+1145/3580305.3599902 willhavesignificantlylargerResponseTime(RT).Itiscommon
+toobservemanyanomaliesduringaservicefailure.However,an
+∗EqualContribution
+†CorrespondingAuthor (intermittent)anomalydoesnotnecessarilyleadtoafailure.
+Overtheyears,asignificantnumberofmethodshavebeenpro-
+Permissiontomakedigitalorhardcopiesofpartorallofthisworkforpersonalor posedforautomaticmetric/log/trace(fromnowon,wecallthem
+classroomuseisgrantedwithoutfeeprovidedthatcopiesarenotmadeordistributed
+forprofitorcommercialadvantageandthatcopiesbearthisnoticeandthefullcitation single-modal)anomalydetection.Theytrytoproactivelydetectthe
+onthefirstpage.Copyrightsforthird-partycomponentsofthisworkmustbehonored. single-modaldata’sanomalousbehaviorsanddeterminethatthe
+Forallotheruses,contacttheowner/author(s).
+instancefailswhenthemonitoringdatabecomesanomalous.How-
+KDD’23,August6–10,2023,LongBeach,CA,USA.
+ever,afterinvestigatinghundredsofinstancefailures(see§5.1.1),
+©2023Copyrightheldbytheowner/author(s).
+ACMISBN979-8-4007-0103-0/23/08. weconcludethatpreviousmethodsdonotworkwellforinstance
+https://doi.org/10.1145/3580305.3599902
+3202
+yaM
+03
+]ES.sc[
+1v58981.5032:viXra
+
+--- PDF PAGE 2 ---
+KDD’23,August6–10,2023,LongBeach,CA,USA. C.Zhao,M.Ma,Z.Zhong,S.Zhang,Z.Tan,X.Xiong,L.Yu,J.Feng,Y.Sun,Y.Zhang,D.Pei,Q.Lin,D.Zhang
+Table1:Theanomaliesofmultimodaldataduringservice
+failures.“Mem”representsthememoryutilizationmetric, disk_io_rate
+“ERR”isanerrorlog,and𝑅𝑇 𝑆𝑥→𝑆𝑦 denotestheresponsetime
+whenserviceinstance𝑆 𝑥 calls𝑆 𝑦.“–”meansnoanomalyis
+foundordataislostinthatdatamodality.
+FailureType Metric Log Trace #Failures
+failedofQRcode Mem↑ – – 505 ERROR | 0.0.0.4 | Service2 | mob_helper.py ->
+mob_info_to_redis -> 88 | ... information has
+systemstuck Mem↓ – – 16
+expired, mobile phone login is invalid
+loginfailure – ERR 𝑅𝑇 𝑆 →𝑆 =11s 527
+filenotfound – – 𝑅𝑇 𝑆 1 →𝑆 2 =1.5s 36 S2->S4: Response time = 11s
+2 3
+accessdenied – ERR 𝑅𝑇 𝑆 →𝑆 =1.1s 15
+2 4
+failuredetectioninmicroservicesystems.Correlatingmetrics,logs,
+andtraces(fromnowon,wecallthemmultimodal)iscrucialfor
+instancefailuredetection.Ontheonehand,thesingle-modaldata
+cannotrevealalltypesoffailures,letaloneitselfcanbemissingor
+collectedtooslowly[23].Forexample,inTable1,whenthefailure
+“failedtogenerateQRcode”happens,onlytheinstance’smetrics,
+i.e.,memoryutilization,increasedramaticallyandexhibitanoma-
+lousbehaviors.Ifonlyconductinglogortraceanomalydetection,
+thistypeoffailurewillbefalselyignored.Ontheotherhand,sim-
+plycombiningtheanomalydetectionresultsofthesingle-modal
+anomalydetectionmethodsmaygeneratefalsealarms,whichhave
+beenconfirmedinourexperiments(seeTable3).Forinstance,the
+(transient)anomaliesdetectedbysingle-modalanomalydetection
+methodsmaynotrepresentanyinstancefailure.Supposeanin-
+stance’snetworkthroughputmetricexperiencesananomalyandan
+alarmisreportedbecausethemetricincreasessuddenlyandreturns
+tothenormallevelafterashortperiod.However,thesystemstill
+deliversnormalservice,becausenotracedatabecomesanomalous,
+anduserexperienceisnotimpacted.Hence,noinstancefailure
+shouldbereported.
+Tothisend,weaimtocorrelatethemultimodaldatatodetect
+instancefailuresformicroservicesystems,whichfacethefollowing
+twochallenges.(1)Modelingthecomplexcorrelationsamongmulti-
+modaldata.Whenafailureoccurs,one,two,orthreemodalities
+ofdatacanbecomeanomalous,andtheyarecorrelatedwitheach
+other.Neglectingthecorrelationscandegradethefailuredetection
+accuracy.(2)Dealingwiththeheterogeneousanddynamicallychang-
+ingmultimodaldata.Specifically,metricsareusuallyintheformof
+multivariatetimeseries,andlogsaretypicallysemi-structuredtext.
+Moreover,atraceconsistsofspansinatreestructure.Integrating
+suchheterogeneousmultimodaldataisquitechallenging.Addition-
+ally,aninstance’smultimodaldatausuallychangesdynamically
+overtime.
+Inthiswork,weproposeAnoFusion,anunsupervisedinstance
+failuredetectionapproachformicroservicesystems.Toaddressthe
+firstchallenge,weapplyGraphTransformerNetwork(GTN)[16,
+45]sinceitcanembedmultimodaldataintoagraphandlearnthe
+correlationofheterogeneousdatathroughtheeffectiverepresen-
+tationsofgraphnodesandedges[40,43].Toaddressthesecond
+challenge,wefirstserializethedataofeachmodalityaccordingto
+themodality’scharacteristicsandconstructthenodesandedgesof
+heterogeneousgraphs.Afterthat,weadoptGraphAttentionNet-
+work(GAT)[36],whichassignsdifferentweightstoneighbornodes
+eulaV
+Timestamps
+M
+L
+T
+Anomaly
+disk_io_time
+Figure1:Themultimodalmonitoringdata,i.e.,Metrics,Logs,
+andTrace,duringaninstancefailure
+andlearnsthedynamicpatternsofmultimodaldata,tooptimizethe
+graphsandfiltersignificantnodeinformation.WethenuseaGated
+RecurrentUnit(GRU)[19]tocapturethetemporalinformation
+andpredictthemultimodaldataofthenextmoment.Finally,the
+similaritybetweentheobservationandpredictionvaluesisusedto
+determinewhetheraninstancefails.
+Thecontributionsofthispaperaresummarizedasfollows:
+• Tothebestofourknowledge,weareamongthefirsttoiden-
+tifytheimportanceofexploringthecorrelationofmultimodal
+monitoringdata(i.e.,metrics,logs,andtraces),andcorrelatethe
+multimodaldatausingGTNforinstancefailuredetection.
+• Ourapproach,AnoFusion,serializesthedataofthethreemodali-
+tiesaccordingtoeachmodality’strait.ItcombinesGTNandGAT
+todetectanomaliesinthedynamicmultimodaldatarobustly.In
+addition,aGRUlayerisusedtocapturethetemporalinformation
+ofthemultimodaldata.
+• Weadopttwomicroservicesystems,consistingof10and28in-
+stances,respectively,toevaluatetheperformanceofAnoFusion.
+TheevaluationresultsshowthatAnoFusiondetectsinstancefail-
+ureswithaverage𝐹 1-scoreof0.857and0.922,outperforming
+baselinemethodsby0.278and0.480onaverage,respectively.
+Oursourcecodeandexperimentaldataareavailableathttps:
+//github.com/zcyyc/AnoFusion.
+2 BACKGROUNDANDRELATEDWORK
+2.1 Single-modalAnomalyDetection
+Generally,operatorscontinuouslycollectthreetypesofobserv-
+ablemonitoringdata:metrics,logs,andtraces[30]toensurethe
+reliabilityofmicroservicesystems.Figure1showsanexampleof
+anomalousmultimodaldatainafailurecase.
+Metric.Ametricisdefinedasx={𝑥 1 ,𝑥 2 ,...,𝑥 𝑇},where𝑇 isthe
+lengthofthemetric,𝑥 𝑡 ∈ Rdenotestheobservationattime𝑡.A
+microserviceinstancetypicallyhasasetofmetricsthatcanberep-
+resentedasamultivariatetimeseries,monitoringvariousservice
+metrics(e.g.,pageview)andsystem/hardwaremetrics(e.g.,CPU
+usage).Figure1(Mpart)showsanexampleofmetricdata.Tradi-
+tionalstatisticmetricanomalydetectionmethods[24]donotneed
+trainingdatabutcanbelesseffectivewhenfacingintricatedata.
+Supervisedlearningmethods[17,20]needoperatorstomanually
+
+--- PDF PAGE 3 ---
+RobustMultimodalFailureDetectionforMicroserviceSystems KDD’23,August6–10,2023,LongBeach,CA,USA.
+labelanomalies,whichisimpracticalinmanyreal-worldscenarios. recognition[14].Recentstudieshavestartedtotackletheanomaly
+Thus,unsupervisedmethods[1,25,25,35,44]thatdonotrequire detectionproblembasedonmultimodaldata.Vijayanandetal.[37]
+anomalylabelshavebecomeahotresearchtopicinrecentyears. proposeananomalydetectionframeworkforcloudserversusing
+Forexample,JumpStarter[25]appliesacompressedsensingtech- multidimensional data, including different features such as net-
+niqueforanomalydetection.USAD[1]detectsanomaliesthrough worktrafficsequencefeatures,CPUusage,andmemoryusagefrom
+adversarial training with high efficiency. A metric anomaly de- hostlogs.Theseextractedmultidimensionalfeaturesarefedtothe
+tection method can easily detect an instance failure if multiple detectionmodelthatidentifiestheanomaliesandmaximizesthe
+metricsbecomeanomaloussoonafterthefailure.However,since detectionaccuracy.[6]performscorrelationanalysisonmetricsand
+metricanomalydetectionmethodsonlyutilizemetricdatatodetect logstodiscovertheanomalypatternsincloudoperations.Addition-
+anomaliesandpossiblefailuresinasystem,theywillfailtoalert ally,SCWarn[46]combinesmetricsandlogsforanomalydetection
+operatorswhenafailuredoesnotmanifestitselfonmetrics.AnoFu- byserializingthemetricsandlogsseparatelyandadoptingLSTM
+sionanalyzesmetricdatainanunsupervisedwayandreducesfalse todetectfailures.However,traces,whicharevitaltoinstances,
+alarmsbyusingmetricdatatogetherwithotherdatamodalities. aremissingintheseworks,andthus,theycannotachieveoptimal
+Log.Logdataissemi-structuredtextoutputbyinstancesatthe performancewhendetectinganomaliesinourscenario.Tothebest
+applicationorsystemlevel.Itistypicallyusedtorecordtheopera- ofourknowledge,weareamongthefirsttofocusondetecting
+tionalstatusofhardwareorsoftware.Generally,logsaregenerated instancefailuresusingmultimodaldata.
+withapredefinedstructure.Asaresult,extractinglogtemplates
+andtheirparametersisastandardstepinanalyzinglogdata[7].For 2.3 GraphNeuralNetworks
+example,Figure1(Lpart)listsalog.Traditionalloganomalydetec-
+GTN.GTNtakesaheterogeneousgraphasinputandturnsitinto
+tionmethodsareusuallydesignedtoidentifykeywordsinlogslike
+anewgraphstructurespecifiedbymeta-paths.Meta-pathsarere-
+“ERROR”or“fail”.However,negativekeywordssuchas“fail”may
+lationalsequencesthatconnectpairsofobjectsinheterogeneous
+appearinlogsduetonetworkjittersoroperatorloginfailure,and
+graphs,whicharecommonlyemployedtoextractstructuralinfor-
+theydonotimplyaninstancefailure.Advancedapproachesfollow
+mation.BycombiningmultipleGTlayerswithGCN,GTNlearns
+asimilarworkflow:logparsing,featureextraction,andanomaly
+node representations on the graph efficiently in an end-to-end
+detection[11].Deeplearning-basedmethodslearnthelogpatterns
+way[43].WeapplyGTNtolearnthecorrelationsamongmulti-
+(e.g.,sequentialfeature,quantitativerelationship)ofnormalexecu-
+modaldatainourscenario.
+tionsanddetermineananomalywhenthepatternofalogsequence
+deviatesfromthelearnednormalpatterns[5,22,41].Forexample, GAT.GCNisnotgoodatanalyzingdynamicgraphs,andwhen
+LogAnomaly[27]appliestemplatevectorstoextractthehidden thegraphstructureoftrainingandtestsetschanges,GCNwill
+semanticinformationinthelogtemplatesanddetectscontinuous nolongerbesuitable.Inaddition,GCNassignsthesameweight
+andquantitativeloganomaliesatthesametime.Deeplog[5]pre- toeachneighbornode,whichfallsshortofourexpectationsfor
+dictsthelogsthatmayappearafteraslidingwindowutilizingthe futuregraphstructureoptimization.GATsolvestheproblemsof
+LSTMmodel.AnoFusionrequiresneitherlabelingworknordomain GCNbyallocatingvariousweightstodifferentnodes.Itenables
+knowledgewhenanalyzinglogdata. variousnodestobedistinguishedintermsofimportance,sothat
+AnoFusioncanfocusonmoresignificantinformationinthegraph
+Trace.Atraceismadeupofspans,eachofwhichcorrespondstoa
+structure[36].Therefore,GATisexpectedtoachievebetterperfor-
+serviceinvocation[29].Figure1(Tpart)showsanexampleoftrace
+manceinprocessingdynamicallychangingtimeseriesdata,and
+data.Whentheserviceprocessesauser’srequest,severalinstances
+thusweutilizeGATinsteadofGCN.
+willbeinvoked.Themonitoringsystemrecordswhenaspecific
+serviceiscalledandwhenitresponds,andthedifferencebetween GRU.Asweknow,RNN[15]canrepresenttimedependencyby
+themistheResponseTime(RT).Mosttraceanomalydetection adoptingdeterministichiddenvariables.However,RNNmaybe
+methodsdetectanomaliesaccordingtowhethertheresponsetime incapableofdealingwiththelong-termdependencyprobleminthe
+ofeachinvocationincreasesdramaticallyand/orwhetherthein- timeseries,andLSTM[13]andGRU[19]areproposedassolutions.
+vocationpathbehavesabnormally[9,18,21,28,29].Forinstance, Generally,GRUisoftencomparabletoLSTM,andthefewerparam-
+TraceAnomaly[21]learnsthenormalpatternsoftraces,andanom- etersandmorestraightforwardstructuremakeitidealformodel
+aliesaredetectedwhentheirpatternsdeviatefromthoseofnormal training[35].WethusapplyGRUtocapturethetimedependency
+traces.However,ontheonehand,atraceanomalyalonedoesnot ofthemultimodaldata.
+necessarilydenotesaninstancefails.Ontheotherhand,aninstance
+failuremaynotmanifestitselfinthetracedata.Therefore,using 3 MOTIVATION
+traceanomalydetectionmethodsalonecanalsoleadtomissed
+Toprovethatsingle-modaldataisinsufficienttocomprehensively
+alertsorfalsealarms.AnoFusioncancombinetracedatawithother
+capturethefailurepatternsofinstances,weadopttwodatasets(see
+modalitiestoboostanomalydetectionperformance.
+Section5.1formoredetails)foranempiricalstudy.Thesedatasets
+containthemultimodaldata(i.e.,metrics,logs,andtraces)collected
+2.2 MultimodalAnomalyDetection
+frommicroservicesystems.Italsoincludestherecordsofallfailure
+Deeplearning-basedmultimodaldatafusionhaswitnessedgreat injectionsforafairevaluation.
+successinseveralresearchfields.Forexample,videosubtitlegener- Weperformathoroughinternaldataanalysistoinvestigatethe
+ation[12],conversationbehaviorclassification[32],andemotion correlationofdifferentmodalities.Table1listssomemonitoring
+
+--- PDF PAGE 4 ---
+KDD’23,August6–10,2023,LongBeach,CA,USA. C.Zhao,M.Ma,Z.Zhong,S.Zhang,Z.Tan,X.Xiong,L.Yu,J.Feng,Y.Sun,Y.Zhang,D.Pei,Q.Lin,D.Zhang
+datacollectedfromamicroservicesystem.Manyinstancefailures highaccuracy.Therefore,weattempttodesignarobustinstance
+cannotbesuccessfullycapturedusingsingle-modaldata.Italso failuredetectionapproachbycorrelatingthemultimodaldata.
+showsthatwhenafailureoccurs,dataofdifferentmodalitiesmay
+displayanomalouspatternsatthesametime.Miningthecorrelation 4 ANOFUSION
+betweenmultimodaldatacanprovidemorecomprehensiveand
+4.1 Overview
+accurateinformationforfailuredetectiontasks.
+Moreover,weexperimenttoevaluatethefailuredetectionper- AsshowninFigure2,theworkflowofAnoFusionisdividedintothe
+formance of single-modal data-based anomaly detection meth- offlinetrainingstageandtheonlinedetectionstage.Tocapturethe
+ods.Weapplyfivepopularsingle-modalanomalydetectionmeth- heterogeneityandcorrelationamongmultimodaldata,weemploy
+ods(Section5.1),JumpStarter[25],USAD[1],LogAnomaly[27], GTNtoupdatetheheterogeneousgraphs.Moreover,toimprove
+Deeplog[5],TraceAnomaly[21],andthecombinationofJump- therobustnessofAnoFusion,weapplyGATafterGTN,making
+Starter,LogAnomaly,andTraceAnomaly,toconductmetric/log/trace itperformstablywhenthedatapatternsofthetrainingsetand
+anomalydetection,respectively.Table3liststheprecision,recall, testsetaredifferent.Inaddition,toachieveunsupervisedfailure
+and𝐹 1-scoreofthesemethods. detectionandmakeAnoFusionmoresuitablefortimeseriesdata,
+weuseGRUtopredictthemultimodaldataofthenextmoment.In
+Metricanomalydetection.JumpStarterandUSADachievelow
+theofflinetrainingstage,AnoFusionconsistsoffourmainsteps:
+performanceonthetwodatasets.JumpStarterextractsreal-time
+normal patterns from metric data, but it does not consider the • MultimodalDataSerialization.Toprepareforthefuturegraph
+patternsofhistoricaldata.USADisnotverynoise-resilient,which structure’sconstruction,AnoFusionconvertsmultimodaldata
+resultsinasignificantnumberoffalsepositivesandfalsenegatives. (i.e.,metrics,logs,andtraces)intotimeseriesusingpredefined
+Furthermore,theydonottakelogsandtracesintoaccount,thus processesandalignstheirtime.Afterserialization,AnoFusion
+they lack essential information from logs and traces for failure treatseachtimeseriesasa“datachannel”.
+detectiontasks. • GraphStreamConstruction.TobuildtherawinputsforGTN,
+AnoFusionconstructsaheterogeneousgraphcontainingallthe
+Loganomalydetection.LogAnomalyandDeeplogachieverela-
+tivelyhigh𝐹 1-scoreonD1.Itisbecausetheanomalypatternsof
+datachannelsbasedontheirconnectionsforeachmoment𝑡.
+Then,allheterogeneousgraphsformagraphstream,whichwill
+thelogdatainD1aremoreobviousandstraightforwardtoidentify
+beinputintoGTN.
+thanthoseinD2.Whenakeywordlike“ERROR”appearsinlogs,
+• FeatureFiltering.GTNupdatesthegraphstreambylearning
+thereisahighprobabilitythatitisaninstancefailure.However,
+therepresentationsofnodesintheheterogeneousgraphand
+onlyrelyingonlogdataresultsinalargenumberoffalsepositives
+capturingthecorrelationamongdifferentdatamodalities.The
+andfalsenegativesinD2,forsomefailuresdonotmanifestthem-
+updatedgraphstreamisregardedasthefeaturesoftheoriginal
+selvesobviouslyinlogs,andsomeanomalouslogsdonotindicate
+datachannels.Then,AnoFusionutilizesGATtogiveattention
+aninstancefailure.
+scorestothenodesinthegraphstream,identifyingdifferent
+Traceanomalydetection.TraceAnomalygetsunsatisfactory𝐹 1-
+patternsandachievingfeaturefiltering.
+scoreonbothdatasets.TheprecisionofTraceAnomalyislow,in-
+• FailureDetection.GRUisappliedtotemporalsequencesto
+dicatingthatthereareahugenumberoffalsepositives.Because
+predictthevaluesatthenextmomentbasedontheprevious
+TraceAnomalydeterminesanomaliesbasedononlyresponsetime.
+inputs. We train the GRU network to predict the next graph
+However,alargerresponsetimequicklyreturningtonormalstatus
+basedonthegivengraphstreamasaccuratelyaspossible.
+doesnotindicateaninstancefailure.
+Intheonlinedetectingstage,foragiventime𝑡,multimodaldata
+JLT.JLTaggregatestheresultsofJumpStarter,LogAnomaly,and
+willbeserializedaccordingtotheobservationsin[𝑡−𝜃,𝑡],where𝜃
+TraceAnomalydirectly,toformamultimodalbaseline.Theaggre-
+istheinputwindowsize.Then,weusetheserializeddatachannels
+gationmethodismajorityvoting,whichdeterminesafailureif
+toconstructaheterogeneousgraphstream.Thegraphstreamofthis
+twoormoremodalitieshaveanomaliesatacertainmoment.JLT
+windowwillbefedintothetrainedmodeltoobtaintheprediction
+suffersfromlowprecision(recall)onD1(D2),indicatingahigh
+ofthenextgraph.AnoFusioncalculatesthesimilaritybetweenthe
+falsepositive(negative)rate,becauseitignoresthecorrelationof
+predictedgraphandtheobservedgraphasthefailurescoreand
+themultimodaldata.Ontheonehand,somefailuresonlymanifest
+thendetermineswhetheritisafailure.NotethatAnoFusiondoes
+themselvesinaspecificmodalityofdata,makingthemajorityvot-
+notrestrictthedimensionsofanymodalitydata.
+ingstrategyrequiringtwoormoremodalitiestohaveanomaliesfor
+failuredetectionineffective,whichresultsinmanyfalsenegatives
+4.2 MultimodalDataSerialization
+onD2.Ontheotherhand,sinceJumpStarter,LogAnomaly,and
+TraceAnomalyallsufferfromlowprecisiononD1,theircombina- Serializationofmetricdata.Metricscollectedfrominstances
+tion,i.e.,JLT,stillexperiencesahighfalsepositiverate. areintheformoftimeseries,whichhaveaserializedstructure.
+Insummary,single-modalanomalydetectionapproachesfail Therefore, it only requires regular preprocessing steps such as
+todetectfailuresrobustlysincetheylackinsightsfromotherdata normalization.Thenormalizationprocessisgivenby:mˆ ≡m/|m|
+modalities.Additionally,simplycombiningtheanomalydetection wheremistherawmetricdataandmˆ isthenormalizeddata.It
+resultsofthesingle-modalanomalydetectionmethods,insteadof scalesindividualsamplestohaveaunitnorm,whichcanbeuseful
+miningthecorrelationsofthemultimodaldata,cannotguarantee whenusingaquadraticformsuchasthedot-producttoquantify
+thesimilarityofanypairofsamples.
+
+--- PDF PAGE 5 ---
+RobustMultimodalFailureDetectionforMicroserviceSystems KDD’23,August6–10,2023,LongBeach,CA,USA.
+① Multimodal Data Serialization ② Graph Stream Construction
+Metric Channels Timestamps Edge Types Metric
+Metric Log
+10 10 5  0
+Log  
+Log  1 5 0 1 7 0 1 7 0   0 0   Trace
+  window
+Service     
+Instance Trace Trace Time  0 0 0  0   Trained Model
+④ Failure Detection ③ Feature Filtering
+Timestamps Failure Score
+Calculate Graph
+Similarity t+1 Transformer
+G Network
+Trained Model R Threshold
+U
+Calculate
+T Graph Attention
+Similarity
+Network Failure
+Observation Prediction
+Offline Training Online Detection
+Figure2:TheframeworkofAnoFusion.Itisanunsupervisedlearningapproachwithoutusinglabelsintheofflinetraining.
+Serializationoflogdata.Parsinglogscorrectlyandextracting thetotalnumberoflogsineachwindowtoform𝑀+1timeseries,
+logtemplatesarethetwoessentialstepsoflogserialization[39]. where𝑀isthenumberoflogtemplateclusters.Thehorizontalaxis
+Weadopttheadvancedlogparsingalgorithm,Drain[10],which 𝑇𝑖𝑚𝑒𝑠𝑡𝑎𝑚𝑝correspondstotheinputlog’scollectiontime.
+hasshownitssuperiorityandefficiency,toextractlogtemplatesin Serializationoftracingdata.AnoFusionusestheslidingwindow
+AnoFusion.Thelogserializationprocessisthefollowingtwosteps: withlength𝜃 andstepsize𝛿 tosplittracingdata.Eachwindow
+(1) Clustering. To deal with log changes caused by constantly containstracingdata(intheformofRT)oftheinvocationsrelated
+updatingcode,addingnewlogs,andalteringnewlogsinactual totheinstance.Then,foreachwindow,AnoFusioncomputesthe
+microservicesystems,wefirstuseaclusteringalgorithmforthelog mean,median,range,andstandarddeviationoftheinvocationsRT,
+templates.Bygroupingsimilarlogtemplatesintoclusters,onthe producingfourtimeseries,respectively.Ifstatuscodeisavailable,
+onehand,theredundantinformationcanberemoved,andonthe AnoFusionmaytakethemasthefifthtimeseries.Wetreateach
+otherhand,thetypesoflogtemplatescanbeusedtocharacterize timeseriesasadatachannel,similartotheserializationoflogdata.
+logdata.Onceanewlogtemplateemergesduetoasoftwareup-
+Clocksynchronization.Tobuildthegraphstructuremorecon-
+date,thesimilaritybetweenthenewlogtemplateandtheprevious
+veniently,AnoFusionsynchronizestheclocksofthethreemodal
+clustercentroidscanbecalculated,anditcanbedecidedwhether
+dataafterserialization.ThegoalofAnoFusionisfailuredetection
+thenewlogtemplatebelongsinanexistingclusterorshouldbe
+forasingleinstanceandallthemonitoringdataacquirediswithin
+regardedasanewcluster.Furthermore,throughtheempiricalstudy
+thatinstance.Therefore,themonitoringdataclocksofthethree
+ofalargenumberofonlineservicesystems,weconcludethatfail-
+modalitiesarerelativelysynchronized.Themetricdataiscollected
+uresrarelyoccurinreal-worldscenarios[25].SinceAnoFusionis
+everyminute.Alogentryisgeneratedwhenaneventoccursinthe
+anunsupervisedlearningmethodbasedontheassumptionthat
+instance.Moreover,atraceisrecordedwhenarequestisprocessed.
+alltrainingsampleshavenormalpatterns,removinganomalous
+Therefore,weobtainedthefeatures(e.g.thenumberofoccurrences)
+logtemplateswillimprovethemodel’sperformance.Basedonthe
+ofmetrics,logs,andtraceseveryminuteinourscenario.
+analysismentionedabove,wefinallyutilizethe“bert-base-uncased”
+model[4]toobtainsentenceembeddingvectors,andapplytheDB-
+SCAN[33]algorithmtoclusterthesevectors.AnoFusioncomputes 4.3 GraphStreamConstruction
+thecentroidcofeachclusterCby:
+Thedatachannelswegetfromthepreviousstepcanbedescribed
+c=argmin ∑︁ |a−b| (1) as𝑋 = (cid:110) x(1),...,x(𝑁) (cid:111) ,where𝑁 isthenumberofdatachannels.
+a∈C b∈C AnoFusionconstructsaheterogeneousgraph𝐺 𝑡 foreachtimestamp
+𝑡 using the extracted data channels. The node set of graph𝐺 𝑡,
+(2)Serialization.Thecategoryofeachlogentryintheinputcan
+denotedby𝑋 𝑡,consistsofthevalueofeachdatachannelattime𝑡,
+b em e b d e e d te d r i m ng in v e e d ct b o y r c a a n l d cu t l h a a ti t n o g f t t h h e e d ce is n ta tr n o c i e d b o e f t e w a e c e h n cl i u ts st s e e r n . t A e f n t c e e r i.e.,𝑋 𝑡 = (cid:110) 𝑥 𝑡 (1),...,𝑥 𝑡 (𝑁)(cid:111) .Sincetherearethreemodalities,there
+that,AnoFusionusesaslidingwindowtosplittheinputlogdata arealsothreetypesofnodes(i.e.,metrics,logs,andtraces).Thus,
+intowindows,eachofwhichhasthewindowlength𝜃 andthestep thenumberofedgetypes𝐾 =6(i.e.,metrics-metrics,metrics-logs,
+size𝛿.Wecountthenumberofeachcategoryoflogsaswellas metrics-traces,logs-logs,log-traces,traces-traces).Theadjacency
+
+--- PDF PAGE 6 ---
+KDD’23,August6–10,2023,LongBeach,CA,USA. C.Zhao,M.Ma,Z.Zhong,S.Zhang,Z.Tan,X.Xiong,L.Yu,J.Feng,Y.Sun,Y.Zhang,D.Pei,Q.Lin,D.Zhang
+matrixforeachtypeofedgeingraph𝐺 𝑡 cannowbeexpressedas computearawattentionscoreforeachattentionheadbasedon𝐴′:
+𝐴(𝑘 A ) n ∈ oF R us 𝑁 io × n 𝑁 u , t w ili h z e e r s e t 𝑘 he = m 1 u ,. t . u . a , l 𝐾 in . formation(MI)[8]tocalculate 𝛽 𝑖 ( , ℎ 𝑗 ) =𝐿𝑒𝑎𝑘𝑦𝑅𝑒𝑙𝑢 (cid:16) 𝐴 𝑖 ′ ,𝑗 ·𝑐𝑜𝑛𝑐𝑎𝑡 (cid:16) 𝑊x(𝑖),𝑊x(𝑗) (cid:17)(cid:17) (5)
+theadjacencymatrix.Foreachdatachannelpair
+(cid:16) x(𝑖),x(𝑗) (cid:17)
+with
+where𝛽(ℎ) istheattentionscorefortheℎ-thattentionhead,𝑊
+anedgetypeof𝑘,thecorrespondingadjacencymatrixvaluecan
+denotesthelearnableparameterofalineartransformation.Then,
+becalculatedasfollows:
+AnoFusionnormalizestherawattentionscorewithsoftmaxand
+𝜏 𝜏 𝑝
+(cid:16) 𝑥(𝑖),𝑥(𝑗)(cid:17) performsnodefeatureaggregationforthe𝑖-thnode𝑥(𝑖)
+by:
+w ch h a e n r n 𝐴 e e 𝑖 ( 𝜏 , l 𝑘 𝑗 ), i ) s 𝑝 = t (cid:16) h 𝐴 x e ( ( 𝑗 𝑖 n 𝑘 ,𝑖 ) u ) ,x m = ( b 𝑗 𝑎 ∑︁ ) e = (cid:17) r 1 i o 𝑏 ∑︁ s f = t t 1 h i 𝑝 e m j (cid:16) e o 𝑥 s i 𝑎 t n ( a 𝑖 t ) m p ,𝑥 p r 𝑏 o ( s b 𝑗 ( ) a i (cid:17) . b e 𝑙 i . 𝑜 l , i 𝑔 t t y h 𝑝 e m (cid:16) l 𝑥 a e 𝑎 s n (𝑖 s g 𝑎 ) f t (cid:17) u h 𝑝 n o c (cid:16) 𝑏 f t 𝑥 i e o 𝑏 ( a n 𝑗 c ) o (cid:17) h f d x a ( ( t 𝑖 2 a ) ) 𝛽 (cid:101)𝑖 ( , ℎ 𝑗 )′ =𝑠𝑜𝑓𝑡𝑚𝑎𝑥 (cid:16) 𝛽 𝑖 ( , ℎ 𝑗 𝑁 )′(cid:17) = (cid:205) 𝑙 𝑁 e = x 1 p ex (cid:16) p 𝛽 𝑖 ( (cid:16) , ℎ 𝑗 𝛽 ) 𝑖 ( (cid:17) , ℎ 𝑙 )(cid:17) (6)
+andx(𝑗),and𝑝 (cid:16) x(𝑖) (cid:17) and𝑝 (cid:16) x(𝑗) (cid:17) arethemarginalprobability x(𝑖)′ =𝑊 𝐻 ·𝑐𝑜 ℎ 𝑛 𝐻 = 𝑐 1 𝑎𝑡(cid:169) (cid:173) ∑︁ 𝑗=1 𝑊(ℎ)x(𝑗)𝛽 (cid:101)𝑖 ( , ℎ 𝑗 )′(cid:170) (cid:174)
+mass functions of
+x(𝑖)
+and
+x(𝑗),
+respectively. After calculating
+(cid:171) (cid:172)
+MIforallchannelpairs,wenowhavethefinaladjacencymatrix
+where𝐻 isthenumberofattentionheads,𝛽
+𝑖
+(
+,
+ℎ
+𝑙
+) denotetheℎ-th
+𝐴 ∈ R𝑁×𝑁×𝐾 .𝐺 𝑡 = (𝑋 𝑡 ,𝐴) isdefinedtobetheheterogeneous headattentionscorebetweenchannel𝑖andchannel𝑙,𝑊(ℎ) and
+graphgeneratedattime𝑡.AnoFusionstacksthegraphsofeach 𝑊 𝐻 denotethelineartransformationforeachheadandfinaloutput,
+momenttogethertoformagraphstream𝐺 ={𝐺 1 ,...,𝐺 𝜏}. respectively.Thedatachannelsaresuccessivelyupdatedacrossthe
+multi-layerGraphAttentionNetwork.
+4.4 FeatureFiltering
+4.5 FailureDetection
+AnoFusionperformsfeaturefilteringbyupdatingtheheterogeneous
+graphstream𝐺 withGTNandlearningfailurepatternsbyGAT. Afterfeaturefiltering,weusetheupdatedgraphstreamtotraina
+GraphTransformerNetwork.GTNmodelstheheterogeneity failuredetectionmodelbasedonarecurrentneuralnetwork.Let
+andcorrelationofmultimodalchannelsusingtheadjacencymatrix 𝑋′ ∈R𝑁×𝜏 denotetheupdateddatachannels,wecanuseGRUto
+𝐴.GraphTransformerlayers(GTlayers)arethemaincomponent captureitscomplextemporaldependenceandpredictthevalueof
+ofGTN.Theylearnthesoftselectionandcompositerelationshipof
+datachannelsattime𝜏.TheGRUnetworkcanbeformulatedas:
+edgetypestoproduceusefulmulti-hopconnections,alsoknownas 𝑧
+𝑡
+=𝜎(cid:0)𝑊
+𝑧
+𝑋
+𝑡
+′+𝑈
+𝑧
+ℎ
+𝑡−1
++𝑏
+𝑧
+(cid:1)
+m
+th
+e
+e
+t
+i
+a
+n
+-
+p
+p
+u
+at
+t
+h
+,a
+[
+G
+43
+T
+].
+la
+S
+y
+p
+e
+e
+r
+ci
+h
+fi
+a
+c
+s
+a
+t
+ll
+w
+y,
+o
+c
+s
+o
+t
+n
+ep
+si
+s
+d
+:
+e
+F
+r
+i
+i
+r
+n
+s
+g
+t,
+t
+it
+h
+s
+e
+o
+a
+ft
+d
+l
+j
+y
+ac
+c
+e
+o
+n
+n
+c
+s
+y
+tru
+m
+c
+a
+t
+t
+s
+r
+s
+ix
+ev
+𝐴
+er
+a
+a
+s
+l
+𝑟
+𝑡
+=𝜎(cid:0)𝑊
+𝑟
+𝑋
+𝑡
+′+𝑈
+𝑟
+ℎ
+𝑡−1
++𝑏
+𝑟
+(cid:1)
+(7)
+graphstructuresfrom𝐴bya1×1convolutionallayer,whichcan ℎˆ 𝑡 =tanh (cid:0)𝑊 ℎ 𝑋 𝑡 ′+𝑈 ℎ(ℎ 𝑡−1 ⊙𝑟 𝑡)+𝑏 ℎ (cid:1)
+beformulatedas:
+ℎ
+𝑡
+=(1−𝑧 𝑡)⊙ℎ
+𝑡−1
++𝑧
+𝑡
+⊙ℎˆ
+𝑡
+,
+𝐾
+𝑄(𝑘) =𝜙 (cid:16) 𝐴,𝑊(𝑘) (cid:17) = ∑︁ 𝑤 𝑖 (𝑘)𝐴(𝑖) (3) where𝜎 denotesthesigmoidfunction,⊙denotestheHadamard
+𝑖=1
+product(i.e.,element-wiseproduct),𝑋
+𝑡
+′ istheinputvector,ℎ
+𝑡−1
+w 1c h o e n re vo 𝑄 lu (𝑘 ti ) o i n s , t 𝑊 he ( g 𝑘 e ) n ∈ er R at 1 e × d 1 g × r 𝐾 ap is h t f h o e r p ed ar g a e m ty e p te e r 𝑘 o , f 𝜙 𝜙 d ( e f n or ot e e d s g t e he ty 1 p × e ℎ i u s 𝑡 p t d i h s a e t t e h p e r g e a h v t i i e d o , d u c e s o n n h t s i r d t o a d l t e l e i n n a g s n t d h at o o e w , u ℎ t ˆ m p 𝑡 u u is t c v t h h e i e c n t c f o o a r r n m o d f i a d t t i a i m o te n e a ℎ 𝑡 c . 𝑡 t 𝑧 i n v 𝑡 e a d e t e i d o n s n o t t o v e e s k c e t t h e o p e r,
+𝑘),𝐾 isthenumberofedgetypes.Second,itcombineseach𝑄(𝑘)
+fromℎ 𝑡−1,andhowmuchinformationneedstobereceivedfrom
+throughmatrixmultiplicationtogenerateanewgraphstructure ℎˆ 𝑡.𝑟 𝑡 denotestheresetgate,controllingwhetherthecalculation
+𝐴′,a.k.a,meta-path:
+ofthecandidateactivationvectordependsontheprevioushidden
+𝐾
+state.𝑊 and𝑈 aretrainableparametermatrices,and𝑏isatrainable
+𝐴′ =𝐷−1 (cid:214) 𝑄(𝑘) (4) parametervector.AnoFusionusesthefinalhiddenstateofGRU,ℎ 𝑡,
+𝑘=1
+topredictthevalueofdatachannelsattime𝜏(i.e.,thelastmoment
+inthegraphstream):
+Notethatwealsonormalize𝐴′ by𝐷,whichdenotesthedegree
+matrix of𝐴, to ensure numerical stability. Stacking several GT 𝑋ˆ 𝜏 ′ =tanh(𝑊 𝑜 ℎ 𝜏−1 +𝑏 𝑜) (8)
+layersinGTNaimstolearnahigh-levelmeta-paththatisauseful
+relationshipofmultimodaldata. where𝑊 𝑜 and𝑏 𝑜 arethelearnableparameters.AnoFusionadopts
+GraphAttentionNetwork.Withthemeta-pathmatrix𝐴′gen- m
+ob
+e
+s
+a
+e
+n
+rv
+s
+a
+q
+t
+u
+io
+a
+n
+re
+𝑋
+d
+𝜏 ′
+er
+a
+r
+s
+o
+t
+r
+h
+(
+e
+M
+l
+S
+o
+E
+ss
+)b
+fu
+e
+n
+tw
+ct
+e
+io
+en
+n:
+thepredictedvalue𝑋ˆ 𝜏 ′andthe
+eratedbystackingmultipleGTlayers,AnoFusionemploysGAT
+o o n fm th u e lt h im ete o r d o a g l e d n a e t o a u c s h g a r n a n p e h ls st a re n a d m co to m d p i l s e t t i e n s gu th is e h f t e h a e tu s r i e gn fi ifi lt c e a ri n n c g e . L= 𝑁 1 ∥𝑋ˆ 𝜏 ′−𝑋 𝜏 ′∥2 2 (9)
+T th h i e sp m r u oc lt e i- s h s. e S a p d e a c t i t fi e c n a t l i l o y n ,f m or e e c a h c a h ni c s h m an i n s e u l t p il a iz ir ed (cid:16) x a ( s 𝑖) w ,x el ( l 𝑗 t ) o (cid:17) , s w ta e bi fi li r z s e t w up h d e a r t e ed 𝑁 us is in t g he th n is u l m os b s e f r u o n f ct d io a n ta it c e h r a at n i n ve e l l y s. . The GRU network is
+
+--- PDF PAGE 7 ---
+RobustMultimodalFailureDetectionforMicroserviceSystems KDD’23,August6–10,2023,LongBeach,CA,USA.
+4.6 OnlineDetection Table2:Thedetailedinformationofthetwodatasets.#Micro
+and#Insdenotethenumberofmicroservicesandinstances,
+Intheonlinedetectionstage,foranew-comingmultimodalmon-
+respectively.
+itoring data 𝑋 𝑡, AnoFusion will first serialize the data using its
+previoushistoricalobservations,i.e.,𝑋 𝑡−𝜃+1:𝑡−1 ,andconstructthe
+graphstream𝐺 = {𝐺 𝑡−𝜃+1 ,...,𝐺 𝑡},where𝜃 isthelengthofthe #Micro #Ins %Failures Modality #
+window.Then,thegraphstreamisfedintothetrainedmodelto Metric 734,165
+getaprediction𝑋ˆ 𝑡 for𝑋 𝑡.Wecalculatethedifferencebetweenthe D1 5 10 4.908 Log 87,974,577
+observedandpredictedvaluesforeachdatachannel𝑛[3]: Trace 28,681,438
+𝐸𝑅𝑅 𝑛 =|𝑋ˆ 𝑡 (𝑛) −𝑋 𝑡 (𝑛) | (10) Metric 3,122,168
+D2 14 28 1.243 Log 14,894,069
+Failuresmayonlyhappeninpartofthemultimodaldata,sowe Trace 9,473,763
+focusonthebiggesterror.AnoFusionutilizesthemaxfunctionto
+aggregate𝐸𝑅𝑅 𝑛(𝑡),𝑛∈ [1,𝑁]: typicalsymptomsoffailuretypes,suchasQRcodegeneration
+failure,systemstuck,filenotfound,andaccessdenied,etc.
+𝐸𝑅𝑅=m 𝑁 ax 𝐸𝑅𝑅 𝑛− (cid:101) 𝜇 (11) • Dataset2(D2)iscollectedfromalarge-scalemicroservicesystem
+𝑛=1 (cid:101) 𝜎 operatedbyacommercialbank.Thesystemhas28instancessuch
+where𝐸𝑅𝑅isthefailurescoreattime𝑡,𝜇and𝜎arethemedianand asWebservers,applicationservers,databases,etc.,andprovides
+(cid:101) (cid:101)
+inter-quartilerange(IQR)ofthesetcomposedby𝐸𝑅𝑅 𝑛,respectively. servicesformillionsofusersdaily.Failuresareinjectedintothe
+WeusemedianandIQRinsteadofmeanandstandarddeviationas systemmanuallybyprofessionaloperatorsandthemultimodal
+theyaremorerobust. monitoringdata(i.e.metrics,logs,andtraces)iscollected.In
+AnoFusionusesathresholdtodetermineifafailurehasoccurred general,thesefailurescanberesource(CPU,memory,disk)fail-
+ataspecifictime𝑡.However,usingastaticthresholdisnoteffective ures,networkfailures(networkpacketlossandnetworklatency),
+sincedatadistributionchangesovertime.Tosolvethisproblem, andapplicationfailures(VMfailures).Duetothenon-disclosure
+weemploytheExtremeValueTheory(EVT)[34]toautomatically agreement,wecannotmakethisdatasetpubliclyavailable.
+andaccuratelydeterminethethreshold.EVTisastatisticaltheory
+5.1.2 Implementation. AnoFusionisimplementedinPyTorchand
+thatidentifiestheoccurrencesofextremevaluesanddoesn’tmake
+alloftheexperimentsareconductedonaLinuxServerwithtwo
+anyassumptionsaboutdatadistribution.EVTcanbeappliedto
+16C32TIntel(R)Xeon(R)Gold5218CPU@2.30GHz,twoNVIDIA(R)
+estimatethelikelihoodofobservingtheextremevalueforanomaly
+Tesla(R)V100S,and192GBRAM.Inthemultimodaldataserial-
+detection.EVThasbeenshowntoaccuratelychoosethresholdsin izationstage,wesettheslidingwindowlength𝜃 = 60andstep
+previousfailuredetectionmethods[25,26]. size𝛿 = 1(morediscussionscanbefoundinSection5.4).Inthe
+graphstreamconstructionstage,wesetthenumberofGTlayers
+5 EVALUATION
+inGTNto5,assuggestedby[14].ForGAT,thetotalnumberof
+Inthissection,weaddressthefollowingresearchquestions: attentionheads𝐻is6(seeSection5.4formoredetails).Wesplitthe
+• RQ1:HowwelldoesAnoFusionperforminfailuredetection? multimodalmonitoringdatasetsintoatrainingsetandatestingset,
+• RQ2:DoeseachcomponentcontributetoAnoFusion? wherethetrainingsetcontainsthefront60%dataofeachinstance
+• RQ3:HowdothemajorhyperparametersofAnoFusioninfluence andthetestingsetcontainstherest40%.
+itsperformance? 5.1.3 BaselineApproaches. WeutilizeJumpStarter[25],USAD[1],
+LogAnomaly[27],Deeplog[5],TraceAnomaly[21],SCWarn[46],
+5.1 ExperimentalDesign
+andJLT(seeSection3),whichusesinglemodality,twomodalities,
+5.1.1 Datasets. To evaluate the performance of AnoFusion, we orthreemodalitiesofdataforinstancefailuredetection,asbaselines.
+conductextensiveexperimentsusingtwomicroservicesystems Forallapproaches,weusegrid-searchtosettheirparametersbest
+(formingdataset1and2,respectively).Table2liststhedetailedin- foraccuracy.
+formationofthedatasets.Thesecondcolumnindicatesthenumber
+5.1.4 EvaluationMetrics. Weadoptthewidely-usedTruePositive
+ofmicroservicesofeachdataset.Thethirdcolumnindicatesthe
+(TP),FalsePositive(FP),andFalseNegative(FN),tolabelthefailure
+numberofinstancesofeachdataset.Thefourthcolumndisplays
+detectionresultsaccordingtothegroundtruth[25,26,31].ATPis
+𝑇ℎ𝑒𝑛𝑢𝑚𝑏𝑒𝑟𝑜𝑓 𝑓𝑎𝑖𝑙𝑢𝑟𝑒𝑤𝑖𝑛𝑑𝑜𝑤𝑠
+theaveragefailureratio( 𝑇ℎ𝑒𝑡𝑜𝑡𝑎𝑙𝑛𝑢𝑚𝑏𝑒𝑟𝑜𝑓 𝑤𝑖𝑛𝑑𝑜𝑤𝑠 )ofallin- afailurebothconfirmedbyoperatorsanddetectedbyanapproach.
+stances.Thefifthcolumnlistseverymodality,andthelastcolumn AnFPisanormalwindowthatisfalselyidentifiedasafailurebyan
+showsthenumberofmetrics,logs,ortraces. approach.AnFNisamissedfailurethatshouldhavebeendetected.
+• Dataset 1 (D1) is Generic AIOps Atlas (GAIA) dataset from
+Wecalculate𝑝𝑟𝑒𝑐𝑖𝑠𝑖𝑜𝑛 =𝑇𝑃/(𝑇𝑃+𝐹𝑃),𝑟𝑒𝑐𝑎𝑙𝑙 =𝑇𝑃/(𝑇𝑃+𝐹𝑁),
+CloudWise1.Itcontainsthemultimodaldatacollectedfroma and𝐹 1-score=2·𝑝𝑟𝑒𝑐𝑖𝑠𝑖𝑜𝑛·𝑟𝑒𝑐𝑎𝑙𝑙/(𝑝𝑟𝑒𝑐𝑖𝑠𝑖𝑜𝑛+𝑟𝑒𝑐𝑎𝑙𝑙)toevaluate
+systemconsistingof10instances,whichiscollectedmorethan theoverallperformanceofeachapproach.
+0.7millionmetrics,87millionlogs,and28milliontracesintwo
+5.2 RQ1:EffectivenessofAnoFusion
+weeks.Real-worldfailuresareinjected,andTable1listssome
+Table3liststheaverageprecision,recall,andbest𝐹 1-scoreofAnoFu-
+1https://github.com/CloudWise-OpenSource sionandsevenbaselineapproachesdescribedaboveonthetwo
+
+--- PDF PAGE 8 ---
+KDD’23,August6–10,2023,LongBeach,CA,USA. C.Zhao,M.Ma,Z.Zhong,S.Zhang,Z.Tan,X.Xiong,L.Yu,J.Feng,Y.Sun,Y.Zhang,D.Pei,Q.Lin,D.Zhang
+Table3:Theaverageprecision,recall,and𝐹 1-scoreofdifferentapproachesonthetwodatasets
+Modality D1 D2
+Approach
+Metric Log Trace Precision Recall 𝐹 1-score Precision Recall 𝐹 1-score
+JumpStarter[25] ✓ 0.466 0.785 0.584 0.533 0.413 0.465
+USAD[1] ✓ 0.459 0.825 0.590 0.837 0.341 0.484
+LogAnomaly[27] ✓ 0.486 0.957 0.644 0.126 0.344 0.184
+Deeplog[5] ✓ 0.506 0.812 0.623 0.105 0.275 0.151
+TraceAnomaly[21] ✓ 0.550 0.548 0.549 0.521 0.699 0.597
+SCWarn[46] ✓ ✓ 0.547 0.425 0.447 0.633 0.891 0.734
+JLT ✓ ✓ ✓ 0.461 0.940 0.618 0.800 0.344 0.481
+AnoFusion ✓ ✓ ✓ 0.795 0.945 0.857 0.863 0.991 0.922
+datasets.AnoFusionoutperformsallbaselineapproachesonboth Table4:Theaverageprecision,recall,and𝐹 1-scoreofAnoFu-
+datasets,withbest𝐹 1-scoreof0.857and0.922,respectively. sionanddifferentmodelvariants
+Multimodal failure detection. SCWarn performs better than
+single-modalfailuredetectionmethodsbysimultaneouslyprocess- Approach Precision Recall 𝐹 1-score
+ingmetricsandlogsonD2.However,itignorestracingdata,which
+w/oGTN 0.608 0.891 0.723
+iscrucialfordetectinginstancefailuresinmicroservicesystems
+useGCN 0.769 0.847 0.802
+onD1.ThecorrelationamongeachmodalityisignoredbyJLT, D1
+w/oGAT 0.602 0.643 0.615
+yieldingsub-optimalperformanceonbothdatasets.
+AnoFusion 0.795 0.945 0.857
+AnoFusion.Ourapproachiseffectivetodetectinstancefailures,
+w/oGTN 0.742 0.917 0.859
+withtheaveragebest𝐹 1-scoresignificantlyhigherthanexisting
+useGCN 0.819 0.863 0.823
+methods.ComparedwithSCWarnwhichcombinestwomodalities, D2
+w/oGAT 0.698 0.735 0.700
+theaveragebest𝐹 1-scoreofAnoFusionoutperformsitby41.00%and
+AnoFusion 0.863 0.991 0.922
+18.80%onbothdatasets,respectively.ComparedwithJLT,usinga
+heterogeneousgraphstreamsignificantlyimprovestheeffective-
+nessofinstancefailuredetection.AnoFusionoutperformsJLTby 5.3 RQ2:ContributionsofComponents
+23.90%and44.10%onbothdatasets,respectively.
+Todemonstratethecontributionandimportanceofeachcomponent
+Robustnesscomparison.Firstly,weusetwodatasetsfromdiffer- ofAnoFusion,wecreatethreevariantsofAnoFusionandconducta
+entmicroservicesystems,andtheexperimentsshowthatAnoFusion seriesofexperimentstocomparetheirperformance.Thesevariants
+achievessuperiordetectionresultsonbothdatasets,outperform- are:1)AnoFusionw/oGTN.TostudythesignificanceofGTNin
+ingallbaselines.Secondly,eachdatasetcontainsmanykindsof modelingtheheterogeneityandcorrelationofmultimodaldata,we
+instances.Weanalyzethefailuredetectionresultsofeachinstance removeGTNfromAnoFusion.2)AnoFusionusingGCN.Toshow
+foreachdataset.The𝐹 1-scoresofAnoFusionforallinstancesonD1 theimportanceofassigningdifferentweightstoneighbornodes
+rangefrom0.784to0.977,andfrom0.805to0.986onD2.Wecan inthegraph(attentionmechanism),weuseGCNinsteadofGAT
+seethatAnoFusionperformswellinbothD1andD2.Therefore,we inAnoFusion.3)AnoFusionw/oGAT.Todemonstratehowthe
+believethesearetestamentstotherobustnessofAnoFusion. graphattentionmechanismimprovesAnoFusion’sperformance,we
+Efficiency comparison. We simulate the online detection en- removetheGATfromAnoFusion.
+vironment and analyze the complexity of AnoFusion and other Table4liststheaverageprecision,recall,andbest𝐹 1-scoreof
+baselinesbycountingthedetectiontimerequiredforeachslid- thethreevariantsdiscussedaboveontwodatasets.WhenGTN
+ingwindow.AnoFusiontakesawindowcontainingthedatapoints isremoved,bothprecisionandrecallaredegraded.Thedecrease
+asinputandthencalculatesafailurescorethroughthetrained inprecisionisespeciallyobvious.ItshowsthatGTNcancapture
+model.TheaveragerunningtimeofAnoFusion’sonlinefailurede- heterogeneityandcorrelationamongmultimodaldatainheteroge-
+tectionis1.932×10−2s.Thepredictiontimeofotherbaselinesis neousgraphs,therebyreducingfalsepositivesbycomprehensively
+9.810×10−3sforJumpStarter,8.975×10−5sforUSAD,1.707×10−3s synthesizingtheinformationofthethreemodalities.Bothprecision
+for LogAnomaly, 1.165 × 10−4s for Deeplog, 1.102 × 10−2s for andrecalldecreasewhenGCNissubstitutedwithGAT,demonstrat-
+TraceAnomaly,3.331×10−3sforSCWarn,and9.958×10−3sfor ingthatGATismoreefficientthanGCNfordynamicallychanging
+JLT.Sinceoperatorsperformfailuredetectioneveryminute,ev- timeseries.Eachnodeintheheterogeneousgraphstreambehaves
+eryapproachcansatisfythisrequirement.Furthermore,AnoFusion differently.TreatingallnodesequallylikeGCNintroducesnoiseto
+achieves satisfactory results by leveraging the three modalities, thegraphstreamthatcaninterferewiththemodeltrainingprocess.
+whichissuperiorconsideringbotheffectivenessandperformance. Furthermore,whenGATisnolongerpresentinAnoFusion,the
+precisionandrecalldropdramatically,whichindicatesthatGAT
+canfocusonthemostrelevantinformationinthegraph.
+
+--- PDF PAGE 9 ---
+RobustMultimodalFailureDetectionforMicroserviceSystems KDD’23,August6–10,2023,LongBeach,CA,USA.
+H
+erocs-F
+1
+w
+erocs-F
+1
+wanttodetectfailuresaccuratelyratherthanreceivealargenumber
+offalsealarms.Therefore,concentratingsolelyon𝐹 1-scoreisnot
+appropriateforallinstances.Inthefuture,weplantoprovidean
+interfacethatallowsoperatorstoapplyadditionalweights,valuing
+oneofprecisionorrecallmorethantheother.
+6.2 ThreattoValidity
+Failurelabeling.Inourexperiments,weusetwodatasets,one
+ispublicandanotheriscollectedfromareal-worldcommercial
+Figure3:𝐹 1-scoreofAnoFusionunderdifferentparameters bank.Thegroundtruthlabelsarebasedonfailureinjection(D1)
+andmanuallycheckingfailurereportsbysystemoperators(D2).
+Manuallylabelinganomaliesmaycontainfewnoises.Webelieve
+5.4 RQ3:HyperparametersSensitivity
+thatthelabelingnoisesareminimalduetotheextensiveexperience
+Wemainlydiscusstheeffectoftwohyperparametersinmultimodal ofoperators.Furthermore,toreducetheimpactoflabelingnoises,
+dataserializationandgraphstreamconstructiononAnoFusion’sper- weadoptwidelyusedevaluationmetrictodetectcontinuousfailure
+formance.Figure3showshowtheaveragebest𝐹 1-scoreofAnoFu- segmentsinsteadofpoint-wiseanomalies[26].
+sionchangeswithdifferentvaluesofhyperparameters.Specifically,
+Granularityeffect.Thegranularityofthemonitoringdatainour
+weincreasethesizeoftheslidingwindowindataserialization,𝜃,
+experimentsisoneminute,butthishasnoeffectonthealgorithm’s
+from10to120.Fromtheexperimentresults,wecanfindthatif𝜃
+effectiveness.Webelievethealgorithmcanstillworkwithfineror
+istoolarge,itwillcontaintoomanyseasonalvariationsandwill
+coarser-graineddatawithoutadditionaleffort.Thedatasetsinour
+struggletoreconstructthecurrentstate;if𝜃istoosmall,themodel
+experimentsarestilllimited.WewillexperimentAnoFusionwitha
+willbeunabletocomprehensivelylearntheinformationfromhis-
+largerscaleofsysteminthefuture.
+toricaldata,degradingAnoFusion’sperformance.𝜃 between40and
+90canleadtorelativelygoodperformance.Thus,weset𝜃 =60. Datamodalities.Ourworkinvolvestheutilizationofthreemodal-
+WechangethenumberofattentionheadsinGAT,𝐻,from2to itiesofmonitoringdata.Webelievethatinareal-worldscenario,
+10.An𝐻 of6yieldsthebestperformance.If𝐻 istoosmall,the aslongasthemodalitiesofthemonitoringdataarenolessthan
+two,thealgorithmwillfunctionnormally.Furthermore,ifafailure
+performanceofAnoFusionwillslightlydegradeduetothedecrease
+inmodelsize;if𝐻 istoolarge,moreredundantinformationmay manifestsitselfinonlyonetypeofmonitoringdata,AnoFusion
+willconsidernotonlythecorrelationamonghistoricalmultimodal
+begenerated,interferingwiththetrainingofAnoFusion[38].
+data,butalsotheproportionofanomalousinallmonitoringdata
+todeterminewhethertheinstancefails.
+6 DISCUSSION
+6.1 LessonsLearned 7 CONCLUSION
+Collectingmultimodalmonitoringdatainreal-time.Weuti- Failuredetectioninthemicroservicesystemsisofgreatimportance
+lizemultimodaldatatodetectfailuresininstances.Ensuringthe forservicereliability.Inthiswork,weproposeAnoFusion,oneof
+realtimedataqualityofdifferentmodalitiesisessentialforthedeep thefirststudiesusingmultimodaldata,i.e.,metrics,logs,andtraces,
+learningmodels.Fromourreal-worldexperienceinMicrosoft,we to detect failures of instances in microservice systems robustly.
+suggestleveragingtheopen-sourcemonitoringsystemsorAzure Specifically,wefirstserializethedataofthethreemodalitiesand
+Monitor2tobuildthedatapipeline.Forexample,Prometheus3can constructaheterogeneousgraphstructure.Then,GTNisutilizedto
+beusedtocollectmetrics.ELK(Elasticsearch,Logstash,andKibana) updatetheheterogeneousgraph,withGATbeingusedtocapture
+Stack4areusedtocollectlogs.Skywalking5canbeusedtocollect significantfeatures.Finally,weuseGRUtopredictthedatapat-
+traces.Additionally,16daysofdataareutilizedfortraining.When ternatthenextmoment.Thedeviationbetweenthepredictedand
+themodeltrainingiscompleted,AnoFusiondigests10minutesof observedvaluesisusedasthefailurescores.WeapplyAnoFusion
+datatoperformreal-timedetectionintheonlinedetectionstage, ontwomicroservicesystems,whichprovesthatitsignificantly
+whichisefficientandeffectiveinpractice. improvesthe𝐹 1-scoreforfailuredetection.Webelievethattheso-
+Selectionofevaluationmetrics.Intheonlinedetectionstage, lutionofapplyingmultimodaldataforfailuredetectionwillbenefit
+AnoFusionadoptstheEVTalgorithm[34]toobtainthebest𝐹 1-score. moreareasbeyondmicroservicesystems.
+Inpractice,however,operatorsmayhavevaryingpreferencesfor
+precisionandrecalldependingonthebusinesstype.Forexample, ACKNOWLEDGMENTS
+operatorsgenerallyseekahighrecallforthecoreservicesthat TheworkwassupportedbytheNationalNaturalScienceFoun-
+provideonlineshoppingservices.Theydonotwanttomissany dationofChina(GrantNo.62272249and62072264),theNatural
+potentialfailuresthatcouldnegativelyimpactusers’experience. ScienceFoundationofTianjin(GrantNo.21JCQNJC00180),and
+Precisionisoftenpreferableindataanalyticservices.Operators theBeijingNationalResearchCenterforInformationScienceand
+Technology(BNRist).
+2https://azure.microsoft.com/en-us/products/monitor
+3https://prometheus.io
+4https://www.elastic.co/what-is/elk-stack
+5https://skywalking.apache.org
+
+--- PDF PAGE 10 ---
+KDD’23,August6–10,2023,LongBeach,CA,USA. C.Zhao,M.Ma,Z.Zhong,S.Zhang,Z.Tan,X.Xiong,L.Yu,J.Feng,Y.Sun,Y.Zhang,D.Pei,Q.Lin,D.Zhang
+REFERENCES
+EleventhSymposiumonEducationalAdvancesinArtificialIntelligence,EAAI2021,
+[1] JulienAudibert,PietroMichiardi,FrédéricGuyard,SébastienMarti,andMariaA. VirtualEvent,February2-9,2021.AAAIPress,1808–1816. https://ojs.aaai.org/
+Zuluaga.2020.USAD:UnSupervisedAnomalyDetectiononMultivariateTime index.php/AAAI/article/view/16275
+Series.InKDD’20:The26thACMSIGKDDConferenceonKnowledgeDiscovery [16] ThomasN.KipfandMaxWelling.2017. Semi-SupervisedClassificationwith
+andDataMining,VirtualEvent,CA,USA,August23-27,2020,RajeshGupta, GraphConvolutionalNetworks.In5thInternationalConferenceonLearning
+YanLiu,JiliangTang,andB.AdityaPrakash(Eds.).ACM,3395–3404. https: Representations,ICLR2017,Toulon,France,April24-26,2017,ConferenceTrack
+//doi.org/10.1145/3394486.3403392 Proceedings.OpenReview.net. https://openreview.net/forum?id=SJU4ayYgl
+[2] AWS.2021.SummaryoftheAWSServiceEventintheNorthernVirginia(US- [17] NikolayLaptev,SaeedAmizadeh,andIanFlint.2015. GenericandScalable
+EAST-1)Region.(2021). https://aws.amazon.com/cn/message/12721/. FrameworkforAutomatedTime-seriesAnomalyDetection.InProceedingsof
+[3] AilinDengandBryanHooi.2021.GraphNeuralNetwork-BasedAnomalyDe- the21thACMSIGKDDInternationalConferenceonKnowledgeDiscoveryand
+tectioninMultivariateTimeSeries.InThirty-FifthAAAIConferenceonArtificial DataMining,Sydney,NSW,Australia,August10-13,2015,LongbingCao,Chengqi
+Intelligence,AAAI2021,Thirty-ThirdConferenceonInnovativeApplicationsofAr- Zhang,ThorstenJoachims,GeoffreyI.Webb,DragosD.Margineantu,andGraham
+tificialIntelligence,IAAI2021,TheEleventhSymposiumonEducationalAdvances Williams(Eds.).ACM,1939–1947. https://doi.org/10.1145/2783258.2788611
+inArtificialIntelligence,EAAI2021,VirtualEvent,February2-9,2021.AAAIPress, [18] ZeyanLi,JunjieChen,RuiJiao,NengwenZhao,ZhijunWang,ShuweiZhang,
+4027–4035. https://ojs.aaai.org/index.php/AAAI/article/view/16523 YanjunWu,LongJiang,LeiqinYan,ZikaiWang,ZhekangChen,WenchiZhang,
+[4] JacobDevlin,Ming-WeiChang,KentonLee,andKristinaToutanova.2019.BERT: XiaohuiNie,KaixinSui,andDanPei.2021.PracticalRootCauseLocalization
+Pre-trainingofDeepBidirectionalTransformersforLanguageUnderstanding.In forMicroserviceSystemsviaTraceAnalysis.In29thIEEE/ACMInternational
+Proceedingsofthe2019ConferenceoftheNorthAmericanChapteroftheAssocia- SymposiumonQualityofService,IWQOS2021,Tokyo,Japan,June25-28,2021.
+tionforComputationalLinguistics:HumanLanguageTechnologies,NAACL-HLT IEEE,1–10. https://doi.org/10.1109/IWQOS52092.2021.9521340
+2019,Minneapolis,MN,USA,June2-7,2019,Volume1(LongandShortPapers),Jill [19] ZheLi,PeisongWang,HanqingLu,andJianCheng.2019.Readingselectively
+Burstein,ChristyDoran,andThamarSolorio(Eds.).AssociationforComputa- viaBinaryInputGatedRecurrentUnit.InProceedingsoftheTwenty-Eighth
+tionalLinguistics,4171–4186. https://doi.org/10.18653/v1/n19-1423 InternationalJointConferenceonArtificialIntelligence,IJCAI2019,Macao,China,
+[5] MinDu,FeifeiLi,GuinengZheng,andVivekSrikumar.2017.DeepLog:Anomaly August10-16,2019,SaritKraus(Ed.).ijcai.org,5074–5080. https://doi.org/10.
+DetectionandDiagnosisfromSystemLogsthroughDeepLearning.InProceedings 24963/ijcai.2019/705
+ofthe2017ACMSIGSACConferenceonComputerandCommunicationsSecurity, [20] DapengLiu,YoujianZhao,HaowenXu,YongqianSun,DanPei,JiaoLuo,Xiaowei
+CCS2017,Dallas,TX,USA,October30-November03,2017,BhavaniM.Thurais- Jing,andMeiFeng.2015.Opprentice:TowardsPracticalandAutomaticAnomaly
+ingham,DavidEvans,TalMalkin,andDongyanXu(Eds.).ACM,1285–1298. DetectionThroughMachineLearning.InProceedingsofthe2015ACMInternet
+https://doi.org/10.1145/3133956.3134015 MeasurementConference,IMC2015,Tokyo,Japan,October28-30,2015,Kenjiro
+[6] MostafaFarshchi,Jean-GuySchneider,IngoWeber,andJohnGrundy.2018. Cho,KensukeFukuda,VivekS.Pai,andNeilSpring(Eds.).ACM,211–224. https:
+Metricselectionandanomalydetectionforcloudoperationsusinglogandmetric //doi.org/10.1145/2815675.2815679
+correlationanalysis.J.Syst.Softw.137(2018),531–549. https://doi.org/10.1016/j. [21] PingLiu,HaowenXu,QianyuOuyang,RuiJiao,ZhekangChen,ShenglinZhang,
+jss.2017.03.012 JiahaiYang,LinlinMo,JiceZeng,WenmanXue,andDanPei.2020. Unsuper-
+[7] YingFu,MengYan,JianXu,JianguoLi,ZhongxinLiu,XiaohongZhang,andDan visedDetectionofMicroserviceTraceAnomaliesthroughService-LevelDeep
+Yang.2022.Investigatingandimprovinglogparsinginpractice.InProceedings BayesianNetworks.In31stIEEEInternationalSymposiumonSoftwareRelia-
+ofthe30thACMJointEuropeanSoftwareEngineeringConferenceandSymposium bilityEngineering,ISSRE2020,Coimbra,Portugal,October12-15,2020,Marco
+ontheFoundationsofSoftwareEngineering.1566–1577. Vieira,HenriqueMadeira,NunoAntunes,andZhengZheng(Eds.).IEEE,48–58.
+[8] WeihaoGao,SreeramKannan,SewoongOh,andPramodViswanath.2017.Esti- https://doi.org/10.1109/ISSRE5003.2020.00014
+matingMutualInformationforDiscrete-ContinuousMixtures.InAdvancesin [22] YudongLiu,XuZhang,ShilinHe,HongyuZhang,LiqunLi,YuKang,YongXu,
+NeuralInformationProcessingSystems30:AnnualConferenceonNeuralInfor- MinghuaMa,QingweiLin,YingnongDang,SaravanRajmohan,andDongmei
+mationProcessingSystems2017,December4-9,2017,LongBeach,CA,USA,Is- Zhang.2022. UniParser:AUnifiedLogParserforHeterogeneousLogData.
+abelleGuyon,UlrikevonLuxburg,SamyBengio,HannaM.Wallach,RobFergus, InProceedingsoftheWebConference(WWW’22).ACM,1893–1901. https:
+S.V.N.Vishwanathan,andRomanGarnett(Eds.).5986–5997.https://proceedings. //doi.org/10.1145/3485447.3511993
+neurips.cc/paper/2017/hash/ef72d53990bc4805684c9b61fa64a102-Abstract.html [23] MinghuaMa,YudongLiu,YuangTong,HaozheLi,PuZhao,YongXu,Hongyu
+[9] XiaofengGuo,XinPeng,HanzhangWang,WanxueLi,HuaiJiang,DanDing, Zhang,ShilinHe,LuWang,YingnongDang,SaravanakumarRajmohan,and
+TaoXie,andLiangfeiSu.2020. Graph-basedtraceanalysisformicroservice QingweiLin.2022.AnEmpiricalInvestigationofMissingDataHandlinginCloud
+architectureunderstandingandproblemdiagnosis.InProceedingsofthe28th NodeFailurePrediction.InProceedingsoftheEuropeanSoftwareEngineering
+ACMJointMeetingonEuropeanSoftwareEngineeringConferenceandSymposium ConferenceandSymposiumontheFoundationsofSoftwareEngineering(ESEC/FSE).
+ontheFoundationsofSoftwareEngineering.1387–1397. 1453–1464.
+[10] PinjiaHe,JiemingZhu,ZibinZheng,andMichaelR.Lyu.2017. Drain:An [24] MinghuaMa,ZhengYin,ShenglinZhang,ShengWang,ChristopherZheng,Xin-
+OnlineLogParsingApproachwithFixedDepthTree.In2017IEEEInternational haoJiang,HanwenHu,ChengLuo,YilinLi,NengjunQiu,etal.2020.Diagnosing
+ConferenceonWebServices,ICWS2017,Honolulu,HI,USA,June25-30,2017,Ilkay RootCausesofIntermittentSlowQueriesinCloudDatabases.InPVLDB,Vol.13.
+AltintasandShipingChen(Eds.).IEEE,33–40. https://doi.org/10.1109/ICWS. 1176–1189.
+2017.13 [25] MinghuaMa,ShenglinZhang,JunjieChen,JimXu,HaozheLi,YongliangLin,
+[11] ShilinHe,XuZhang,PinjiaHe,YongXu,LiqunLi,YuKang,MinghuaMa, XiaohuiNie,BoZhou,YongWang,andDanPei.2021.Jump-StartingMultivariate
+YiningWei,YingnongDang,SaravanakumarRajmohan,etal.2022.Anempirical TimeSeriesAnomalyDetectionforOnlineServiceSystems.In2021USENIX
+studyofloganalysisatMicrosoft.InProceedingsofthe30thACMJointEuropean AnnualTechnicalConference,USENIXATC2021,July14-16,2021,IrinaCalciuand
+SoftwareEngineeringConferenceandSymposiumontheFoundationsofSoftware GeoffKuenning(Eds.).USENIXAssociation,413–426. https://www.usenix.org/
+Engineering.1465–1476. conference/atc21/presentation/ma
+[12] VladimirIashinandEsaRahtu.2020.Multi-modalDenseVideoCaptioning.In [26] MinghuaMa,ShenglinZhang,DanPei,XinHuang,andHongweiDai.2018.
+2020IEEE/CVFConferenceonComputerVisionandPatternRecognition,CVPR RobustandRapidAdaptionforConceptDriftinSoftwareSystemAnomaly
+Workshops2020,Seattle,WA,USA,June14-19,2020.ComputerVisionFoundation Detection.In29thIEEEInternationalSymposiumonSoftwareReliabilityEngineer-
+/IEEE,4117–4126. https://doi.org/10.1109/CVPRW50498.2020.00487 ing,ISSRE2018,Memphis,TN,USA,October15-18,2018,SudiptoGhosh,Roberto
+[13] ChenJiaandYueZhang.2020.Multi-CellCompositionalLSTMforNERDomain Natella,BojanCukic,RobinS.Poston,andNunoLaranjeiro(Eds.).IEEEComputer
+Adaptation.InProceedingsofthe58thAnnualMeetingoftheAssociationfor Society,13–24. https://doi.org/10.1109/ISSRE.2018.00013
+ComputationalLinguistics,ACL2020,Online,July5-10,2020,DanJurafsky,Joyce [27] WeibinMeng,YingLiu,YichenZhu,ShenglinZhang,DanPei,YuqingLiu,Yihao
+Chai,NatalieSchluter,andJoelR.Tetreault(Eds.).AssociationforComputational Chen,RuizhiZhang,ShiminTao,PeiSun,andRongZhou.2019.LogAnomaly:
+Linguistics,5906–5917. https://doi.org/10.18653/v1/2020.acl-main.524 UnsupervisedDetectionofSequentialandQuantitativeAnomaliesinUnstruc-
+[14] ZiyuJia,YoufangLin,JingWang,ZhiyangFeng,XianghengXie,andCaijieChen. turedLogs.InProceedingsoftheTwenty-EighthInternationalJointConferenceon
+2021. HetEmotionNet:Two-StreamHeterogeneousGraphRecurrentNeural ArtificialIntelligence,IJCAI2019,Macao,China,August10-16,2019,SaritKraus
+NetworkforMulti-modalEmotionRecognition.InMM’21:ACMMultimedia (Ed.).ijcai.org,4739–4745. https://doi.org/10.24963/ijcai.2019/658
+Conference,VirtualEvent,China,October20-24,2021,HengTaoShen,Yueting [28] SashoNedelkoski,JorgeS.Cardoso,andOdejKao.2019.AnomalyDetectionand
+Zhuang,JohnR.Smith,YangYang,PabloCesar,FlorianMetze,andBalakrishnan ClassificationusingDistributedTracingandDeepLearning.In19thIEEE/ACM
+Prabhakaran(Eds.).ACM,1047–1056. https://doi.org/10.1145/3474085.3475583 InternationalSymposiumonCluster,CloudandGridComputing,CCGRID2019,
+[15] SoopilKim,SionAn,PhilipChikontwe,andSangHyunPark.2021. Bidirec- Larnaca,Cyprus,May14-17,2019.IEEE,241–250.https://doi.org/10.1109/CCGRID.
+tionalRNN-basedFewShotLearningfor3DMedicalImageSegmentation.In 2019.00038
+Thirty-FifthAAAIConferenceonArtificialIntelligence,AAAI2021,Thirty-Third [29] SashoNedelkoski,JorgeS.Cardoso,andOdejKao.2019.AnomalyDetectionfrom
+ConferenceonInnovativeApplicationsofArtificialIntelligence,IAAI2021,The SystemTracingDataUsingMultimodalDeepLearning.In12thIEEEInternational
+ConferenceonCloudComputing,CLOUD2019,Milan,Italy,July8-13,2019,Elisa
+
+--- PDF PAGE 11 ---
+RobustMultimodalFailureDetectionforMicroserviceSystems KDD’23,August6–10,2023,LongBeach,CA,USA.
+Bertino,CarlK.Chang,PeterChen,ErnestoDamiani,MichaelGoul,andKat- 18653/v1/p19-1580
+sunoriOyama(Eds.).IEEE,179–186. https://doi.org/10.1109/CLOUD.2019.00038 [39] LingzhiWang,NengwenZhao,JunjieChen,PinnongLi,WenchiZhang,and
+[30] RodolfoPicoreti,AlexandrePereiradoCarmo,FelippeMendonçadeQueiroz, KaixinSui.2020.Root-CauseMetricLocationforMicroserviceSystemsviaLog
+AniltonSallesGarcia,RaquelFrizeraVassallo,andDimitraSimeonidou.2018. AnomalyDetection.In2020IEEEInternationalConferenceonWebServices(ICWS).
+MultilevelObservabilityinCloudOrchestration.In2018IEEE16thIntlConf 142–150. https://doi.org/10.1109/ICWS49710.2020.00026
+onDependable,AutonomicandSecureComputing,16thIntlConfonPervasive [40] LianghaoXia,ChaoHuang,YongXu,PengDai,XiyueZhang,HongshengYang,
+IntelligenceandComputing,4thIntlConfonBigDataIntelligenceandComputing JianPei,andLiefengBo.2021.Knowledge-EnhancedHierarchicalGraphTrans-
+andCyberScienceandTechnologyCongress,DASC/PiCom/DataCom/CyberSciTech formerNetworkforMulti-BehaviorRecommendation.InThirty-FifthAAAICon-
+2018,Athens,Greece,August12-15,2018.IEEEComputerSociety,776–784. https: ferenceonArtificialIntelligence,AAAI2021,Thirty-ThirdConferenceonInnovative
+//doi.org/10.1109/DASC/PiCom/DataCom/CyberSciTec.2018.00134 ApplicationsofArtificialIntelligence,IAAI2021,TheEleventhSymposiumonEdu-
+[31] HanshengRen,BixiongXu,YujingWang,ChaoYi,CongruiHuang,Xiaoyu cationalAdvancesinArtificialIntelligence,EAAI2021,VirtualEvent,February2-9,
+Kou,TonyXing,MaoYang,JieTong,andQiZhang.2019.Time-SeriesAnom- 2021.AAAIPress,4486–4493. https://ojs.aaai.org/index.php/AAAI/article/view/
+alyDetectionServiceatMicrosoft.InProceedingsofthe25thACMSIGKDD 16576
+InternationalConferenceonKnowledgeDiscovery&DataMining,KDD2019,An- [41] ShiYing,BingmingWang,LuWang,QingshanLi,YishiZhao,JiangaShang,Hao
+chorage,AK,USA,August4-8,2019,AnkurTeredesai,VipinKumar,YingLi, Huang,GuoliCheng,ZheYang,andJiangyiGeng.2021.AnImprovedKNN-Based
+RómerRosales,EvimariaTerzi,andGeorgeKarypis(Eds.).ACM,3009–3017. EfficientLogAnomalyDetectionMethodwithAutomaticallyLabeledSamples.
+https://doi.org/10.1145/3292500.3330680 ACMTransactionsonKnowledgeDiscoveryfromData(TKDD)15,3(2021),1–22.
+[32] TulikaSaha,AdityaPrakashPatra,SriparnaSaha,andPushpakBhattacharyya. [42] GuangbaYu,PengfeiChen,HongyangChen,ZijieGuan,ZichengHuang,Linxiao
+2020.TowardsEmotion-aidedMulti-modalDialogueActClassification.InPro- Jing,TianjunWeng,XinmengSun,andXiaoyunLi.2021.MicroRank:End-to-End
+ceedingsofthe58thAnnualMeetingoftheAssociationforComputationalLinguis- LatencyIssueLocalizationwithExtendedSpectrumAnalysisinMicroservice
+tics,ACL2020,Online,July5-10,2020,DanJurafsky,JoyceChai,NatalieSchluter, Environments.InWWW’21:TheWebConference2021,VirtualEvent/Ljubljana,
+andJoelR.Tetreault(Eds.).AssociationforComputationalLinguistics,4361–4372. Slovenia,April19-23,2021,JureLeskovec,MarkoGrobelnik,MarcNajork,Jie
+https://doi.org/10.18653/v1/2020.acl-main.402 Tang,andLeilaZia(Eds.).ACM/IW3C2,3087–3098. https://doi.org/10.1145/
+[33] ErichSchubert,JörgSander,MartinEster,HansPeterKriegel,andXiaowei 3442381.3449905
+Xu.2017.DBSCANRevisited,Revisited:WhyandHowYouShould(Still)Use [43] SeongjunYun,MinbyulJeong,RaehyunKim,JaewooKang,andHyunwooJ.Kim.
+DBSCAN.ACMTrans.DatabaseSyst.42,3,Article19(jul2017),21pages. https: 2019.GraphTransformerNetworks.InAdvancesinNeuralInformationProcessing
+//doi.org/10.1145/3068335 Systems32:AnnualConferenceonNeuralInformationProcessingSystems2019,
+[34] AlbanSiffer,Pierre-AlainFouque,AlexandreTermier,andChristineLargouët. NeurIPS2019,December8-14,2019,Vancouver,BC,Canada,HannaM.Wallach,
+2017.AnomalyDetectioninStreamswithExtremeValueTheory.InProceedings HugoLarochelle,AlinaBeygelzimer,Florenced’Alché-Buc,EmilyB.Fox,and
+ofthe23rdACMSIGKDDInternationalConferenceonKnowledgeDiscoveryand RomanGarnett(Eds.).11960–11970. https://proceedings.neurips.cc/paper/2019/
+DataMining,Halifax,NS,Canada,August13-17,2017.ACM,1067–1075. https: hash/9d63484abb477c97640154d40595a3bb-Abstract.html
+//doi.org/10.1145/3097983.3098144 [44] XuZhang,YongXu,QingweiLin,BoQiao,HongyuZhang,YingnongDang,
+[35] YaSu,YoujianZhao,ChenhaoNiu,RongLiu,WeiSun,andDanPei.2019.Robust ChunyuXie,XinshengYang,QianCheng,ZeLi,JunjieChen,XiaotingHe,Ran-
+AnomalyDetectionforMultivariateTimeSeriesthroughStochasticRecurrent dolphYao,Jian-GuangLou,MuraliChintalapati,FuraoShen,andDongmeiZhang.
+NeuralNetwork.InProceedingsofthe25thACMSIGKDDInternationalConference 2019.Robustlog-basedanomalydetectiononunstablelogdata.InProceedings
+onKnowledgeDiscovery&DataMining,KDD2019,Anchorage,AK,USA,August oftheACMJointMeetingonEuropeanSoftwareEngineeringConferenceand
+4-8,2019,AnkurTeredesai,VipinKumar,YingLi,RómerRosales,EvimariaTerzi, SymposiumontheFoundationsofSoftwareEngineering,ESEC/SIGSOFTFSE2019,
+andGeorgeKarypis(Eds.).ACM,2828–2837. https://doi.org/10.1145/3292500. Tallinn,Estonia,August26-30,2019,MarlonDumas,DietmarPfahl,SvenApel,and
+3330672 AlessandraRusso(Eds.).ACM,807–817. https://doi.org/10.1145/3338906.3338931
+[36] PetarVelickovic,GuillemCucurull,ArantxaCasanova,AdrianaRomero,Pietro [45] ZiweiZhang,PengCui,andWenwuZhu.2022. DeepLearningonGraphs:A
+Liò,andYoshuaBengio.2018.GraphAttentionNetworks.In6thInternational Survey.IEEETrans.Knowl.DataEng.34,1(2022),249–270. https://doi.org/10.
+ConferenceonLearningRepresentations,ICLR2018,Vancouver,BC,Canada,April30 1109/TKDE.2020.2981333
+-May3,2018,ConferenceTrackProceedings.OpenReview.net. https://openreview. [46] NengwenZhao,JunjieChen,ZhaoyangYu,HonglinWang,JiesongLi,BinQiu,
+net/forum?id=rJXMpikCZ HongyuXu,WenchiZhang,KaixinSui,andDanPei.2021.Identifyingbadsoft-
+[37] S.VijayanandandS.Saravanan.2022.Adeeplearningmodelbasedanomalous warechangesviamultimodalanomalydetectionforonlineservicesystems.In
+behaviordetectionforsupportingverifiableaccesscontrolschemeincloud ESEC/FSE’21:29thACMJointEuropeanSoftwareEngineeringConferenceandSym-
+servers.J.Intell.FuzzySyst.42,6(2022),6171–6181. https://doi.org/10.3233/JIFS- posiumontheFoundationsofSoftwareEngineering,Athens,Greece,August23-28,
+212572 2021,DiomidisSpinellis,GeorgiosGousios,MarshaChechik,andMassimilianoDi
+[38] ElenaVoita,DavidTalbot,FedorMoiseev,RicoSennrich,andIvanTitov.2019. Penta(Eds.).ACM,527–539. https://doi.org/10.1145/3468264.3468543
+AnalyzingMulti-HeadSelf-Attention:SpecializedHeadsDotheHeavyLifting, [47] XiangZhou,XinPeng,TaoXie,JunSun,ChaoJi,WenhaiLi,andDanDing.
+theRestCanBePruned.InProceedingsofthe57thConferenceoftheAssociation 2021.FaultAnalysisandDebuggingofMicroserviceSystems:IndustrialSurvey,
+forComputationalLinguistics,ACL2019,Florence,Italy,July28-August2,2019, BenchmarkSystem,andEmpiricalStudy.IEEETrans.SoftwareEng.47,2(2021),
+Volume1:LongPapers,AnnaKorhonen,DavidR.Traum,andLluísMàrquez 243–260. https://doi.org/10.1109/TSE.2018.2887384
+(Eds.).AssociationforComputationalLinguistics,5797–5808. https://doi.org/10.

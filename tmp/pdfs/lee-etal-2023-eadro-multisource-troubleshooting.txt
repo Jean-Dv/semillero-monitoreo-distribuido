@@ -1,0 +1,1032 @@
+--- PDF PAGE 1 ---
+Eadro: An End-to-End Troubleshooting Framework
+for Microservices on Multi-source Data
+Cheryl Lee∗, Tianyi Yang∗, Zhuangbin Chen∗, Yuxin Su†, and Michael R. Lyu∗
+∗Department of Computer Science and Engineering, The Chinese University of Hong Kong, Hong Kong, China.
+Email: cheryllee@link.cuhk.edu.hk, {tyyang, zbchen, lyu}@cse.cuhk.edu.hk
+†Sun Yat-sen University, Guangzhou, China. Email: suyx35@mail.sysu.edu.cn
+Abstract—The complexity and dynamism of microservices unit: (ms) order
+pose significant challenges to system reliability, and thereby, concats 3009.6
+automated troubleshooting is crucial. Effective root cause lo- security
+2.7
+calization after anomaly detection is crucial for ensuring the
+Request 3.1
+reliability of microservice systems. However, two significant 20916.3 19119.7
+issues rest in existing approaches: (1) Microservices generate frontend preserve order-other
+traces, system logs, and key performance indicators (KPIs),
+but existing approaches usually consider traces only, failing to
+Fig. 1. A failure in “order” indirectly delays other microservices on the
+understandthesystemfullyastracescannotdepictallanomalies;
+invocationchain,whilemicroservicesoffthechainareunaffected.
+(2) Troubleshooting microservices generally contains two main
+phases, i.e., anomaly detection and root cause localization. Ex-
+isting studies regard these two phases as independent, ignoring
+their close correlation. Even worse, inaccurate detection results asystemcanproducebillionsof run-timerecordsperday[1],
+can deeply affect localization effectiveness. To overcome these [2]. The explosion of monitoring data makes automated trou-
+limitations,weproposeEadro,thefirstend-to-endframeworkto bleshooting techniques imperative.
+integrateanomalydetectionandrootcauselocalizationbasedon
+Many efforts have been devoted to this end, focusing either
+multi-source data for troubleshooting large-scale microservices.
+onanomalydetection[3]–[5]oronrootcauselocalization[6]–
+The key insights of Eadro are the anomaly manifestations on
+differentdatasourcesandthecloseconnectionbetweendetection [11]. Anomaly detection tells whether an anomaly exists, and
+andlocalization.Thus,Eadromodelsintra-servicebehaviorsand rootcauselocalizationidentifiestheculpritmicroserviceupon
+inter-service dependencies from traces, logs, and KPIs, all the the existence of an anomaly. Previous approaches usually
+while leveraging the shared knowledge of the two phases via
+leverage statistical models or machine learning techniques to
+multi-tasklearning.Experimentsontwowidely-usedbenchmark
+mine information from traces, as traces profile and monitor
+microservices demonstrate that Eadro outperforms state-of-the-
+art approaches by a large margin. The results also show the microservice executions and record essential inter-service in-
+usefulness of integrating multi-source data. We also release our formation (e.g., request duration). However, we identify two
+code and data to facilitate future research. main limitations of the existing troubleshooting approaches.
+Index Terms—Microservices, Root Cause Localization,
+(1) Insufficient exploitation of monitoring data: different
+Anomaly Detection, Traces
+from operation teams that pay close attention to diverse
+I. INTRODUCTION sourcesofrun-timeinformation,existingresearchdeeplyrelies
+on traces and exploits other data sources insufficiently. This
+Microservice systems are increasingly appealing to cloud-
+gap stems from the complexity of multi-source data analysis,
+nativeenterpriseapplicationsforseveralreasons,includingre-
+which is much harder than single-source data analysis, as
+sourceflexibility,loosely-coupledarchitecture,andlightweight
+multi-sourcedataisheterogeneous,frequentlyinteracting,and
+deployment [1]. However, anomalies are inevitable in mi-
+very large [12]. However, on the one hand, traces contain
+croservices due to their complexity and dynamism. An
+important information for troubleshooting but are insufficient
+anomaly in one microservice could propagate to others and
+to reveal all typical types of anomalies. On the other hand,
+magnify its impact, resulting in considerable revenue and
+different types of data, such as logs and KPIs, can reveal
+reputation loss for companies [2]. Figure 1 shows an example
+anomaliescollaborativelyandbringmorecluesaboutpotential
+where a failure in one microservice may delay all microser-
+failures. For example, a CPU exhaustion fault can cause
+vices on the invocation chain.
+abnormallyhighvaluesintheCPUusageindicatorandtrigger
+Therefore,developersmustcloselymonitorthemicroservice
+warnings recorded in logs, but the traces may not exhibit
+status via run-time information (e.g., traces, system logs, and
+abnormal patterns (such as high latency).
+KPIs) to discover and tackle potential failures in their earliest
+(2) Disconnection in closely related tasks: Generally, root
+efforts.Yet,thousandsofmicroservicesareusuallyrunningin
+cause localization follows anomaly detection since we must
+distributed machines in a large-scale industrial microservice
+discover an anomaly before analyzing it. Current studies of
+system. As each microservice can launch multiple instances,
+microservice reliability regard the two phases as indepen-
+YuxinSuisthecorrespondingauthor. dent, despite their shared inputs and knowledge about the
+3202
+beF
+01
+]ES.sc[
+1v29050.2032:viXra
+
+--- PDF PAGE 2 ---
+microservice status. Existing approaches usually deal with Our main contributions are highlighted as follows:
+the same inputs redundantly and waste the rich correlation • We identify two limitations of existing approaches for
+information between anomaly detection and root cause lo- troubleshooting microservices, motivated by which we
+calization. Moreover, the contradiction between computing are the first to explore the opportunity and necessity to
+efficiencyandaccuracylimitsthesimplecombinationofstate- integrate anomaly detection and root cause localization,
+of-the-art anomaly detectors and root cause localizers. For a as well as exploit logs, KPIs, and traces together.
+two-stage troubleshooting approach, it is generally a little late • We propose the first end-to-end troubleshooting frame-
+touseanadvancedanomalydetectorandthenanalyzetheroot work (Eadro) to jointly conduct anomaly detection and
+cause. Thus, root cause localization-focused studies usually root cause localization for microservices based on multi-
+apply oversimplified anomaly detectors (e.g., N-sigma), and source data. Eadro models intra-service behaviors and
+unfortunately,theresultingdetectionoutputscancontainmany inter-service dependencies.
+noisylabelsandtherebyaffecttheeffectivenessofdownstream • We conduct extensive experiments on two benchmark
+root cause localization. datasets. The results demonstrate that Eadro outperforms
+To overcome the above limitations, we propose Eadro, the all compared approaches, including state-of-the-art ap-
+firstEnd-to-endframeworkintegratingAnomalyDetectionand proaches and derived multi-source baselines on both
+Root cause lOcalization to troubleshoot microservice systems anomaly detection and root cause localization. We also
+based on multi-source monitoring data. The key ideas are conduct ablation studies to further validate the contribu-
+1) learning discriminative representations of the microservice tions of different data sources.
+status via multi-modal learning and 2) forcing the model • Our code and data 1 are made public for practitioners to
+to learn fundamental features revealing anomalies via multi- adopt, replicate or extend Eadro.
+task learning. Therefore, Eadro can fully exploit meaningful
+information from different data sources that can all manifest II. PROBLEMSTATEMENT
+anomalies.Also,itallowsinformationtobeinputtedonceand Thissectionintroducesimportantterminologiesanddefines
+used to tackle anomaly detection and root cause localization the problem of integrating anomaly detection and root cause
+together and avoids incorrect detection results hindering next- localization with the same inputs.
+phase root cause localization.
+Specifically,Eadroconsistsofthreecomponents:(1)Modal- A. Terminologies
+wise learning contains modality-specific modules for learning Traces record the process of the microservice system re-
+intra-service behaviors from logs, KPIs, and traces. We apply sponding to a user request (e.g., click “create an order” on
+Hawkesprocess[13]andafullyconnected(FC)layertomodel an online shopping website). Different microservice instances
+the log event occurrences. KPIs are fed into a dilated causal thenconductaseriesofsmallactionstorespondtotherequest.
+convolution (DCC) layer [14] to learn temporal dependencies For example, the request “create an order” may contain steps
+and inter-series associations. We also use DCC to capture “create an order in pending”, “reserve credit”, and “update
+meaningfulfluctuationsoflatencyintraces,suchasextremely the order state.” A microservice (caller) can invoke another
+high values. (2) Dependency-aware status learning aims to microservice (callee) to conduct the following action (e.g.,
+model the intra- and inter-dependencies between microser- microservice“Query”asksmicroservice“Check”tocheckthe
+vices. It first fuses the multi-modal representations via gated order after finishing the action “query the stock of goods”),
+concentration and feeds the fused representation into a graph and the callee will return the result of the action to the caller.
+attention network (GAT), where the topological dependency We name this process as invocation. The time consumed by
+is built on historical invocations. (3) Joint detection and the whole invocation (i.e., from initializing the invocation to
+localization contains an anomaly detector and a root cause returning the result) is called invocation latency, including
+localizer sharing representations and an objective. It predicts the request processing time inside a microservice and the
+the existence of anomalies and the probability of each mi- time spent on communicating between the caller and the
+croservice being the culprit upon an anomaly alarm. callee. A trace records the information during processing a
+Experimental results on two datasets collected from two user request [15] (including multiple invocations), such as the
+widely-usedbenchmarkmicroservicesystemsdemonstratethe invocationlatency,thetotaltimeofprocessingtherequest,the
+effectiveness of Eadro. For anomaly detection, Eadro sur- HTTP response code, etc.
+passes all compared approaches by a large margin in F1 Meanwhile, system logs are generated when system events
+(53.82%˜92.68%), and also increases F1 by 11.47% on aver- are triggered. A log message (or log for short) is a line of the
+agecomparedtoourderivedmulti-sourcedata-basedmethods. standard output of logging statements, composed of constant
+For root cause localization, Eadro achieves state-of-the-art strings(writtenbydevelopers)andvariablevalues(determined
+results with 290%˜5068% higher in HR@1 (Top-1 Hit Rate) by the system) [16]. If the variable values are removed, the
+than five advanced baselines and outperforms our derived remaining constant strings constitute a log event. KPIs are the
+methods by 43.06% in HR@1 on average. An extensive numericalmeasurementsofsystemperformance(e.g.,diskI/O
+ablation study further confirms the contributions of modeling
+different data sources. 1https://github.com/BEbillionaireUSD/Eadro
+
+--- PDF PAGE 3 ---
+Latency/s
+rate)andtheusageofresources(e.g.,CPU,memory,disk)that 2.5
+are sampled uniformly. 1.875
+1.25 CPU Exhaustion Network Jam Packet Loss
+B. Problem Formulation 0.625
+Consideralarge-scalesystemwithM microservices,system 0 500 1000 1000 2000 Time/s
+logs, KPIs, and traces are aggregated individually at each
+Fig.2. Network-relatedfaultsincurobviousanomaliesinlatencyof“travel”,
+microservice.InaT-lengthobservationwindow(dataobtained
+buttheCPUexhaustionfaultdoesnot.
+in a window constitute a sample), we have multi-source data
+defined as X = {(XL m ,XK m ,XT m )}M m=1 , where at the m-th Asforlogs,wefirstparsealllogsintoeventsviaDrain[22],
+microservice, XL m represents the log events chronologically a popular log parser showing effectiveness in many stud-
+arranged; XK m is a multivariate time series consisting of k ies[16],[23].Itisevidentthatsomelogscanreportanomalies
+indicators; XT m denotes the trace records. Our work attempts semantically by including keywords such as “exception”,
+to build an end-to-end framework achieving a two-stage goal: “fail”, and “errors”. The event “Exception in monitor thread
+GivenX [1:M] ,theframeworkpredictstheexistenceofanoma- while connecting to server <*>.” can be a good example.
+lies,denotedbyy,abinaryindicatorrepresentedas0(normal) Event occurrences can also manifest anomalies besides
+or 1 (abnormal). If y equals one, a localizer is triggered to semantics. Take the event “Route id: <*>” recorded by the
+estimatetheprobabilityofeachmicroservicetobetheculprit, microservice “route” as an example. This event occurs when
+denoted by P=[p 1 ···p M ]∈[0,1]M. The framework is built themicroservicecompletestheroutingrequest.Figure3shows
+on a parameterized model F :X→(y,P). that when network-related faults are injected, the example
+event’s occurrence experiences a sudden drop and remains
+III. MOTIVATION
+at low values. The reason is that the routing invocations
+This section introduces the motivation for this work, which become less since the communication between “route” and
+aims to address effective root cause localization by jointly its parent microservices (callers) is blocked. This case further
+integrating an accurate anomaly detector and being driven supportsourintuitionthatsystemlogscanprovidecluesabout
+by multi-source monitoring data. The examples are taken microservice anomalies.
+from data collected from a benchmark microservice system, Event Occurrences
+2000
+TrainTicket [17]. Details about data collection will be intro-
+1500
+duced in § V-A.
+1000 CPU Exhaustion Network Jam Packet Loss
+500
+A. Can different sources of data besides traces be helpful?
+0 500 1000 1000 2000Time/s
+We find that traces are insufficient to reveal all potential
+faults despite their wide usage. Most, if not all, previous Fig. 3. The occurrences of related logs can reflect issues such as poor
+communication.
+relatedworks[3],[4],[7],[18]–[21]aretrace-based,indicating
+KPIs are responsive to anomalies by continuously record-
+traces are informative and valuable. However, traces focus on
+ing run-time information. An example in Figure 4 gives a
+recording interactions between microservices and provide a
+closerlook,whichdisplays“totalCPUusage”ofmicroservice
+holistic view of the system in practice. Such high-level infor-
+“payment”duringtheperiodcoveringfaultinjections.Clearly,
+mation only enables basic queries for coarse-grained informa-
+“total CPU usage” responds to the fault CPU Exhaustion by
+tionratherthanintra-serviceinformation.Forexample,latency
+showing irregular jitters and abnormally high values. This
+orerrorrateintracescansuggestamicroservice’savailability,
+observation aligns with our a priori knowledge that KPIs
+yet fine-grained information like memory usage reflecting the
+provide an external view of a microservice’s resource usage
+intra-service status is unknowable. This is consistent with
+and performance. Their fine-grained information can well
+our observation that latency is sensitive to network-related is-
+reflect anomalies, especially resource-related issues, which
+sues but cannot adequately reflect resource exhaustion-related
+require detailed analysis.
+anomalies. Figure 2 shows an example where a point denotes
+an invocation taking the microservice “travel” as the callee. Total CPU Usage/%
+100
+When Network Jam or Packet Loss is injected, the latency is
+75
+abnormallyhigh(markedwithstars),butthelatencyduringthe
+50
+CPU exhaustion injection period does not display obviously
+25
+abnormal patterns. This case reminds us to be careful of CPU Exhaustion Network Jam Packet Loss
+0 500 1000 1000 2000Time/s
+relying on traces only. Since traces are informative but cannot
+reveal all anomalies, trace-based methods may omit potential Fig. 4. A CPU exhaustion fault incurs abnormal jitters and high values in
+failures. We need extra information to mitigate the anomaly “totalCPUusage”.
+omission problem. However, only using logs and KPIs is not sufficient since
+We also notice that system logs and KPIs provide valuable theyaregeneratedbyeachmicroserviceindividuallyatalocal
+information manifesting anomalies in microservices. level. As the example shown in Figure 1 (§ I), we need traces
+
+--- PDF PAGE 4 ---
+to obtain inter-service dependencies to analyze the anomaly Table I lists the experimental results, demonstrating a large
+propagation so as to draw a global picture of the system to improvementspacefortheseanomalydetectors.ThehighFOR
+locate the root cause. and FDR indicate that the inputs of the root cause localizer
+contain lots of noisy labels, thereby substantially influencing
+Traces are informative yet not sufficient to reflect all
+localizationperformance.Weattributethispartlytotheclosed-
+anomalies. System logs and metrics provide valuable in-
+world assumption relied on by these methods, that is, re-
+formation manifesting anomalies by presenting abnormal
+garding normal but unseen data patterns as abnormal, thereby
+patterns, so they can serve as additional information.
+incorrectly forcing the downstream localizer to search for the
+“inexistent” root cause based on normal data. Also, latency is
+B. Can current anomaly detectors provide accurate results? insufficienttorevealallanomalies,asstatedbefore,especially
+thosethatdonotseverelydelayinter-servicecommunications,
+This section demonstrates that current detectors attached
+represented by the high FOR.
+with localizers cannot deliver satisfying accuracy.
+In addition, complex methods (FE+ML and SPOT) have
+As far as we know, existing root cause localization ap-
+bettereffectivenessthanN-sigmayetburdenthetroubleshoot-
+proaches for microservices follow such a pipeline: 1) conduct
+ing process by introducing extra computation. Since root
+anomaly detection and 2) if an anomaly is alarmed, then
+causelocalizationrequiresanomalydetectionfirst,thedetector
+the localizer is triggered. That is, the anomaly detector and
+must be lightweight to mitigate the efficiency reduction. Even
+root cause localizer work separately. Unfortunately, incorrect
+worse, these machine learning-based approaches require ex-
+anomaly detection results can exert a negative impact on
+tra hyperparameter tuning, making the entire troubleshooting
+the following root cause localization by introducing noisy
+approach less practical.
+labels. To investigate whether current anomaly detectors are
+satisfactory for downstream localizers, we first summarize
+Root cause localization requires anomalous data detected
+threemainkindsofanomalydetectionapproachesusedinroot
+by anomaly detectors, but current localization-oriented de-
+cause localization papers. Note that since this paper targets
+tectors either deliver unsatisfactory accuracy and introduce
+root cause localization, the listed approaches are root cause
+noisy data or reduce efficiency, making the following
+localization-oriented anomaly detectors rather than sophisti-
+localization troublesome.
+cated approaches for general anomaly detection.
+• N-sigma used in [20], [21] computes the mean (µ) and In summary, these examples motivate us to design an end-
+the standard deviation (σ) of historical fault-free data. If
+to-end framework that integrates effective anomaly detection
+the maximum latency of the current observation window is
+and root cause localization in microservices based on multi-
+larger than µ+n·σ, an alarm will be triggered, where n
+source information, i.e., logs, KPIs, and traces. Logs, KPIs,
+is an empirical parameter.
+andlatencyintracesprovidelocalinformationonintra-service
+• Feature engineering + machine learning (FE+ML) [9], behaviors,whileinvocationchainsrecordedintracesdepictthe
+[24] feeds manually derived features from traces into a
+interactionsbetweenmicroservices,therebyprovidingaglobal
+machine learning-based model such as OC-SVM [9] to
+viewofthesystemstatus.ThisresultsinEadro,thefirstwork
+detect anomalies in a one-class-classification manner.
+to enable jointly detecting anomalies and locating the root
+• SPOT [25] is an advanced algorithm for time series cause, all the while attacking the above-mentioned limitations
+anomaly detection based on the Extreme Value Theory.
+by learning the microservice status concerning both intra- and
+Recent root cause analysis studies [6], [7] have applied it
+inter-service properties from various types of data.
+for detecting anomalies.
+IV. METHODOLOGY
+TABLEI
+COMPARISONOFCOMMONANOMALYDETECTORS ThecoreideaofEadroistolearntheintra-servicebehaviors
+based on multi-modal data and capture dependencies between
+N-sigma FE+ML SPOT
+microservices to infer a comprehensive picture of the system
+FOR 0.632 0.830 0.638 status. Figure 5 displays the overview of Eadro, containing
+FDR 0.418 0.095 0 three phases: modal-wise learning, dependency-aware status
+#Infer/ms 0.207 1.361 549.169
+learning, and joint detection and localization.
+We conduct effectiveness measurement experiments based
+A. Modal-wise Learning
+on our data on the three anomaly detectors following [6], [9],
+[21],respectively.Wefocusonthefalseomissionrate(FOR= This phase aims to model the different sources of monitor-
+FN ) and the false discovery rate (FDR= FP ), ing data individually. We apply modality-specific models to
+FN+TN FP+TN
+where TN is the number of successfully predicted normal learn an informative representation for each modality.
+samples; FN is the number of undetected anomalies; FP is 1) LogEventLearning: Weobservethatbothlogsemantics
+the number of normal samples incorrectly triggering alarms. and event occurrences can reflect anomalies (§ III-A), yet we
+Besides,#Infer/msdenotestheaverageinferencetimewiththe herein focus on event occurrences because of two reasons:
+unit of microseconds. 1) the logging behavior of microservices highly relies on the
+
+--- PDF PAGE 5 ---
+1 Modal-wise Learning 2 Dependency-aware Status Learning 3 Joint Detection & Localization
+Hawkes
+FC
+Parse Yes
+Detector Normal?
+No
+Causal Conv Gated Fusion
+MTS
+Root Cause Localizer
+Causal Conv
+Latency
+[
+[
+GAT
+Logs Intensity Vectors
+Metrics
+Status Joint Learning Culprit
+Traces Representation
+P
+[1:M]
+Dependency Graph
+Fig.5. OverviewofEadro
+developers’ expertise, so the quality of log semantics cannot convolution (DCC) [14] layer that is lightweight and paral-
+be guaranteed [16]; 2) the complexity of microservices neces- lelizable to learn the temporal dependencies and cross-series
+sitateslightweighttechniques.Assemanticextractionrequires relations of KPIs. Previous studies have demonstrated DCC’s
+computation-intensive natural language processing technolo- computational efficiency and accuracy in feature extraction
+gies, log semantic-based methods may pose challenges in of time series [29]. Afterward, we apply a self-attention [30]
+practical usage. operationtocomputemorereasonablerepresentations,andthe
+Eadro
+Therefore, we focus on modeling the occurrences of log attention weights are as computed in Equation 2.
+events instead of log semantics. An insight facilitates the (cid:18) W X·(W X)T (cid:19)
+model. We observe that the past event increases the likeli- Attn(X)=softmax q √ k (W v X) (2)
+d
+hood of the event’s occurrence in the near future, which fits
+the assumption of the self-exciting process [26]. Hence, we where W q , W k , and W v are learnable parameters, and d is
+initially propose to adopt the Hawkes process [13], a kind of an empirical scaling factor. This phase outputs HK ∈ REK
+self-exciting point process, to model the event occurrences, representing KPIs, where EK is the number of convolution
+which is defined by the conditional intensity function: filters.
+(cid:88) 3) Trace Learning: Inspired by previous works [3], [6],
+λ∗(t)=µ (t)+ φ (t−τ) (1)
+l l l [31],weextractlatencyfromtracefilesandtransformitintoa
+τ<t timeseriesbycalculatingtheaveragelatencyatatimeslotfor
+where l = 1,...,L and L is the number of event types; for eachcallee.WeobtainaT-lengthunivariatelatencytimeseries
+the l-th event, µ l is an estimated parameter and φ l (·) is a at each microservice (i.e., callee). Similarly, the latency time
+user-definedtriggeringkernelfunction.Weuseanexponential series is fed into a 1D DCC layer followed by a self-attention
+parametrisation of the kernels herein following [27]: φ
+l
+(·) = operationtolearnthelatentrepresentationHT ∈RET,where
+α l βexp(−βt)| t>0 , where α 1 ···α L are estimated parameters ET is the pre-defined number of filters. Note that we simply
+and β is a hyper-parameter. pad time slots without corresponding invocations with zeros.
+In brief, log learning is done in a three-step fashion:
+B. Dependency-aware Status Learning
+A. Parsing: Eadro starts with parsing logs into events via
+Drain [22] by removing variables in log messages. In this phase, we aim to learn microservices’ overall status
+anddrawacomprehensivepictureofthesystem.Thismodule
+B. Estimating: we then record the timestamps of event occur-
+consists of three steps: dependency graph construction, multi-
+rences(relativetothestartingtimestampoftheobservation
+modalfusion,anddependencygraphmodeling.Wefirstextract
+window) to estimate the parameters of the Hawkes model
+adirectionalgraphdepictingtherelationshipsamongmicroser-
+with an exponential decay kernel. The estimation is imple-
+vices from historical traces. Afterward, we fuse the multi-
+mented via an open-source toolkit Tick [28]. In this way,
+events XL at each microservice inside a window are trans- modal representations obtained from the previous phases into
+formed into an intensity vector Λ=[λ∗,··· ,λ∗]∈RL. latent node embeddings to represent the service-level status.
+1 L
+Messages within the constructed graph will be propagated
+C. Embedding:theintensityvectorΛisembeddedintoadense
+through a graph neural network so as to learn the neighboring
+vectorHL ∈REL inthelatentspaceviaafullyconnected
+dependencies represented in the edge weights. Eventually, we
+layer with the hidden size of EL.
+canobtainadependency-awarerepresentationrepresentingthe
+2) KPI Learning: We first organize the KPIs XK with k overall status of the microservice system.
+indicators of each microservice into a k-variate time series 1) Dependency Graph Construction: By regarding mi-
+with the length of T. Then we use a 1D dilated causal croservices as nodes and invocations as directional edges, we
+
+--- PDF PAGE 6 ---
+can extract a dependency graph G = {V,E} from histori- we perform global attention pooling [39] on the multi-modal
+cal traces to depict the dependencies between microservices. representationsofallnodes.ThefinaloutputisHF ∈REF,a
+Specifically, V is the node set and |V| = M, where M dependency-aware representation of the overall system status.
+is the number of microservices; E is the set of edges, and
+C. Joint Detection and Localization
+(cid:126)e = (v ,v ) ∈ E denotes an edge directed from v to v ,
+a,b a b a b
+that is, v has invoked v at least once in the history. Lastly, Eadro predicts whether the current observation win-
+b a
+2) Multi-modal Fusion: In general, there are three fusion dow is abnormal and if so, it identifies which microser-
+strategies [32]: early fusion carried out at the input level, vice the root cause is. As demonstrated in § III-B, existing
+intermediatefusionforfusingcross-modalrepresentations,and troubleshooting methods regard anomaly detection and root
+late fusion at the decision level (e.g., voting). Research in cause localization as independent and ignore their shared
+cross-modal learning [33], [34] and neuroscience [35], [36] knowledge. Besides, current anomaly detectors deliver un-
+suggests that intermediate fusion usually facilitates modeling, satisfactory results and affect the next-stage localization by
+so we transform single-modal representations to a compact incorporating noisy labels. Therefore, we fully leverage the
+multi-modal representation via intermediate fusion. shared knowledge and integrate two closely related tasks into
+The fusion contains two steps: an end-to-end model.
+A. Weconcatenate([·||·])allrepresentations ofeachmicroser- Eadro Overview Details Settings User: Tim
+vice obtained from the previous phase to retain exhaustive
+information. The resulting vector [HL||HK||HT] is sub- 5000 tx/b rx/b Frequency: 2T Dependency
+4000 order
+sequently fed into a fully connected layer to be projected 3000 Log File
+into a lower-dimensional space, denoted by H(cid:48)S ∈ R2E, 2000 Download
+1000 ts-order-service Frontend
+where 2E <EL+EK+ET is an even number. 9:28 9:30 9:32 9:34 9:36 9:38
+B. H(cid:48)S passesthroughaGatedLinearUnit(GLU)[37]tofuse cpu_sys cpu_total cpu_user Latency Root Cause List
+representations in a non-linear manner and filter potential 0.01 8.0 Service Probability
+0.008 6.0
+order 0.972
+redundancy. GLU controls the bandwidth of information 0.005 4.0 Trace File
+flowanddiminishesthevanishinggradientproblem.Italso 0.003 2.0 p se re c s u e ri r t v y e 0 0 . . 0 0 8 1 7 1 Download
+possessesextraordinaryresiliencetocatastrophicforgetting. 0 9:28 9:30 9:32 9:34 9:36 9:38 0.0 9:289:309:329:349:369:38 frontend 0.010
+As we have massive data and complex stacked neural
+Fig.6. Ademoforreviewingthesuspiciousstatus.
+layers,GLUfitsourscenariowell.Thecomputationfollows
+In particular, based on the previously obtained represen-
+HS =GLU(H(cid:48)S)=H(cid:48)S ⊗σ(H(cid:48)S), where H(cid:48)S is the
+(1) (2) (1) tation HF, a detector first conducts binary classification to
+first half of H(cid:48)S and H(cid:48)S is the second half; ⊗ denotes
+(2) decide the existence of anomalies. If no anomaly exists,
+element-wise product, and σ is a sigmoid function.
+Eadro directly outputs the result; if not, a localizer ranks
+Finally, we obtain HS ∈ RE, a service-level representation the microservices according to their probabilities of being the
+of each microservice. culprit. The detector and the localizer are both composed of
+3) Dependency Graph Learning: As interactions between stacked fully-connected layers and jointly trained by sharing
+microservices can be naturally described by dependency an objective. The detector aims to minimize the binary cross-
+graphs, we apply graph neural networks to perform triage entropy loss:
+inference. Particularly, we employ Graph Attention Network
+N
+(GAT) [38] to learn the dependency-aware status of the (cid:88)
+L = [−(y log(yˆ)+(1−y )log(1−yˆ))] (4)
+1 i i i i
+microservice system. GAT enables learning node and edge
+i=1
+representations and dynamically assigns weights to neighbors
+where N is the number of historical samples; y ∈ {0,1}
+without requiring computation-consuming spectral decompo- i
+is the ground truth indicating the presence of anomalies (1
+sitions. Hence, the model can pay attention to microservices
+denotes presence while 0 denotes absence), and yˆ ∈ [0,1] is
+with abnormal behaviors or at the communication hub. i
+ThelocalrepresentationHS servesasthenodefeature,and the predicted indicator. Subsequently, all samples predicted as
+normal(0)aremasked,andsamplespredictedasabnormal(1)
+GAT learns the whole graph’s representation, where dynamic
+passthroughthelocalizer.Thelocalizerattemptstonarrowthe
+weights of edges are computed as Equation 3.
+distance between the predicted and ground-truth probabilities,
+ω =
+exp(LeakyReLU(vT[WH
+a
+S||WH
+b
+S]))
+(3) whose objective is expressed by:
+a,b (cid:80) exp(LeakyReLU(vT[WHS||WHS]))
+k∈N a a k (cid:88) N (cid:88) M
+where ω a,b is the computed weight of edge(cid:126)e a,b ; N a is the set L 2 = c i,s log(p i,s ) (5)
+of neighbor nodes of node a; HS is the inputted node feature i=1s=1
+a
+of a; W ∈ REG×E and v ∈ R2EG are learnable parameters. where M is the number of involved microservices. In the i-th
+EG is the dimension of the outputted representation, which sample, c ∈ {0,1} is 1 if the culprit microservice is s and
+i,s
+is calculated by HˆS =ψ( (cid:80) ω WHS), where ψ(·) is 0otherwise;p isthepredictedprobabilityofmicroservices
+a b∈N a a,b b i,s
+a customized activation function, usually ReLU. Eventually, being the culprit. The objective of Eadro is the weighted sum
+
+--- PDF PAGE 7 ---
+ofthetwosub-objectivesL=β·L +(1−β)·L ,whereβ is stochastic packet loss that frequently occurs when excessive
+1 2
+a hyper-parameter balancing the two tasks. Eventually, Eadro data packets flood a network.
+outputsarankedlistofmicroservicestobecheckedaccording We generate 0.2∼0.5 and 2∼3 requests per second for TT
+to their predicted probabilities of being the root cause. and SN at a uniform rate, respectively. Before fault injection,
+To sum up, Eadro can provide explicit clues about the we collect normal data under a fault-free setting for 7 hours
+microservice status. Hence, troubleshooting is much more for TT and 1.2 hours for SN. Then, we set each fault duration
+convenient for operation engineers with the ranked list of to 10 mins (with a 2-min interval between two injections) for
+microservices. Figure 6 presents a visualized demo. TT,whilethefaultdurationis2minsandSN’sintervalishalf
+a minute. Each fault is injected into one microservice once.
+V. EVALUATION In total, we conduct 162 and 72 injection operations in TT
+and SN, respectively. Such different setups are attributed to
+This section answers the following research questions:
+thedifferentprocessingcapacitiesofthetwosystems,i.e.,TT
+• RQ1: How effective is Eadro in anomaly detection?
+usually takes more time to process a request than SN.
+• RQ2: How effective is Eadro in root cause localization?
+In this way, we collect two datasets (TT and SN) with
+• RQ3: How much does each data source contribute?
+48,296 and 126,384 traces, respectively. Data produced in
+different periods are divided into training (60%) data and
+A. Data Collection
+testing (40%) data, respectively. The data divisions share
+Sinceexistingdatacollectionsofmicroservicesystems[40],
+similardistributionsinabnormal/normalratiosandrootcauses.
+[41] contain traces only, we deploy two benchmark microser-
+vice systems and generate requests to collect multi-source
+B. Baselines
+data, including logs, KPIs, and traces. Afterward, we inject
+typical faults to simulate real-world anomalies. To our best We compare Eadro with previous approaches and derived
+knowledge, it is the first triple-source data collection with methodsintegratingmulti-sourcedata.Asourtaskisrelatively
+injected faults in the context of microservices. novel by incorporating more information than existing single-
+1) Benchmark microservice systems: We first deploy two source data-based studies, simply comparing our model with
+open-source microservice benchmarks: TrainTicket [17] (TT) previous approaches seems a bit unfair.
+andSocialNetwork[42](SN).TTprovidesarailwayticketing 1) Advanced baselines: In terms of anomaly detection,
+service where users can check, book, and pay for train we consider two state-of-the-art baselines. TraceAnomaly [3]
+tickets. It is widely used in previous works [3], [15] with 41 uses a variational auto-encoder (VAE) to discover abnormal
+microservices actively interacting with each other, and 27 of invocations.MultimodalTrace[4]extractsoperationsequences
+them are business-related. SN implements a broadcast-style and latency time series from traces and uses a multi-modal
+social networking site. Users can create, read, favorite, and LongShort-termMemory(LSTM)networktomodelthetem-
+repost posts. In this system, 21 microservices communicate poral features. For root cause localization, we compare Eadro
+witheachotherviaThriftRPCs[43].SNhas21microservices, with five trace-based baselines: TBAC [10], NetMedic [52],
+14 of which are related to business logic. MonitorRank[8],CloudRanger[11], andDyCause[6].Asfar
+Weconstructadistributedtestbedtodeploythetwosystems asweknow,norootcauselocalizersformicroservicesrelyon
+running in Docker containers and develop two request simu- multi-modal data.
+lators to simulate valid user requests. A series of open-source These methods use statistical models or heuristic methods
+monitoringtoolsaredeployedfordatacollection.Microservice to locate the root cause. For example, TBAC, MonitorRank,
+instancessendcausally-relatedtracestoacollectorJaeger[44]. and DyCause applied the Pearson correlation coefficient, and
+WeemploycAdvisor[45]andPrometheus[46]tomonitorthe MonitorRank and DyCause also leveraged Random Walk. We
+KPIs per second of each microservice. The KPIs are stored in implement these baselines referring to the codes provided by
+an instance of InfluxDB [47], including “CPU system usage”, theoriginalpapers[3],[6],[21].Forthepaperswithoutopen-
+“CPU total usage”, “CPU user usage”, “memory usage”, source codes, we carefully follow the papers and refer to the
+the amount of “working set memory”, “rx bytes” (received baseline implementation released by [6].
+bytes), and “tx bytes” (transmitted bytes). We also utilize 2) Derived multi-source baselines: We also derive four
+Elasticsearch [48], Fluentd [49], and Kibana [50] to collect, multi-source data-based methods for further comparison. In-
+aggregate, and store logs, respectively. spiredby[4],wetransformalldatasourcesintotimeseriesand
+2) Fault Injection: Eadro can troubleshoot anomalies that uselearning-basedalgorithmsforstatusinference.Specifically,
+manifest themselves in performance degradations (logs and logsarerepresentedbyeventoccurrencesequences;tracesare
+KPIs) or latency deviations (traces). Referring to previous denoted by latency time series; KPIs are natural time series.
+studies[6],[21],[24],weinjectthreetypicaltypesoffaultsvia Sincepreviousstudiesaremainlymachinelearning-based,we
+Chaosblade[51].Specifically,wesimulateCPUexhaustionby train practical machine learning methods, i.e., Random Forest
+puttingahogtoconsumeCPUresourceheavily.Tosimulatea (RF)andSupportVectorMachine(SVM),onthemulti-source
+network jam, we delay the network packets of a microservice time series. We derive MS-RF-AD and MS-SVM-AD for
+instance. We also randomly drop network packets to simulate anomalydetectionaswellasMS-RF-RCLandMS-SVM-RCL
+
+--- PDF PAGE 8 ---
+TABLEII
+for root cause localization. We also derive two methods (MS- PERFORMANCECOMPARISONFORANOMALYDETECTION
+LSTM and MS-DCC) that employ deep learning techniques,
+TT SN
+i.e.,LSTMand1DDCC,toextractrepresentationsfrommulti- Approaches
+modaltimeseries.Thelearnedrepresentationsarefedintothe F1 Rec Pre F1 Rec Pre
+module of joint detection and localization, which is described TraceAnomaly 0.486 0.414 0.589 0.539 0.468 0.636
+in IV-C. MultimodalTrace 0.608 0.576 0.644 0.676 0.632 0.726
+MS-RF-AD 0.817 0.705 0.971 0.773 0.866 0.700
+C. Implementation MS-SVM-AD 0.787 0.678 0.938 0.789 0.770 0.808
+MS-LSTM 0.967 0.997 0.940 0.948 0.959 0.937
+The experiments are conducted on a Linux server with an MS-DCC 0.965 0.993 0.938 0.948 0.962 0.934
+NVIDIA GeForce GTX 1080 GPU via Python 3.7. As for the
+Eadro 0.989 0.995 0.984 0.986 0.996 0.977
+hyper-parameters,thehiddensizeofallfully-connectedlayers
+is 64, and every DCC layer shares the same filter number of
+64 with a kernel size of three. The GAT’s hidden size and anomaliesorfalsealarms.Eadro’sexcellencecanbeattributed
+the fusion dimension (i.e., 2E) are 128. We use a 4-head to1)Eadroappliesmodality-specificdesignstomodelvarious
+mechanism of GAT’s attention layer, and the layer number of sources of data as well as a multi-modal fusion to wrangle
+all modalities’ models is only one for speeding up. Moreover, these modalities so that it can learn a distinguishable repre-
+Batch Normalization [53] is added after DCCs to mitigate sentation of the status; 2) Eadro learns dependencies between
+overfitting. We train Eadro using the Adam [54] optimizer microservices to enable extraction of anomaly propagation to
+with an initial learning rate of 0.001, a batch size of 256, and facilitate tracing back to the root cause.
+an epoch number of 50. All the collected data and our code (2) Generally, multi-source data-based approaches, includ-
+are released for replication. ing Eadro, perform much better than trace-relied baselines
+because they incorporate extra essential information (i.e.,
+D. Evaluation Measurements
+logs and KPIs) besides traces. The results align with our
+The anomaly detection challenge is modeled in a binary
+observations in § III-A that logs and KPIs provide valuable
+classificationmanner,soweapplythewidely-usedbinaryclas-
+cluesaboutmicroserviceanomalies,whiletracescannotreveal
+sification measurements to gauge the performance of models:
+allanomalies.Trace-basedmethodscanonlydetectanomalies
+Recall (Rec)= TP , Precision (Pre)= TP , F1-score
+TP+FN TP+FP yielding an enormous impact on invocations, so they ignore
+(F1)= 2·Pre·Rec, where TP is the number of discovered anomalies reflected by other data sources.
+Pre+Rec
+abnormal samples; FN and FP are defined in § III-B. (3) Moreover, Eadro, MS-LSTM, and MS-DDC perform
+For root cause localization, we introduce the Hit Rate of better than MS-SVM and MS-RF. The superiority of the
+top-k (HR@k) and Normalized Discounted Cumulative Gain former ones lies in applying deep learning and joint learn-
+of top-k (NDCG@k) for localizer evaluation. Herein, we set ing. Deep learning has demonstrated a powerful capacity in
+k = 1,3,5. HR@k= N 1 (cid:80)N i=1 (st i ∈ S i p ,[1:k] ) calculates the extracting features from complicated time series [29], [55],
+overallprobabilityoftheculpritmicroservicewithinthetop-k [56]. Joint learning allows capturing correlated knowledge
+predicted candidates S i p ,[1:k] , where st i is the ground-truth root across detection and localization to exploit commonalities
+causeforthei-thobservationwindow,andN isthenumberof across the two tasks. These two mechanisms are beneficial
+samples to be tested. NDCG@k= 1 (cid:80)N ( (cid:80)M pj ) to troubleshooting by enhancing representation learning.
+N i=1 j=1 log (j+1)
+measures the ranking quality, where p j is the predicted2 prob- In brief, Eadro is very effective in anomaly detection of
+ability of the j-th microservice, and M is the number of microservice systems and improves F1 by 53.82%∼92.68%
+microservices.NDCG@1isleftoutbecauseitisthesamewith compared to baselines and 3.13%∼25.32% compared to de-
+HR@1 in our scenario. The two evaluation metrics measure rived methods. The detector is of tremendous assistance for
+how easily engineers find the culprit microservice. HR@k next-stage root cause localization by reducing noisy labels
+directly measures how likely the root cause will be found inside the localizer’s inputs.
+within k checks. NDCG@k measures to what extent the root
+F. RQ2: Effectiveness in Root Cause Localization
+causeappearshigherupintherankedcandidatelist.Thus,the
+higher the above measurements, the better. To focus on comparing the effectiveness of root cause
+localization, we provide ground truths of anomaly existence
+E. RQ1: Effectiveness in Anomaly Detection
+for baselines herein. In contrast, Eadro, MS-LSTM, and MS-
+Ground truths are based on the known injection operations, DCC use the predicted results of their detectors as they are
+i.e., if a fault is injected, then the current observation window end-to-end approaches integrating the two tasks. Table III
+is abnormal; otherwise, it is normal. Table II displays a presents the root cause localization comparison, underpinning
+comparison of anomaly detection, from which we draw three three observations:
+observations: (1) Eadro performs the best, taking all measurements into
+(1) Eadro outperforms all competitors significantly and consideration, achieving HR@1 of 0.982, HR@5 of 0.990,
+achieves very high scores in F1 (0.988), Rec (0.996), and and NDCG@5 of 0.989 on average. With the incorporation
+Pre(0.981),illustratingthatEadrogeneratesveryfewmissing of valuable logs and KPIs ignored by previous approaches,
+
+--- PDF PAGE 9 ---
+TABLEIII
+PERFORMANCECOMPARISONFORROOTCAUSELOCALIZATION
+TT SN
+Approaches
+HR@1 HR@3 HR@5 NDCG@3 NDCG@5 HR@1 HR@3 HR@5 NDCG@3 NDCG@5
+TBAC 0.037 0.111 0.185 0.079 0.109 0.001 0.085 0.181 0.048 0.087
+NetMedic 0.094 0.257 0.425 0.195 0.209 0.069 0.187 0.373 0.146 0.218
+MonitorRank 0.086 0.199 0.331 0.142 0.196 0.068 0.118 0.221 0.095 0.137
+CloudRanger 0.101 0.306 0.509 0.218 0.301 0.122 0.382 0.629 0.269 0.370
+DyCause 0.231 0.615 0.808 0.448 0.607 0.273 0.636 0.727 0.301 0.353
+MS-RF-RCL 0.637 0.922 0.970 0.807 0.827 0.704 0.908 0.970 0.825 0.851
+MS-SVM-RCL 0.541 0.908 0.944 0.814 0.820 0.614 0.838 0.955 0.741 0.790
+MS-LSTM 0.756 0.930 0.969 0.859 0.877 0.757 0.884 0.907 0.834 0.844
+MS-DCC 0.767 0.938 0.972 0.870 0.882 0.789 0.968 0.985 0.898 0.905
+Eadro 0.990 0.992 0.993 0.994 0.994 0.974 0.988 0.991 0.982 0.983
+Eadro can depict the system status more accurately. Trace- that LSTMs’ training process is a lot more complicated than
+based approaches have difficulties in troubleshooting re- DCCs or simple machine learning techniques. The scale of
+sourceexhaustion-relatedanomaliesorseverenetwork-related SN is relatively small, so MS-LSTM cannot be thoroughly
+anomalies that block inter-service communications resulting trained and capture the most meaningful features.
+in few invocations. Besides, Eadro enables eavesdropping To sum up, the results demonstrate the effectiveness of
+across detection and localization via joint learning, which Eadro in root cause localization. Eadro increases HR@1
+encouragesfulluseofthesharedknowledgetoenhancestatus by 290%∼5068% than baselines and 26.93%∼66.16% than
+learning. Eadro also leverages powerful techniques to capture derived methods. Our approach shows effectiveness both in
+meaningful patterns from multi-modal data, including designs anomaly detection and root cause localization, suggesting its
+of modality-specific models and advanced GAT to exploit potential to automate labor-intensive troubleshooting.
+graph-structure dependencies. Moreover, Eadro achieves a
+G. RQ3: Contributions of Different Data Sources
+much higher score in HR@1 than derived methods, while its
+superiority in HR@5 and NDCG@5 is not particularly promi- We perform an ablation study to explore how different
+nent. The reason is that Eadro learns the dependency-aware data sources contribute by conducting source-wise-agnostic
+status besides intra-service behaviors, allowing to catch the experiments, so we derive the following variants:
+anomaly origin by tracing anomaly propagation. Other multi- • Eadro w/o L: drops logs while inputs traces and KPIs by
+modal approaches capture dependency-agnostic information, removing the log modeling module in § IV-A1.
+so they can pinpoint the scope of suspicious microservices • Eadro w/o M: drops KPIs while inputs traces and logs by
+effectively rather than directly deciding the culprit. removing the KPI modeling module in § IV-A2.
+(2) Multi-modal approaches considerably outperform • Eadro w/o T: drops latency extracted from traces by
+single-modal baselines, similar to the results in anomaly removing the trace modeling module in § IV-A3.
+detection. The superiority of multi-source derived methods is • Eadro w/o G: replaces GAT by an FC layer to learn
+more evident since localization is a more complicated task dependency-agnostic representations.
+than detection, so the advantage of incorporating diverse data
+TABLEIV
+sources to learn the complementarity is fully demonstrated. EXPERIMENTALRESULTSOFTHEABLATIONSTUDY
+This situation is more revealing in TT because TrainTicket
+responds more slowly, leading to sparse trace records, and TT SN
+Variants
+trace-based models get into trouble when few invocations HR@1 HR@5 F1 HR@1 HR@5 F1
+occur in the current observation window. In contrast, derived
+Eadro 0.990 0.993 0.989 0.974 0.991 0.986
+approaches can accurately locate the culprit microservice in
+Eadrow/oL 0.926 0.993 0.964 0.902 0.954 0.972
+suchasystemsincetheyleveragevariousinformationsources Eadrow/oM 0.776 0.962 0.960 0.684 0.947 0.974
+to obtain more clues. Eadrow/oT 0.785 0.930 0.945 0.627 0.930 0.957
+Eadrow/oG 0.803 0.982 0.970 0.791 0.960 0.946
+(3) Considering multi-modal approaches, Eadro, MS-
+LSTM, and MS-DCC deliver better performance (measured The ablation study results are shown in Table IV. Consid-
+by HR@1) than MS-RF-RCL and MS-SVM-RCL. The supe- ering that root cause localization, being our major target, is
+riorityoftheformerapproachescanbeattributedtothestrong more difficult and that all variants achieve relatively good
+fitting ability of deep learning and the advantages brought by performance in anomaly detection, we focus on root cause
+the joint learning mechanism. However, MS-LSTM performs localization. Clearly, each source of information contributes
+poorer in narrowing the suspicious scope, especially in SN totheeffectivenessofEadroasitperformsthebest,whilethe
+(measured by HR@5 and NDCG@5). This may be because degrees of their contributions are not exactly the same.
+
+--- PDF PAGE 10 ---
+Specifically, logs contribute the least as Eadro w/o L is
+second-best.Weattributeittothelackoflogsemanticsandthe 80
+low logging frequency. As the two benchmark systems were
+recently proposed without multiple version iterations, only a 60
+few events are recorded. We believe that logs would play a
+40
+greater value in the development of microservices.
+20
+In addition, we observe that the performance of
+Eadro w/o M and Eadro w/o T degrades dramatically,
+0
+especially in HR@1, since traces and KPIs are essential
+information that contributes the most to the identification of 20
+the root cause microservice. This observation aligns with our
+40
+motivating cases, where we show some anomaly cases that
+can be directly revealed by traces and KPIs. 60
+75 50 25 0 25 50 75 100
+Moreover, HR@5 of Eadro w/o G degrades slightly, indi- x
+cating that dependency-agnostic representations are useful to
+narrowthesuspiciousscope.However,HR@1ofEadrow/oG
+decreases 23.21% as Eadro uses readily applicable GAT to
+modal graph-structure inter-service dependencies, while FC
+layers model the dependencies linearly, unable to capture
+anomalypropagationwell,leadingtoperformancedegradation
+in determining the culprit.
+To further demonstrate the benefits brought by KPIs and
+logs, we visualize the latent representations of abnormal data
+samples learned by Eadro, Eadro w/o L, and Eadro w/o M
+via t-SNE [57] of the test set of SN, shown in Figures 7.
+We can see that the representations learned by Eadro are
+the most discriminative, and those learned by Eadro w/o L
+are second-best, while those learned by Eadro w/o M are
+the worst. Specifically, Eadro distributes representations cor-
+responding to the different root causes into different clus-
+ters distant from each other in the hyperspace. In contrast,
+Eadro w/o M learns representations close in space, mak-
+ing it difficult to distinguish them for triage. That is why
+Eadro w/o M delivers poorer performance in localization
+than Eadro. The visualization intuitively helps us grasp the
+usefulnessofKPIsinhelpingpinpointtherootcause.Thedis-
+criminativenessoftherepresentationslearnedbyEadrow/oL
+isin-between,wheresomeclustersarepurewhileothersseem
+to be a mixture of representations corresponding to different
+root causes, in line with the experiment results. We can
+attributepartofthesuccessofEadrotoincorporatingKPIsand
+logs,whichencouragesmorediscriminativerepresentationsof
+the microservice status with extra clues.
+In conclusion, the involved data sources can all contribute
+to the effectiveness of Eadro to some degree, and traces con-
+tribute the most to the overall effectiveness. This emphasizes
+theinsightsaboutappropriatelymodelingmulti-sourcedatato
+troubleshoot microservices effectively.
+VI. DISUCUSSION
+A. Limitations
+We identify three limitations of Eadro: 1) the incapacity to
+dealwithbugsrelatedtoprogramlogic;2)theprerequisitesfor
+multi-source data collection; 3) the requirement of annotated
+data for training.
+y
+Microservices
+social-graph-service
+compose-post-service post-storage-service
+user-timeline-service
+url-shorten-service user-service
+media-service text-service unique-id-service
+user-mention-service
+home-timeline-service
+(a) Eadro
+40
+20
+0
+20
+40
+60
+60 40 20 0 20 40 60 80
+x
+y
+Microservices social-graph-service
+compose-post-service post-storage-service
+user-timeline-service
+url-shorten-service user-service media-service
+text-service
+unique-id-service
+user-mention-service
+home-timeline-service (b) Eadrow/oL
+60
+40
+20
+0
+20
+40
+60
+80
+60 40 20 0 20 40 60
+x
+y
+Microservices social-graph-service
+compose-post-service
+post-storage-service user-timeline-service
+url-shorten-service user-service media-service
+text-service
+unique-id-service user-mention-service home-timeline-service
+(c) Eadrow/oM
+Fig.7. DistributionsofrepresentationslearnedbyEadroanditsvariants.
+As Eadro is an entirely data-driven approach targeting
+the scope of reliability management, it is only applicable to
+troubleshooting anomalies manifested in the involved data, so
+logical bugs out of our scope and silent issues that do not
+incur abnormal patterns in observed data can not be detected
+or located.
+Moreover, Eadro is basically well-suited for all microser-
+vices where anomalies can be reflected in the involved three
+types of data we employ. However, some practical systems
+may lack the ability to collect the three types of data. Though
+the low-coupled nature of the modal-wise learning module al-
+lowstheabsenceofsomesourceofdata,itisbettertoprovide
+alldatatypestofullyleverageEadro.Sinceweapplystandard
+
+--- PDF PAGE 11 ---
+open-sourcemonitoringtoolkitsandtheseoff-the-shelftoolkits service-oriented systems, most of which rely on traces only
+can be directly instrumented, enabling microservices with the and leverage traditional or naive machine learning techniques.
+data collection ability is not difficult. For example, [15] conducted manual feature engineering in
+In addition, the supervised nature of Eadro requires a trace logs to predict latent errors and identify the faulty
+large amount of labeled training data, which may be time- microservice via a decision tree. [9] proposed a high-efficient
+consuming in the real world. Nevertheless, our approach approach that dynamically constructs a service call graph and
+outperforms compared with unsupervised approaches by a ranks candidate root causes based on correlation analysis. A
+largemargin,indicatingthatinpractice,unsupervisedmethods recentstudy[6]designedacrowd-sourcingsolutiontoresolve
+may be difficult to use because the accuracy rate is not user-space diagnosis for microservice kernel failures. These
+up to the required level, especially considering that realistic methods work well when the latent features of microservices
+microservices systems are much larger and more complex. are readily comprehensible but may lack scalability to larger-
+A common solution in companies is to use an unsupervised scalemicroservicesystemswithmorecomplexfeatures.Deep
+model to generate coarse-grained pseudo-labels. Afterward, learning-based approaches explore meaningful features from
+experienced engineers manually review the labels with lower historical data to avoid manual feature engineering. Though
+confidence. The hybrid-generated labels are used for training deep learning has not been applied to root cause localization
+thesupervisedmodel,andeventually,thesupervisedapproach as far as we know, some approaches incorporated it for
+performs the troubleshooting work. Hence, Eadro will still performance debugging. For example, to handle traces, [69]
+play an important role in practice and fulfill its potential. used convolution networks and LSTM, and [70] leveraged
+causal Bayesian networks.
+B. Threat to Validity
+However, they rely on traces and ignore other data sources,
+1) Internal Threat: The main internal threat lies in the such as logs and KPIs, that can also reflect the microservice
+correctness of baseline implementation. We reproduce the status. Also, they either focus on anomaly detection or root
+baselines based on our understanding of their papers since cause localization leading to the disconnection in the two
+most baselines, except DyCause and TraceAnomaly, have not closely related tasks. The inaccurate results of naive anomaly
+releasedcodes,buttheunderstandingmaynotbeaccurate.To detectors affect the effectiveness of downstream localization.
+mitigatethethreat,wecarefullyfollowtheoriginalpapersand Moreover,manymethodscombinemanualfeatureengineering
+refer to the baseline implementation released by [6]. with traditional algorithms, making it insufficiently practical
+2) External Threat: The external threats concern the gen- in large-scale systems.
+eralizability of our experimental results. We evaluate our
+approach on two simulated datasets since there is no publicly VIII. CONCLUSION
+available dataset containing multi-modal data. It is yet un-
+This paper first identifies two limitations of current trou-
+known whether the performance of Eadro can be generalized
+bleshooting approaches for microservices and aims to address
+acrossotherdatasets.Wealleviatethisthreatfromtwoaspects.
+them. The motivation is based on two observations: 1) the
+First, the benchmark microservice systems are widely used
+usefulness of logs and KPIs and the insufficiency of traces; 2)
+in existing comparable studies, and the injected faults are
+the unsatisfactory results delivered by current anomaly detec-
+also typical and broadly applied in previous studies [6], [21],
+tors. To this end, we propose an end-to-end troubleshooting
+[24],therebysupportingtherepresentativenessofthedatasets.
+approach for microservices, Eadro, the first work to integrate
+Second, our approach is request- and fault-agnostic, so an
+anomaly detection and root cause localization based on multi-
+anomaly incurred by a fault beyond our injections can also
+source monitoring data. Eadro consists of powerful modality-
+be discovered if it causes abnormalities in the observations.
+specific models to learn intra-service behaviors from various
+VII. RELATEDWORK data sources and a graph attention network to learn inter-
+service dependencies. Extensive experiments on two datasets
+Previous anomaly detection approaches are usually based
+demonstrate the effectiveness of Eadro in both detection and
+on system logs [58]–[62] or KPIs [63]–[67], or both [68],
+localization.ItachievesF1of0.988andHR@1of0.982onav-
+targetingtraditionaldistributedsystemswithoutcomplexinvo-
+erage, vastly outperforming all competitors, including derived
+cation relationships. Recently, some studies [3], [4], [31] have
+multi-modal methods. The ablation study further validates the
+beenpresentedtoautomateanomalydetectioninmicroservice
+contributions of the involved data sources. Lastly, we release
+systems. [3] proposed to employ a variational autoencoder
+our code and data to facilitate future research.
+with a Bayes model to detect anomalies reflected by latency.
+[4] extracted operation sequence and invocation latency from
+ACKOWNLEDGEMENT
+traces and fed them into a multi-modal LSTM to identify
+anomalies. These anomaly detection methods rely on single- The work described in this paper was supported by the Na-
+sourcedata(i.e.,traces)andignoreotherinformativedatasuch tional Natural Science Foundation of China (No. 62202511),
+as logs and KPIs. and the Research Grants Council of the Hong Kong Special
+Tremendousefforts[7],[8],[10],[11],[19],[24],[52]have Administrative Region, China (No. CUHK 14206921 of the
+been devoted to root cause localization in microservice or General Research Fund).
+
+--- PDF PAGE 12 ---
+REFERENCES [16] S. He, P. He, Z. Chen, T. Yang, Y. Su, and M. R. Lyu, “A survey on
+automatedloganalysisforreliabilityengineering,”ACMComput.Surv.,
+[1] S.Luo,H.Xu,C.Lu,K.Ye,G.Xu,L.Zhang,Y.Ding,J.He,andC.Xu, vol.54,no.6,pp.130:1–130:37,2021.
+“Characterizing microservice dependency and performance: Alibaba [17] X.Zhou,X.Peng,T.Xie,J.Sun,C.Xu,C.Ji,andW.Zhao,“Bench-
+trace analysis,” in SoCC ’21: ACM Symposium on Cloud Computing, marking microservice systems for software engineering research,” in
+Seattle,WA,USA,November1-4,2021. ACM,2021,pp.412–426. Proceedings of the 40th International Conference on Software Engi-
+[2] X. Zhou, X. Peng, T. Xie, J. Sun, C. Ji, W. Li, and D. Ding, “Fault neering: Companion Proceeedings, ICSE 2018, Gothenburg, Sweden,
+analysis and debugging of microservice systems: Industrial survey, May27-June03,2018. ACM,2018,pp.323–324.
+benchmark system, and empirical study,” IEEE Trans. Software Eng., [18] C. Pham, L. Wang, B. Tak, S. Baset, C. Tang, Z. T. Kalbarczyk, and
+vol.47,no.2,pp.243–260,2021. R. K. Iyer, “Failure diagnosis for distributed systems using targeted
+[3] P.Liu,H.Xu,Q.Ouyang,R.Jiao,Z.Chen,S.Zhang,J.Yang,L.Mo, fault injection,” IEEE Trans. Parallel Distributed Syst., vol. 28, no. 2,
+J.Zeng,W.Xue,andD.Pei,“Unsuperviseddetectionofmicroservice pp.503–516,2017.
+traceanomaliesthroughservice-leveldeepbayesiannetworks,”in31st [19] Z.Li,J.Chen,R.Jiao,N.Zhao,Z.Wang,S.Zhang,Y.Wu,L.Jiang,
+IEEE International Symposium on Software Reliability Engineering, L. Yan, Z. Wang, Z. Chen, W. Zhang, X. Nie, K. Sui, and D. Pei,
+ISSRE 2020, Coimbra, Portugal, October 12-15, 2020. IEEE, 2020, “Practical root cause localization for microservice systems via trace
+pp.48–58. analysis,” in 29th IEEE/ACM International Symposium on Quality of
+[4] S.Nedelkoski,J.Cardoso,andO.Kao,“Anomalydetectionfromsystem Service,IWQOS2021,Tokyo,Japan,June25-28,2021. IEEE,2021,
+tracingdatausingmultimodaldeeplearning,”in12thIEEEInternational pp.1–10.
+ConferenceonCloudComputing,CLOUD2019,Milan,Italy,July8-13, [20] J. Lin, P. Chen, and Z. Zheng, “Microscope: Pinpoint performance
+2019. IEEE,2019,pp.179–186. issues with causal graphs in micro-service environments,” in Service-
+[5] C. Zhang, X. Peng, C. Sha, K. Zhang, Z. Fu, X. Wu, Q. Lin, and Oriented Computing - 16th International Conference, ICSOC 2018,
+D.Zhang,“Deeptralog:Trace-logcombinedmicroserviceanomalyde- Hangzhou, China, November 12-15, 2018, Proceedings, ser. Lecture
+tection through graph-based deep learning,” in 44th IEEE/ACM 44th NotesinComputerScience,vol.11236. Springer,2018,pp.3–20.
+International Conference on Software Engineering, ICSE 2022, Pitts- [21] G.Yu,P.Chen,H.Chen,Z.Guan,Z.Huang,L.Jing,T.Weng,X.Sun,
+burgh,PA,USA,May25-27,2022. ACM,2022,pp.623–634. and X. Li, “Microrank: End-to-end latency issue localization with
+[6] Y.Meng,S.Zhang,Y.Sun,R.Zhang,Z.Hu,Y.Zhang,C.Jia,Z.Wang, extended spectrum analysis in microservice environments,” in WWW
+and D. Pei, “Localizing failure root causes in a microservice through ’21: The Web Conference 2021, Virtual Event / Ljubljana, Slovenia,
+causality inference,” in 28th IEEE/ACM International Symposium on April19-23,2021. ACM/IW3C2,2021,pp.3087–3098.
+QualityofService,IWQoS2020,Hangzhou,China,June15-17,2020. [22] P.He,J.Zhu,Z.Zheng,andM.R.Lyu,“Drain:Anonlinelogparsing
+IEEE,2020,pp.1–10. approachwithfixeddepthtree,”in2017IEEEInternationalConference
+[7] ——,“Localizingfailurerootcausesinamicroservicethroughcausality on Web Services, ICWS 2017, Honolulu, HI, USA, June 25-30, 2017,
+inference,” in 28th IEEE/ACM International Symposium on Quality of I.AltintasandS.Chen,Eds. IEEE,2017,pp.33–40.
+Service, IWQoS 2020, Hangzhou, China, June 15-17, 2020. IEEE, [23] Z. Chen, J. Liu, W. Gu, Y. Su, and M. R. Lyu, “Experience
+2020,pp.1–10. report: Deep learning-based system log analysis for anomaly
+[8] M.Kim,R.Sumbaly,andS.Shah,“Rootcausedetectioninaservice- detection,” CoRR, vol. abs/2107.05908, 2021. [Online]. Available:
+orientedarchitecture,”inACMSIGMETRICS/InternationalConference https://arxiv.org/abs/2107.05908
+onMeasurementandModelingofComputerSystems,SIGMETRICS’13, [24] M. Ma, J. Xu, Y. Wang, P. Chen, Z. Zhang, and P. Wang, “Automap:
+Pittsburgh,PA,USA,June17-21,2013. ACM,2013,pp.93–104. Diagnose your microservice-based web applications automatically,” in
+[9] D. Liu, C. He, X. Peng, F. Lin, C. Zhang, S. Gong, Z. Li, J. Ou, and WWW ’20: The Web Conference 2020, Taipei, Taiwan, April 20-24,
+Z.Wu,“Microhecl:High-efficientrootcauselocalizationinlarge-scale 2020. ACM/IW3C2,2020,pp.246–258.
+microservicesystems,”in43rdIEEE/ACMInternationalConferenceon [25] A.Siffer,P.Fouque,A.Termier,andC.Largoue¨t,“Anomalydetection
+Software Engineering: Software Engineering in Practice, ICSE (SEIP) instreamswithextremevaluetheory,”inProceedingsofthe23rdACM
+2021,Madrid,Spain,May25-28,2021. IEEE,2021,pp.338–347. SIGKDD International Conference on Knowledge Discovery and Data
+[10] N.Marwede,M.Rohr,A.vanHoorn,andW.Hasselbring,“Automatic Mining,Halifax,NS,Canada,August13-17,2017. ACM,2017,pp.
+failure diagnosis support in distributed large-scale software systems 1067–1075.
+based on timing behavior anomaly correlation,” in 13th European [26] A.Reinhart,“Areviewofself-excitingspatio-temporalpointprocesses
+ConferenceonSoftwareMaintenanceandReengineering,CSMR2009, andtheirapplications,”StatisticalScience,vol.33,no.3,pp.299–318,
+Architecture-Centric Maintenance of Large-SCale Software Systems, 2018.
+Kaiserslautern,Germany,24-27March2009. IEEEComputerSociety, [27] K. Zhou, H. Zha, and L. Song, “Learning social infectivity in
+2009,pp.47–58. sparse low-rank networks using multi-dimensional hawkes processes,”
+[11] P. Wang, J. Xu, M. Ma, W. Lin, D. Pan, Y. Wang, and P. Chen, in Proceedings of the Sixteenth International Conference on Artificial
+“Cloudranger: Root cause identification for cloud native systems,” in Intelligence and Statistics, AISTATS 2013, Scottsdale, AZ, USA, April
+18th IEEE/ACM International Symposium on Cluster, Cloud and Grid 29 - May 1, 2013, vol. 31. JMLR.org, 2013, pp. 641–649. [Online].
+Computing, CCGRID 2018, Washington, DC, USA, May 1-4, 2018. Available:http://proceedings.mlr.press/v31/zhou13a.html
+IEEEComputerSociety,2018,pp.492–502. [28] E. Bacry, M. Bompaire, S. Ga¨ıffas, and S. Poulsen, “tick: a Python
+[12] S. P. Uselton, L. Treinish, J. P. Ahrens, E. W. Bethel, and A. State, library for statistical learning, with a particular emphasis on time-
+“Multi-source data analysis challenges,” in 9th IEEE Visualization dependentmodeling,”ArXive-prints,Jul.2017.
+Conference, IEEE Vis 1998, Research Triangle Park, North Carolina, [29] S. Bai, J. Z. Kolter, and V. Koltun, “An empirical evaluation
+USA,October18-23,1998,Proceedings. IEEEComputerSocietyand of generic convolutional and recurrent networks for sequence
+ACM,1998,pp.501–504. modeling,” CoRR, vol. abs/1803.01271, 2018. [Online]. Available:
+[13] A.G.Hawkes,“MarkovprocessesinAPL,”inConferenceProceedings http://arxiv.org/abs/1803.01271
+onAPL90:FortheFuture,APL1990,Copenhagen,Denmark,August [30] A.Vaswani,N.Shazeer,N.Parmar,J.Uszkoreit,L.Jones,A.N.Gomez,
+13-17,1990. ACM,1990,pp.173–185. L. Kaiser, and I. Polosukhin, “Attention is all you need,” in Advances
+[14] C.Lea,R.Vidal,A.Reiter,andG.D.Hager,“Temporalconvolutional in Neural Information Processing Systems 30: Annual Conference on
+networks: A unified approach to action segmentation,” in Computer NeuralInformationProcessingSystems2017,December4-9,2017,Long
+Vision-ECCV2016Workshops-Amsterdam,TheNetherlands,October Beach,CA,USA,2017,pp.5998–6008.
+8-10 and 15-16, 2016, Proceedings, Part III, ser. Lecture Notes in [31] T.Yang,J.Shen,Y.Su,X.Ling,Y.Yang,andM.R.Lyu,“AID:efficient
+ComputerScience,vol.9915,2016,pp.47–54. prediction of aggregated intensity of dependency in large-scale cloud
+[15] X.Zhou,X.Peng,T.Xie,J.Sun,C.Ji,D.Liu,Q.Xiang,andC.He,“La- systems,” in 36th IEEE/ACM International Conference on Automated
+tenterrorpredictionandfaultlocalizationformicroserviceapplications SoftwareEngineering,ASE2021,Melbourne,Australia,November15-
+by learning from system trace logs,” in Proceedings of the ACM Joint 19,2021. IEEE,2021,pp.653–665.
+MeetingonEuropeanSoftwareEngineeringConferenceandSymposium [32] H.R.V.Joze,A.Shaban,M.L.Iuzzolino,andK.Koishida,“MMTM:
+ontheFoundationsofSoftwareEngineering,ESEC/SIGSOFTFSE2019, multimodal transfer module for CNN fusion,” in 2020 IEEE/CVF
+Tallinn,Estonia,August26-30,2019. ACM,2019,pp.683–694. ConferenceonComputerVisionandPatternRecognition,CVPR2020,
+
+--- PDF PAGE 13 ---
+Seattle, WA, USA, June 13-19, 2020. Computer Vision Foundation / 2015, San Diego, CA, USA, May 7-9, 2015, Conference Track
+IEEE,2020,pp.13286–13296. Proceedings,2015.[Online].Available:http://arxiv.org/abs/1412.6980
+[33] A. Karpathy, G. Toderici, S. Shetty, T. Leung, R. Sukthankar, and [55] H.I.Fawaz,G.Forestier,J.Weber,L.Idoumghar,andP.Muller,“Deep
+L. Fei-Fei, “Large-scale video classification with convolutional neural learning for time series classification: a review,” Data Min. Knowl.
+networks,” in 2014 IEEE Conference on Computer Vision and Pattern Discov.,vol.33,no.4,pp.917–963,2019.
+Recognition,CVPR2014,Columbus,OH,USA,June23-28,2014. IEEE [56] T.Fu, “Areviewontime seriesdatamining,”Eng.Appl. Artif. Intell.,
+ComputerSociety,2014,pp.1725–1732. vol.24,no.1,pp.164–181,2011.
+[34] W.Liu,W.Zheng,andB.Lu,“Multimodalemotionrecognitionusing [57] L.VanderMaatenandG.Hinton,“Visualizingdatausingt-sne.”Journal
+multimodaldeeplearning,”CoRR,vol.abs/1602.08225,2016.[Online]. ofmachinelearningresearch,vol.9,no.11,2008.
+Available:http://arxiv.org/abs/1602.08225 [58] M.Du,F.Li,G.Zheng,andV.Srikumar,“Deeplog:Anomalydetection
+[35] M.M.Murray,A.Thelen,S.Ionta,andM.T.Wallace,“Contributions anddiagnosisfromsystemlogsthroughdeeplearning,”inProceedings
+of intraindividual and interindividual differences to multisensory pro- of the 2017 ACM SIGSAC Conference on Computer and Communica-
+cesses,”J.Cogn.Neurosci.,vol.31,no.3,2019. tionsSecurity,CCS2017,Dallas,TX,USA,October30-November03,
+[36] M.Marucci,G.DiFlumeri,G.Borghini,N.Sciaraffa,M.Scandola,E.F. 2017. ACM,2017,pp.1285–1298.
+Pavone,F.Babiloni,V.Betti,andP.Arico`,“Theimpactofmultisensory [59] W.Meng,Y.Liu,Y.Zhu,S.Zhang,D.Pei,Y.Liu,Y.Chen,R.Zhang,
+integrationandperceptualloadinvirtualrealitysettingsonperformance, S.Tao,P.Sun,andR.Zhou,“Loganomaly:Unsuperviseddetectionof
+workloadandpresence,”ScientificReports,vol.11,no.1,p.4831,Mar. sequentialandquantitativeanomaliesinunstructuredlogs,”inProceed-
+2021. ings of the Twenty-Eighth International Joint Conference on Artificial
+[37] Y. N. Dauphin, A. Fan, M. Auli, and D. Grangier, “Language mod- Intelligence,IJCAI2019,Macao,China,August10-16,2019. ijcai.org,
+eling with gated convolutional networks,” in Proceedings of the 34th 2019,pp.4739–4745.
+International Conference on Machine Learning, ICML 2017, Sydney, [60] X.Zhang,Y.Xu,Q.Lin,B.Qiao,H.Zhang,Y.Dang,C.Xie,X.Yang,
+NSW,Australia,6-11August2017,ser.ProceedingsofMachineLearning Q.Cheng,Z.Li,J.Chen,X.He,R.Yao,J.Lou,M.Chintalapati,F.Shen,
+Research,vol.70. PMLR,2017,pp.933–941. and D. Zhang, “Robust log-based anomaly detection on unstable log
+[38] S. Brody, U. Alon, and E. Yahav, “How attentive are graph attention data,”inProceedingsoftheACMJointMeetingonEuropeanSoftware
+networks?” CoRR, vol. abs/2105.14491, 2021. [Online]. Available: EngineeringConferenceandSymposiumontheFoundationsofSoftware
+https://arxiv.org/abs/2105.14491 Engineering,ESEC/SIGSOFTFSE2019,Tallinn,Estonia,August26-30,
+[39] D. Beck, G. Haffari, and T. Cohn, “Graph-to-sequence learning using 2019. ACM,2019,pp.807–817.
+gatedgraphneuralnetworks,”inProceedingsofthe56thAnnualMeeting [61] X. Li, P. Chen, L. Jing, Z. He, and G. Yu, “Swisslog: Robust and
+oftheAssociationforComputationalLinguistics,ACL2018,Melbourne, unifieddeeplearningbasedloganomalydetectionfordiversefaults,”in
+Australia,July15-20,2018,Volume1:LongPapers. Associationfor 31stIEEEInternationalSymposiumonSoftwareReliabilityEngineering,
+ComputationalLinguistics,2018,pp.273–283. ISSRE 2020, Coimbra, Portugal, October 12-15, 2020. IEEE, 2020,
+[40] N. L. of Tsinghua University. (2020) 2020 international aiops pp.92–103.
+challenge. [Online]. Available: https://github.com/NetManAIOps/ [62] V. Le and H. Zhang, “Log-based anomaly detection without log
+AIOps-Challenge-2020-Data parsing,” CoRR, vol. abs/2108.01955, 2021. [Online]. Available:
+[41] H. Qiu, S. S. Banerjee, S. Jha, Z. T. Kalbarczyk, and R. Iyer. (2020) https://arxiv.org/abs/2108.01955
+Pre-processedtracingdataforpopularmicroservicebenchmarks. [63] Z. Chen, J. Liu, Y. Su, H. Zhang, X. Ling, Y. Yang, and M. R. Lyu,
+[42] Y.Gan,Y.Zhang,D.Cheng,A.Shetty,P.Rathi,N.Katarki,A.Bruno, “Adaptive performance anomaly detection for online service systems
+J.Hu,B.Ritchken,B.Jackson,K.Hu,M.Pancholi,Y.He,B.Clancy, via pattern sketching,” CoRR, vol. abs/2201.02944, 2022. [Online].
+C. Colen, F. Wen, C. Leung, S. Wang, L. Zaruvinsky, M. Espinosa, Available:https://arxiv.org/abs/2201.02944
+R.Lin,Z.Liu,J.Padilla,andC.Delimitrou,“Anopen-sourcebenchmark [64] H.Ren,B.Xu,Y.Wang,C.Yi,C.Huang,X.Kou,T.Xing,M.Yang,
+suite for microservices and their hardware-software implications for J. Tong, and Q. Zhang, “Time-series anomaly detection service at
+cloud & edge systems,” in Proceedings of the Twenty-Fourth Interna- microsoft,” in Proceedings of the 25th ACM SIGKDD International
+tionalConferenceonArchitecturalSupportforProgrammingLanguages Conference on Knowledge Discovery & Data Mining, KDD 2019,
+andOperatingSystems,ASPLOS2019,Providence,RI,USA,April13- Anchorage,AK,USA,August4-8,2019. ACM,2019,pp.3009–3017.
+17,2019. ACM,2019,pp.3–18. [65] Z.Li,Y.Zhao,J.Han,Y.Su,R.Jiao,X.Wen,andD.Pei,“Multivariate
+[43] Apache.(2022)Apachethrift.[Online].Available:https://thrift.apache. timeseriesanomalydetectionandinterpretationusinghierarchicalinter-
+org/ metricandtemporalembedding,”inKDD’21:The27thACMSIGKDD
+[44] C. N. C. Foundation. (2022) Jaeger. [Online]. Available: https: Conference on Knowledge Discovery and Data Mining, Virtual Event,
+//www.jaegertracing.io/ Singapore,August14-18,2021. ACM,2021,pp.3220–3230.
+[45] Google. (2022) Container advisor. [Online]. Available: https://github. [66] J. Audibert, P. Michiardi, F. Guyard, S. Marti, and M. A. Zuluaga,
+com/google/cadvisor “USAD:unsupervisedanomalydetectiononmultivariatetimeseries,”in
+[46] C. N. C. Foundation. (2022) Prometheus. [Online]. Available: KDD’20:The26thACMSIGKDDConferenceonKnowledgeDiscovery
+https://prometheus.io/ andDataMining,VirtualEvent,CA,USA,August23-27,2020. ACM,
+[47] InfluxData.(2022)Influxdb.[Online].Available:https://www.influxdata. 2020,pp.3395–3404.
+com/ [67] Y.Su,Y.Zhao,C.Niu,R.Liu,W.Sun,andD.Pei,“Robustanomaly
+[48] Elastic.(2022)Elasticsearch.[Online].Available:https://www.elastic.co/ detectionformultivariatetimeseriesthroughstochasticrecurrentneural
+[49] S. Furuhashi. (2022) Fluentd. [Online]. Available: https://www.fluentd. network,” in Proceedings of the 25th ACM SIGKDD International
+org/architecture Conference on Knowledge Discovery & Data Mining, KDD 2019,
+[50] Elastic. (2022) Kibana. [Online]. Available: https://www.elastic.co/cn/ Anchorage,AK,USA,August4-8,2019. ACM,2019,pp.2828–2837.
+kibana/ [68] C. Lee, T. Yang, Z. Chen, Y. Su, Y. Yang, and M. R. Lyu, “Hetero-
+[51] Alibaba. (2022) Chaosblade. [Online]. Available: https://github.com/ geneous anomaly detection for software systems via semi-supervised
+chaosblade-io/chaosblade cross-modalattention,”2022.
+[52] S. Kandula, R. Mahajan, P. Verkaik, S. Agarwal, J. Padhye, and [69] Y. Gan, Y. Zhang, K. Hu, D. Cheng, Y. He, M. Pancholi, and
+P.Bahl,“Detaileddiagnosisinenterprisenetworks,”inProceedingsof C. Delimitrou, “Seer: Leveraging big data to navigate the complexity
+the ACM SIGCOMM 2009 Conference on Applications, Technologies, of performance debugging in cloud microservices,” in Proceedings of
+Architectures,andProtocolsforComputerCommunications,Barcelona, the Twenty-Fourth International Conference on Architectural Support
+Spain,August16-21,2009. ACM,2009,pp.243–254. for Programming Languages and Operating Systems, ASPLOS 2019,
+[53] S. Ioffe and C. Szegedy, “Batch normalization: Accelerating deep Providence,RI,USA,April13-17,2019. ACM,2019,pp.19–33.
+networktrainingbyreducinginternalcovariateshift,”inProceedingsof [70] Y. Gan, M. Liang, S. Dev, D. Lo, and C. Delimitrou, “Sage: practical
+the 32nd International Conference on Machine Learning, ICML 2015, and scalable ml-driven performance debugging in microservices,” in
+Lille, France, 6-11 July 2015, ser. JMLR Workshop and Conference ASPLOS ’21: 26th ACM International Conference on Architectural
+Support for Programming Languages and Operating Systems, Virtual
+Proceedings,vol.37. JMLR.org,2015,pp.448–456.
+[54] D.P.KingmaandJ.Ba,“Adam:Amethodforstochasticoptimization,” Event,USA,April19-23,2021. ACM,2021,pp.135–151.
+in 3rd International Conference on Learning Representations, ICLR

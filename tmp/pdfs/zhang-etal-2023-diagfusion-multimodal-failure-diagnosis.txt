@@ -1,0 +1,1352 @@
+--- PDF PAGE 1 ---
+1
+Robust Failure Diagnosis of Microservice
+System through Multimodal Data
+Shenglin Zhang, Member, IEEE, Pengxiang Jin, Zihan Lin, Yongqian Sun, Member, IEEE,
+Bicheng Zhang, Sibo Xia, Zhengdan Li, Zhenyu Zhong, Minghua Ma, Wa Jin, Dai Zhang, Zhenyu Zhu,
+Dan Pei, Senior Member, IEEE
+Abstract—Automaticfailurediagnosisiscrucialforlargemicroservicesystems.Currently,mostfailurediagnosismethodsrelysolely
+onsingle-modaldata(i.e.,usingeithermetrics,logs,ortraces).Inthisstudy,weconductanempiricalstudyusingreal-worldfailure
+casestoshowthatcombiningthesesourcesofdata(multimodaldata)leadstoamoreaccuratediagnosis.However,effectively
+representingthesedataandaddressingimbalancedfailuresremainchallenging.Totackletheseissues,weproposeDiagFusion,a
+robustfailurediagnosisapproachthatusesmultimodaldata.Itleveragesembeddingtechniquesanddataaugmentationtorepresent
+themultimodaldataofserviceinstances,combinesdeploymentdataandtracestobuildadependencygraph,andusesagraphneural
+networktolocalizetherootcauseinstanceanddeterminethefailuretype.Ourevaluationsusingreal-worlddatasetsshowthat
+DiagFusionoutperformsexistingmethodsintermsofrootcauseinstancelocalization(improvingby20.9%to368%)andfailuretype
+determination(improvingby11.0%to169%).
+IndexTerms—Microservicesystems,Failurediagnosis,Multimodaldata,Graphneuralnetwork
+✦
+unit:second 0.01
+1 INTRODUCTION
+0.03
+S5 S6 S7
+Trace
+request 1.5
+Microservicesarchitectureisbecomingincreasinglypopular S1 S2 S3 S4
+1.6 1.5 0.01
+for its reliability and scalability [1]. Typically, it is a large-
+07-1310:56:13 INFO|S2|tokengeneratesuccesstoken=...
+scaledistributedsystemwithdozenstothousandsofservice
+07-1311:17:50 ERROR|S3|S7|...|servicerefuse
+instances running on various environments (e.g., physical 07-1311:21:33 INFO|S3|thelistofallavailableservices... Log
+machines, VMs, or containers) [2]. Due to the complex and 07-1311:26:34 INFO|S6|...|writeredissuccessfully
+dynamic nature of microservice systems, the failure of one
+Net-out
+service instance can propagate to other service instances,
+Metric
+resulting in user dissatisfaction and financial losses for the Mem
+serviceprovider.Forexample,AmazonWebService(AWS) CPU
+sufferedafailureinDecember2021thatimpactedthewhole
+10:30:00 11:00:00 11:30:00 12:00:00
+networkingsystemandtooknearlysevenhourstodiagnose
+and mitigate [3]. Therefore, it is crucial to timely and accu- Fig.1:Multimodaldataofamicroservicesystem.S1-S7are
+ratelydiagnosefailuresinmicroservicesystems. differentmicroservices.
+To effectively diagnose failures, microservice system
+record the detailed invocation flow of user requests. Logs
+operators typically collect three types of monitoring data:
+aresemi-structuredtextthatrecordshardwareandsoftware
+traces,logs,andmetrics.Tracesaretree-structureddatathat
+eventsofaserviceinstance,includingbusinessevents,state
+changes, hardware errors, etc. Metrics are time series indi-
+• Y. Sun is the corresponding author. P. Jin, Z. Lin, Y. Sun, S. Xia, Z. cating service status, including system metrics (e.g., CPU
+Li, Z. Zhong, and W. Jin are with Nankai University, Tianjin, China.
+utilization, memory utilization) and user-perceived metrics
+Email: {sunyongqian, lzd}@nankai.edu.cn, {jinpengxiang, linzihan, xia-
+sibo,zyzhong,1913173}@mail.nankai.edu.cn.
+(e.g., average response time, error rate). From now on, we
+• S. Zhang is with the College of Software, Nankai University, Tian- use the term modality to describe a particular data type.
+jin, China, and also with the Haihe Laboratory of Information Figure 1 shows an example of the three modalities of a
+Technology Application Innovation (HL-IT), Tianjin, China. Email:
+microservicesystem.
+zhangsl@nankai.edu.cn
+• B. Zhang is with Fudan University, Shanghai, China. Email: Automaticfailurediagnosisofmicroservicesystemshas
+22210240069@m.fudan.edu.cn. been a topic of great interest over the years, particularly
+• M. Ma is with Microsoft, Beijing, China. Email:
+when identifying the root cause instance and determining
+minghuama@microsoft.com.
+• D.ZhangandZ.ZhuarewithZhejiangE-CommerceBankCo.,Ltd.Email: the failure type. Most approaches rely on single-modal data,
+{henry.zd,michael.zzy}@mybank.cn such as traces [1], [4]–[6], logs [7]–[10], or metrics [11]–
+• D. Pei is with Department of Computer Science, Tsinghua University, [14],tocapturefailurepatterns.However,relyingsolelyon
+Beijing, China, and also with Beijing National Research Center for
+single-modal data for diagnosing failures is not effective
+InformationScienceandTechnology.Email:peidan@tsinghua.edu.cn.
+• ThisworkwassupportedinpartbytheNationalNaturalScienceFoun- enoughfortworeasons.First,afailurecanimpactmultiple
+dation of China (Grant No. 62072264, 62272249), and in part by the aspectsofaserviceinstance,causingmorethanonemodal-
+NaturalScienceFoundationofTianjin(GrantNo.21JCQNJC00180).
+itytoexhibitabnormalpatterns.Usingjustonedatasource
+3202
+yaM
+13
+]ES.sc[
+2v21501.2032:viXra
+
+--- PDF PAGE 2 ---
+cannot fully capture these patterns and accurately distin- determination. To the best of our knowledge, we are
+guish between different types of failures. Second, some among the first to learn a unified representation of the
+types of failures may not be reflected in certain modalities, three modalities for the failure diagnosis of microser-
+making it difficult for methods relying on that modality to vicesystems(i.e.,trace,log,andmetric).
+identifythesefailures. • Weleveragedataaugmentationtoimprovethequality
+Moreover, we conduct an empirical study on an open- of the learned representation, which allows DiagFusion
+source dataset to verify the necessity of combining multi- to work with limited labeled failures and imbalanced
+modaldataforrobustfailurediagnosis.AslistedinTable1, failuretypes.
+thedatasetcontainsfailurescausedbyvariousreasons:high • We conduct extensive experiments on two datasets,
+memoryusage,incorrectdeallocation,codebug,misconfig- one from an open-source platform and another from a
+uration, network interruption, etc. We examine hundreds real-world microservice system (Section 5). The results
+of service instance failures and conclude that combining show that when DiagFusion is trained on 160 and 80
+traces, logs, and metrics (multimodal) is crucial for accurate cases, it achieves Avg@5 of 0.75 and 0.76 on the two
+diagnosis.Forexample,themicroserviceshowninFigure1 datasets, respectively, improving the accuracy of root
+is experiencing a failure due to missing files. It generated cause instance localization by 20.9% to 368%. Moreover,
+error messages in logs and a significant increase in status DiagFusion achieves F1-score of 0.84 and 0.80, improv-
+code 500 in related traces. Additionally, one of its metrics, ingtheaccuracyoffailuretypedeterminationby11.0%to
+networkoutbytes,droppeddramaticallyduringthisfailure. 169%.
+Theseobservationshighlighttheimportanceofincorpo- OurimplementationofDiagFusionispubliclyavailable1.
+rating multimodal data for robust failure diagnosis. How- The rest of the paper is organized as follows: Section 2
+ever,combiningmultimodaldatafordiagnosingfailuresin introducesthenecessarybackground.Section3presentsthe
+microservicesystemsfacestwomajorchallenges: resultsofanempiricalstudyoffailuresinmicroservicesys-
+1) Representation of multimodal data. The formats of tems. Section 4 describes the overview and detailed imple-
+metrics,logs,andtracesaresignificantlydifferentfrom mentationofDiagFusioninfailurediagnosis.InSection5,we
+eachother.Serviceinstancemetricsareoftenintheform evaluate the performance and time efficiency of DiagFusion
+of time series (the bottom of Figure 1), while logs are using two datasets. Section 6 discusses the technical ratio-
+usually semi-structured text (the middle of Figure 1) nale, robustness, and threats to validity. Section 7 presents
+and traces often take the form of tree structures with the related work in failure diagnosis. Section 8 concludes
+spansasnodes(thetopofFigure1).Itischallengingto thepaper.
+findaunifiedrepresentationofallthismultimodaldata
+that fully utilizes complementary information from
+eachdatatype.
+2 BACKGROUND
+2) Imbalanced failure types.Faulttolerancemechanisms 2.1 MicroserviceSystemsandMultimodalData
+in microservice systems often result in a high ratio
+Microservice systems allow developers to independently
+of normal data to failure-related data. Some types of
+develop and deploy functional software units (microser-
+failuresaremuchrarerthanothers,leadingtoanimbal-
+vice). For example, when a user tries to buy an item on
+anceintheratioofdifferenttypesoffailures(Table1).
+an online shopping website, the user will experience item
+Totackletheabovechallenges,wepresentDiagFusion,an
+searching, item displaying, order generation, payment, etc.
+automated failure diagnosis approach that integrates trace,
+Eachofthesefunctionsisservedbyaspecificmicroservice.
+log, and metric data. To form a unified representation of
+Afailureataspecificserviceinstancecanpropagatetoother
+thethreemodalitieswithdifferentformatsandnatures,Di-
+service instances in many ways, bringing cascading fail-
+agFusioncombineslightweightpreprocessingandrepresen-
+ures. However, diagnosing online failures in microservice
+tation learning, which maps data from different modalities
+systems is difficult due to these systems’ highly complex
+into the same vector space. Since the labeled failures are
+orchestration and dynamic interaction. To accurately find
+usually inadequate to train the representation model effec-
+the cause of a failure, operators must carefully monitor the
+tively, we propose a data augmentation mechanism, which
+system and record traces, logs, and metrics. These three
+helps DiagFusion to learn the correlation between the three
+modalities of monitoring data stand as the three pillars of
+modalities and failures effectively. To further enhance the
+theobservabilityofmicroservicesystems.Thecollectionand
+accuracyofourdiagnosis,DiagFusionuseshistoricalfailure
+storageofinstances’monitoringdataarenotinthescopeof
+patternstotrainaGraphNeuralNetwork(GNN),capturing
+this paper. The three modalities: trace, log, and metric, and
+bothspatialfeaturesandpossiblefailurepropagationpaths,
+theirrolesinfailurediagnosisaredescribedbelow.
+which allows DiagFusion to conduct root cause instance
+Trace. Traces record the execution paths of users’ re-
+localizationandfailuretypedetermination.
+quests.Figure1showsanexampleoftraceatthetop.Google
+Ourcontributionsaresummarizedasfollows:
+formally proposed the concept of traces at Dapper [15], in
+• We propose DiagFusion, a multimodal data-based ap- which it defined the whole lifecycle of a request as a trace
+proach for failure diagnosis (Section 4). DiagFusion andtheinvocationandansweringofacomponentasaspan.
+buildsadependencygraphfromtraceanddeployment By examining traces, operators may identify microservices
+datatocapturepossiblefailurepropagationpaths.Then thathavepossiblygonewrong[4],[6],[16]–[21].Tracescan
+itappliesaGNNtoachieveatwo-foldfailurediagnosis,
+i.e., root cause instance localization and failure type 1.https://anonymous.4open.science/r/DiagFusion-378D
+2
+
+--- PDF PAGE 3 ---
+TABLE1:Detailedinformationofthefailuresintheempiricalstudy
+FailureType RootCause Metric Log Trace #Failures
+Systemstuck Highmemoryusage memory_usage_pct↑ - - 505
+Processcrash Incorrectdeallocation memory_stats_active_anon↓ - - 16
+ERROR |0.0.0.1| 172.17.0.5 |M1|uuid:78fef9f0
+Loginfailure Networkinterruption - S1->S2:RT=11s 527
+informationhasexpired,mobilephoneloginisinvalid
+ERROR |0.0.0.3|W2|getanerror[Errno2]Nosuch
+Filemissing Codebug - S2->S3:RT=1.5s 36
+fileordirectory: ’resources/source_file/source_file.csv’
+Accessdenied Misconfiguration - ERROR |0.0.0.2|B2| 2768e0e0037e |servicerefuse S2->S4:RT=1.1s 15
+beviewedastrees,withmicroservicesasnodesandinvoca- In essence, fastText is a neural network model that pro-
+tionsasedges.Eachsubtreecorrespondstoaspan.Typically, cesseswordsasinputandtakestheoutputfromthehidden
+traces carry information about invocations, e.g., start time, layer (a vector of real numbers) as its representation. It can
+caller,callee,responsetime,andstatuscode. be trained in both supervised and unsupervised modes,
+Log. Logs record comprehensive events of a service but the supervised mode generally yields more accurate
+instance. Some examples of logs are shown in the middle results due to its incorporation of label information. In the
+of Figure 1. Logs are generated by developers using com- supervisedtrainingmode,theneuralnetworkisoptimized
+mands like printf, logging.debug, logging.error. They provide by predicting the class of the document. Once the training
+aninternalpictureofaserviceinstance.Byexamininglogs, is completed, fastText can be used to provide vectorized
+operatorsmaydiscovertheactualcauseofwhyaninstance representations(i.e.,embeddings)foranygiveninput.
+performs not well. Typically, logs consist of three fields: Graphneuralnetwork.GNNcaneffectivelymodeldata
+timestamp,verbositylevel,andrawmessage[22].Fourcom- from non-euclidean space, thereby being popular among
+monly used verbosity levels, i.e., INFO, WARN, DEBUG, fields with graph structures, e.g., social networks, biology,
+and ERROR, indicate the severity of a log message. The and recommendation systems. Popular GNN architecture
+raw message of a log conveys detailed information about includes Graph Convolution Network (GCN) [41], Graph-
+the event. To utilize logs more effectively, researchers have SAGE[42],GraphAttentionNetwork(GAT)[43],etc.GNNs
+proposed various parsing techniques to extract templates apply graph convolutions, allowing nodes to utilize their
+and parameters, e.g., FT-Tree [23], Drain [22], POP [24], information and learn from their neighbors through mes-
+MoLFI[25],Spell[26],andLogram[27]. sagepassing.Therearenumerouscomponentsinmicroser-
+Metric. Various system-level metrics (e.g., CPU uti- vice systems that interconnect with each other. Thus graph
+lization, memory utilization) and user-perceived metrics structureissuitabletomodelmicroservicesystems,andwe
+(e.g., average response time) are configured for monitor- employGNNtolearnthepropagationpatternsofhistorical
+ing system instances. Each metric is collected at a pre- failurecases.
+defined interval, forming a time series, as shown at the
+bottom of Figure 1. These metrics track various aspects of 2.3 ProblemStatement
+performance issues. By examining metrics, operators can
+When a failure occurs, operators need to localize the root
+determine which physical resource is anomalous or is the
+cause instance and determine what has happened to it to
+bottleneck[28]–[33].
+achieve timely failure mitigation. For large-scale microser-
+Inadditiontotrace,log,andmetric,deploymentdatais
+vice systems, the first task is a ranking problem: to rank
+also important to failure diagnosis. A microservice system
+the root cause instance higher than other instances. We use
+comprises many hardware and software assets that form
+the term root cause instance localization to name this task
+complicated inter-relationships. Operators must carefully
+(Task #1). The second task is a classification problem: to
+record these relationships (a.k.a. deployment data) to keep
+classify the failure into a predefined set of failure types.
+highmaintainabilityofthesystem.Leveragingdeployment
+We use the term failure type determination to name this task
+dataenablestheunderstandingoffailurepropagationpaths
+(Task#2).
+andcharacteristics.
+After each failure, operators will carefully conduct a
+post-failureanalysis:labelingitsrootcauseinstanceandits
+2.2 Preliminaries
+failuretype.Additionally,chaosengineeringcangeneratea
+Representation learning.Representationlearninghasbeen largenumberoffailurecases[44].Itcanenlargethenumber
+widely used in natural language processing tasks, usually of failure cases and enrich the types of failures. We train
+in the form of word embedding. Popular techniques of DiagFusionbasedonthesefailurecases.
+representation learning include static representation like
+word2vec [34], GloVe [35], fastText [36], and dynamic rep- 3 EMPIRICAL STUDY
+resentation like ELMo [37], BERT [38], GPT [39]. With the
+Mostexistingfailurediagnosismethodsarebasedonsingle-
+similaritiesbetweenlogsandnaturallanguages,representa-
+modal data. However, these methods cannot fully capture
+tionlearningcanbeappliedtoextractlogfeatures[40].We
+thepatternsoffailedinstances,leadingtoineffectivefailure
+employ fastText to learn a unified representation of events
+diagnosis. We conduct an empirical study conducted on
+from multimodal data. Compared to word2vec and GloVe,
+Generic AIOps Atlas (GAIA)2 dataset to show the ineffec-
+fastText can utilize more information [36]. We employ fast-
+tiveness of these methods. The dataset is collected from
+Text to learn a unified representation of the multimodal
+data. 2.https://github.com/CloudWise-OpenSource/GAIA-DataSet
+3
+
+--- PDF PAGE 4 ---
+a simulation environment consisting of 10 microservices, three modalities with different natures by turning unstruc-
+two database services (MySQL and Redis), and five host turedrawdataintostructuredeventsandvectors.Thenwe
+machines. The system serves mobile users and PC users. combinetraceswithdeploymentdatatobuildadependency
+Operators injected five types of failures, including system graph (DG) of the microservice system. After that, the
+failures (System stuck and Process crash) and service fail- representations of events and DG are glued together by a
+ures (Login failure, File missing, and Access denied). The GNN. We train GNN using historical failures to learn the
+failure injection record is provided along with the data. propagationpatternofsystemfailures.
+Table 1 lists some typical symptoms of failures. We can see After the training stage, we save the event embedding
+thatnomodalityalonecandistinguishthepatternsofthese model and the GNN. Figure 5 depicts the real-time failure
+five types of failures. It also shows that traces, logs, and diagnosis framework of DiagFusion. The trigger of DiagFu-
+metrics may display different anomalous patterns when a sioncanbealertsgeneratedthroughpredefinedrules.When
+failure occurs. Mining the correlation between multimodal anewfailureisalerted,DiagFusionwillperformareal-time
+data can provide operators with a more comprehensive diagnosisandgivetheresultsbacktooperators.
+understandingoffailures.
+Besides, Table 1 shows that some failures occur much
+more frequently than others. For example, the total occur-
+rences of Process crash, File missing, and Access denied (67) Deployment
+equalsonly12%oftheoccurrencesofLoginfailure(527). data
+To further understand the distribution of failure types
+DG
+in the production environment, we investigated N failures
+in a microservice system of Microsoft. Due to the company Trace
+policy, we have to hide some details of these failures. The GNN
+Historical
+failures of the studied system are recorded in the Incident
+Failure
+Management System (IcM) of Microsoft, where a failure
+is centralized handled, including the detection, discussion, Log Event Event
+Sequence Representation
+mitigation, and post-failure analysis of failures. The IcM
+data of failures are persistently stored in a database. We
+querythefailurerecordsfromthedatabasewithinthetime
+Metric
+range from 2021 August to 2022 August. We only keep
+the failures with the status of “completed”, for their post- Data Event
+Augmentation Embedding
+failure analyses have been reviewed. In the root cause field
+Model
+ofpost-failureanalysis,operatorscategorizethefailuresinto
+the following types: code, data, network, hardware, and Fig.3:ThetrainingframeworkofDiagFusion.
+external.WecanseefromFigure2thatdifferentfailuretypes
+are imbalanced regarding the number of failure cases. The
+4.2 UnifiedEventRepresentation
+imbalanceddataposesasignificantchallengebecausemost
+machine learning methods perform poorly on failure types DiagFusionunifiesthethreemodalitiesbyextractingevents
+withfeweroccurrences. fromtherawdataandencodingthemintovectors.Specifi-
+cally,itcollectsfailure-indicativeeventsbyleveragingeffec-
+4 N tiveandlightweightmethods,includinganomalydetection
+10
+3 N techniques for metrics and traces and template parsing
+10 techniques for logs. Then, it trains a fastText [36] model on
+2 N
+10 eventsequencestogenerateembeddingvectorsofevents.
+1 N
+10 First,weintroducetheinstancesinamicroservicesystem.
+0 Microservice systems have the advantage of dynamic de-
+hardware data network external code
+ploymentbyutilizingthecontainertechnique.Inthispaper,
+we use the term instance to describe a running container
+Fig.2:Thedistributionoffailuretypesatalarge-scalereal-
+andthetermservicegrouptodescribethelogicalcomponent
+worldmicroservicesystem.
+thataninstancebelongsto.Forexample,Billingisaservice
+group in a microservice system, and Billing_cff19b denotes
+4 APPROACH
+an instance, where cff19b is the container id. Below we will
+4.1 DesignOverview
+describetheeventextractionfromdifferentmodalities.
+In this paper, we propose DiagFusion, which combines the Trace event extraction. Traces record calling relation-
+modality of trace, log, and metric for accurate failure di- ships between services. We group trace data by its caller
+agnosis. The training framework of DiagFusion is summa- andcallee services.DiagFusionwillexamine multiplefields
+rized in Figure 3. First, DiagFusion extracts events from inside a trace group. Under different implementations of
+raw traces, logs, and metrics data and serializes them by tracerecording,tracedatacancarrydifferentfields,e.g.,re-
+their timestamps. Then, we train a neural network to learn sponsetimeandstatuscode,whichreflectdifferentaspects
+thedistributedrepresentationofeventsbyencodingevents ofoperators’interests.Weapplyananomalydetectionalgo-
+into vectors. The challenge of data imbalance is overcome rithm (i.e., 3-sigma) for numerical fields like response time
+throughdataaugmentationduringmodeltraining.Weunify to detect anomalous behaviors. For categorical fields like
+4
+
+--- PDF PAGE 5 ---
+ecarT
+goL
+cirteM
+T+1W1,NET_in,↑
+T+2 W1,M2
+T+3 W1,R2
+T+4 W1,7f81e7d6
+T+6 W1,027a3284
+T+7 W1,027a3284
+T+5W1,CPU_pct,↑
+Event Event
+RawData
+Extraction Serialization
+......
+causeinstance’seventsequenceislabeledbytheactualfail-
+T+2 W1,M2
+uretype,whileotherinstances’eventsequencesarelabeled
+as“non-root-cause”.Amicroservicesystemwithphistorical
+T+3 W1,R2 failuresandqinstancesresultsinN =p×qeventsequences
+afterrelabeling.Then,welearnunifiedrepresentationsfrom
+these relabeled historical event sequences using the event
+INFO|W1|allavailable
+services... embeddingmodel. ERROR|W1|Nosuch
+fileor... Witheventsequenceandinstancelabeling,wecantrans-
+ERROR|W1|Nosuch
+fileor... form events into vectors. We use the term event embedding
+to describe the mapping of events to real number vectors.
+T+6 W1,027a3284 Specifically, we train a fastText model on the event se-
+T+7 W1,027a3284 quences to obtain the vectorized representation for events
+T+1 W1,NET_in,↑ fromallthreemodalities.FastTextisaneuralnetworkorig-
+T+5 W1,CPU_pct,↑ inallyproposedfortextclassification.Foradocumentwith
+word sequences, fastText extracts n-grams from it and pre-
+dicts its label. In our scenario, we replace word sequences
+with event sequences and replace document labels with
+Fig. 4: The event extraction and serialization process using failuretypes.ThetrainingoffastTextminimizesthenegative
+traces,logs,andmetrics. log-likelihoodoverclasses:
+status code, we count the number of occurrences of each 1 (cid:88) N
+value. If the count of some value increases dramatically, min− y n log(f(x n )) (1)
+f N
+we determine that this field is anomalous. We determine n=1
+that a group of caller and callee is anomalous if one of its
+wherex nisthenormalizedbagoffeaturesofthen-thevent
+fieldsbecomesanomalous.Theextractedtraceeventsarein
+sequence,y ndenotestherelabeledinformation,andf isthe
+theformoftuple<timestamp,caller-instance-id,callee-instance-
+neuralnetwork.WetreatfastText’soutputasthevectorized
+id>.
+representation of events. The training detail of the event
+Log event extraction. Logs record detailed activities of
+embeddingmodelisdescribedinSection4.4.
+aninstance(serviceormachine).Weperformlogparsingfor
+logeventextractionusingDrain[22],whichhasbeenproven
+tobeeffectiveinpractice.Drainusesafixeddepthparsetree 4.3 GraphNeuralNetwork
+todistinguishthetemplatepartandthevariablepartoflog
+Intheeventrepresentationprocess,DiagFusioncapturesthe
+messages. For example, in the log message “uuid: 8fef9f0
+localfeaturesofinstances.However,failurescanpropagate
+information has expired, mobile phone login is invalid”,
+between instances, so we need to have a global picture of
+“uuid: ****** information has expired, mobile phone login
+the system, i.e., how a failure will affect the system. To this
+isinvalid”isthetemplatepart,and“8fef9f0”isthevariable
+end, we employ a GNN to learn the failure propagation
+part. After we get the template part of a log message, we
+between service instances and integrate all the information
+hash the string of the template part to obtain an event
+ofthewholesystem.
+templateid.Theextractedlogeventsareintheformoftuple
+ToleverageaGNN,itisessentialtoconsiderbothnodes
+<timestamp,instance-id,event-template-id>.
+and edges within a graph. The nodes in a GNN corresponds
+Metriceventextraction.Metricsarealsorecordedatthe
+to the instances in a microservice system. An instance is
+instance level. We perform 3-sigma to detect anomalous
+characterized by its anomalous events in DiagFusion. We
+metrics. When the value of a metric exceeds the upper
+representaninstanceibyaveragingallofitsevents:
+boundof3-sigma,theanomalydirectionisup.Similarly,the
+anomaly direction is down if the value is below the lower h(0) = 1 (cid:88) V (e) (2)
+bound.Theextractedmetriceventsareintheformoftuple i |E | 1
+i
+<timestamp,instance-id,metric-name,anomaly-direction>.
+∀e∈Ei
+The above extraction provides events from different whereE
+i
+istheextractedeventsequences,andV
+1
+(e)isthe
+modalities.Despitethedifferencesinrawdata,allextracted vectorized representation of event e learned by the event
+events share two fields, namely timestamp and instance-id. embeddingmodel.
+These are the keys to unifying different modalities. We TheedgesinaGNNcorrespondtothedependencygraph
+groupeventsbyinstance-idandserializeeventsinthesame in a microservice system. There are two dominant ways
+groupbytimestamp.Figure4showstheeventextractionand of propagation failure between services: function calling
+serializationprocessforoneinstance.Theeventsequenceof or resource contention [45]. So we combine traces and
+instanceiisdenotedbyE i. deployment data to capture probable failure propagation
+After getting the event sequence of every instance, we paths. Specifically, we aggregate traces to get a call graph.
+further assign labels to every event sequence according to Thenweaddtwodirectededgesforeachpairofcallerand
+operators’ post-failure analysis. Original failure labels are callee,withonepointingfromthecallertothecalleeandthe
+often in the form of tuple <root cause instance-id, failure other in the reverse direction. From deployment data, we
+type>.Tofullyutilizethelabelinformation,werelabelevent add edges between two instances if they are co-deployed,
+sequencesinaninstance-wisemanner.Specifically,theroot i.e.,sharingresources.
+5
+
+--- PDF PAGE 6 ---
+Multimodal data Microservice System
+Microservice Microservice Microservice
+Microservice Microservice Microservice
+Deployment
+Diagnosis hosts hosts hosts
+data
+Results
+DG Offline Training
+Historical Training1 Event Training2 GNN
+Embedding
+Trace Failures Model Model
+GNN Operators
+Online Embed Inference
+Alert
+Online Diagnosis
+Log Event Event Root Cause
+Realtime Failure Event Instance
+Sequence Representation Alert Embedding
+Failure Type
+Operators
+Event
+Metric Embedding Fig.6:IntegrationofDiagFusionwithamicroservicesystem.
+Model
+Fig.5:Real-timefailurediagnosis.
+4.4.2 TrainingofGraphNeuralNetwork
+WetraintheGNNinajointlearningfashiontofullyutilize
+Afterobtainingthedependencygraphandinstancerep-
+the shared information between tasks #1 and #2. Then we
+resentations, we employ GNN to learn the failure propa-
+combinethetrainedGNNwitharankingstrategytobetter
+gation pattern by its message-passing mechanism. At the
+fitthenatureofmicroservicesystems.
+K-th layer of GNN, we apply topology adaptive graph
+Rankingstrategy.Oneoftheadvantagesofmicroservice
+convolution [46] and update the internal data of instances
+systemsisthatthearchitectureallowsdynamicdeployment
+accordingto:
+of service instances. Thus, service instances are constantly
+K
+(cid:88)(cid:16) (cid:17)k being created and destroyed. However, when it comes to
+HK = D−1/2AD−1/2 XΘ k (3) failurediagnosis,thiskindofflexibilityraisesachallengefor
+k=0
+learning-based methods. The failure diagnosis model will
+(cid:80)
+where A denotes the adjacency matrix, D ii = j=0 A ij is have to be retrained frequently if the output layer directly
+a diagonal degree matrix, Θ k denotes the linear weights to outputs the probability of being the root cause instance
+sumtheresultsofdifferenthopstogether. for each instance since many instances can be created or
+Finally, we add a MaxPooling layer as the readout destroyedafterthemodeltrainingisfinished.Weaddanex-
+layertointegratetheinformationofthewholemicroservice tract step inDiagFusion to overcome thischallenge. Instead
+system. Following the MaxPooling layer, there is a fully ofdirectlydeterminingtherootcauseinstance,DiagFusionis
+connected layer where each neuron corresponds to either a trainedonservicegroups,thelogicalaggregationofservice
+servicegroupwithpossiblerootcauseinstancesfortask#1 instances, for task #1. Then DiagFusion ranks the instances
+orafailuretypefortask#2. insideacandidateservicegroupbythelengthoftheirevent
+sequences. The instance with more anomaly events will be
+4.4 TrainingofDiagFusion rankedhigherandlikelybetherootcauseinstance.
+Joint learning. Intuitively, the two tasks of failure diag-
+DiagFusionappliesatwo-phasetrainingstrategytolearnthe
+nosis, i.e., root cause instance localization and failure type
+failurepatternofamicroservicesystem.First,ittrainedthe
+determination, share some knowledge in common. For a
+event embedding model with data augmentation. Then it
+givenfailure,theonlydifferencebetweentask#1andtask#2
+trainstheGNNwithajointlearningtechnique.
+lies in their labels. So DiagFusion integrates a joint learning
+mechanism to utilize the shared knowledge and reduce
+4.4.1 TrainingofEventEmbeddingModel
+the training time. (Training two models separately requires
+DiagFusionemploysadataaugmentationstrategytoenrich twicethetimeotherwise.)Specifically,thejointlossfunction
+thetrainingdatasetandreducethemodel’sbiastowardsthe is:
+majority class. First, we train our event embedding model  
+on the original data. The trained neural network, denoted 1 (cid:88) F (cid:88) S (cid:88) T
+by f 0 , maps events to the vector space V 0 . To increase the − F  y(s) i,j logp(s) i,j + y(t) i,k logp(t) i,k
+i=1 j=1 k=1
+number of failure cases, we add new event sequences for
+(4)
+eachfailuretype(including“non-root-cause”)byrandomly
+whereF isthenumberofhistoricalfailures,Sisthenumber
+taking an event sequence of that type and replacing one of service groups, T is the number of failure types, y(s) is
+of the events with its closest neighbor (determined by Eu- therootcauseservicegrouplabeledbyoperators,y(t)isthe
+clideandistance)inV 0 .Afterallfailuretypesareexpanded failuretype,p(s)isthepredictedservicegroup,andp(t)is
+to a relatively large size, e.g., 1000, we can obtain a more
+thepredictedfailuretype.
+balanced training set. Further details on the choice of the
+expanding size can be found at Section 5.5. Then we train
+4.5 Real-timefailurediagnosis
+theeventembeddingmodelagain(f )ontheexpandeddata
+1
+andregardtherepresentationsgeneratedinthisround(V ) After the training stage, we save the trained event embed-
+1
+asthefinalunifiedeventrepresentations. ding model and the GNN. When a new failure is alerted,
+6
+
+--- PDF PAGE 7 ---
+1 10:46 B1,24c8478b
+2 3 2021-07-1310:46:13|1
+2 10:46 B1,R1 #success=0 #success=0 INFO | ... B1 | ...
+tokengeneratesuccess
+3 10:47 B1,R2 B1 R1 B1 R2 token=... L1 R1
+B1
+4 10:47 B1,NET_in,↓ 2021-07-1311:17:50| 8 L2 R2
+4 NET-in ERROR|...|B1|...|
+5 10:47 B1,NET_out,↓ servicerefuse H4
+6 11:07 B1,CPU-1,↑ 5 NET-out 2021-07-1311:24:47|9 H2 H3 H1
+ERROR|...|dbser-
+7 11:13 B1,CPU-0,↑ vice1|...|B1access
+6 CPU-0 redisservicedenied
+8 11:17 B1,74504db9 Microservice Host
+2021-07-1311:26:341| 0
+7 CPU-1 INFO | ... B1 | ...|
+9 11:24 B1,eea74a2c t s h e e rv l i i c s e t s of a a re lla r v e a d i i l s a s b e l r e - Calling Resource Deploy
+10 11:26 B1,c00d001d 10:30:00 11:00:00 11:30:00 12:00:00 vice1: Sharing
+(a) (b) (c)
+Fig.7:ArunningexampleofDiagFusion.(a):theserializedmultimodaleventsequenceoftherootcauseinstance(B1);(b):
+theoriginaldatacorrespondingtotheeventsequence;(c):partofthedependencygraphinthisfailure.
+TABLE2:Detailedinformationofdatasets
+DiagFusionperformsareal-timediagnosisprocessasshown
+Dataset #Instances #Training #Test #Records
+inFigure5.
+trace 2,321,280
+4.5.1 RunningExample D1 17 160 939 log 87,974,577
+metric 56,684,196
+Figure 6 shows how DiagFusion can be integrated with
+trace 1,123,200
+microservice systems. To better explain how DiagFusion di- D2 18 80 79 log 21,356,923
+agnosesfailure,wedemonstratetheworkflowofDiagFusion metric 8,228,010
+using one real-world failure from D1. At 10:46, service
+instance B1 encounters a failure of access denied. Figure 7
+2) D2.Theseconddatasetiscollectedfromthemanagement
+showstheoriginaldata,eventsequence,andtheDG.From
+systemofatop-tiercommercialbank.Thestudiedsystem
+Figure 7(a), we can see that failure-indicative events from
+consists of 14 instances, including microservices, web
+different modalities are temporally intertwined. Then the
+servers,applicationservers,databases,anddockers.Due
+GNN predicts service group “B” and failure type “access
+to the non-disclosure agreement, we cannot make this
+denied”.Furtherrankingwithintheservicegroup“B”gives
+dataset publicly available. Two experienced operators
+“B1”astheTop1instance.Theoverallprocesstakeslessthan
+examined the failure records from January 2021 to June
+10 seconds. Thus, DiagFusion effectively addresses tasks #1
+2021. They classified the failures into five types of fail-
+and#2.
+ures, i.e., CPU-related failures, memory-related failures,
+JVM-CPU-relatedfailures,JVM-memory-relatedfailures,
+5 EVALUATION and IO-related failures. The classification was done sep-
+arately,andtheycheckedthelabelingwitheachotherto
+In this section, we evaluate the performance of DiagFusion
+reachaconsensus.
+usingtworeal-worlddatasets.Weaimtoanswerthefollow-
+ingresearchquestions(RQs):
+5.1.2 BaselineMethods
+RQ1:HoweffectiveisDiagFusioninfailurediagnosis?
+RQ2: Does each component of DiagFusion have significant We select six advanced single-modal-based methods (two
+contributionstoDiagFusion’sperformance? for trace (i.e., MicroHECL [5], MicroRank [6]), two for
+RQ3:IsthecomputationalefficiencyofDiagFusionsufficient log (i.e., Cloud19 [8], LogCluster [7]), and two for metric
+forfailurediagnosisintherealworld? (i.e., AutoMAP [13], MS-Rank [12])), and two multimodal-
+RQ4:Whatistheimpactofdifferenthyperparameters? basedmethods(i.e.,PDiagnose[47],CloudRCA[48])asthe
+baseline methods. More details can be found in Section 7.
+Among the baseline methods, Cloud19, LogCluster, and
+5.1 ExperimentalSetup
+CloudRCA cannot address Task #1 (root cause instance
+5.1.1 Dataset
+localization),whileMicroHECL,MicroRank,AutoMAP,MS-
+To evaluate the performance of DiagFusion, we conduct Rank, and PDiagnose cannot address Task #2 (failure type
+extensive experiments on two datasets collected from two determination). Therefore, we divide the baseline methods
+microservicesystemsunderdifferentbusinessbackgrounds intotwogroupstoevaluatetheperformanceofTask#1and
+and architectures, D1 and D2. To prevent data leakage, we Task #2, respectively: MicroHECL, MicroRank, AutoMAP,
+split the data of D1 and D2 into training and testing sets MS-Rank,andPDiagnoseforTask#1,Cloud19,LogCluster,
+accordingtotheirstarttime,i.e.,weusedatafromtheearlier andCloudRCAforTask#2.
+time as the training set and data from the later time as the We configure the parameters of all these methods ac-
+testset.DetailedinformationislistedinTable2.Thesystems cording to their papers. Specifically, we use the same con-
+thatproduceD1andD2areasfollows: figurationforparametersettingsexplicitlymentionedinthe
+1) D1.ThedetailsofD1areelaboratedinSection3. papers and not limited to a particular dataset (e.g., signifi-
+7
+
+--- PDF PAGE 8 ---
+A@k(D1) A@k(D2) Avg@5(D1) Avg@5(D2)
+1 1 1 1
+0.90
+0.85
+0.8 0.78 0.8 0.75 0.76
+0.68 0.72 0.62
+0.6 0.6 0.57
+0.52 0.47 0.49
+0.5 0.5
+0.4 0.49 0.4 0.46 0.30 0.34 0.33
+0.2 0.24 0.2 0.27 0.16 0.26 0.18
+0.18 0.11
+0 0 0 0
+Top1Top2Top3Top4Top5 Top1Top2Top3Top4Top5 2 4 6 2 4 6
+MicroHECL MicroRank AutoMAP MicroHECL MicroRank AutoMAP
+MS-Rank PDiagnose DiagFusion MS-Rank PDiagnose DiagFusion
+Fig.8:Effectivenessofrootcauseinstancelocalization(Task#1).
+TABLE 3: Effectiveness of failure type determination (Task 5.1.4 Implementation
+#2)
+WeimplementDiagFusionandbaselineswithPython3.7.13,
+D1 D2 PyTorch 1.10.0, scikit-learn 1.0.2, fastText 0.9.2, and DGL
+Method
+Precision Recall F1-score Precision Recall F1-score 0.9.0. We run the experiments on a server with 12 × In-
+DiagFusion 0.860 0.829 0.839 0.822 0.797 0.800 tel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz and 128G RAM
+Cloud19 0.774 0.774 0.756 0.526 0.278 0.297
+(withoutGPUs).Werepeateveryexperimentfivetimesand
+LogCluster 0.615 0.477 0.336 0.521 0.722 0.605
+CloudRCA 0.436 0.453 0.357 0.589 0.506 0.538 taketheaverageresulttoreducetheeffectofrandomness.
+cancelevel,featuredimension).Forparametersettingsthat 5.2 OverallPerformance(RQ1)
+apply to a particular dataset (e.g., window length, period),
+TodemonstratetheeffectivenessofDiagFusion,wecompare
+weadaptthemaccordingtotherangethepapersprovideor
+itwiththebaselinemethodsonTask#1andTask#2.
+toourdata.
+The comparison result of Task #1 is shown in Figure 8.
+DiagFusion achieves the best performance. Specifically, the
+5.1.3 EvaluationMetrics A@1 to A@5 of DiagFusion are almost the best on D1 and
+D2.Morespecifically,theAvg@5ofDiagFusionexceeds0.75
+AsstatedinSection2.3,DiagFusionaimstolocalizetheroot
+onbothD1andD2,respectively.Itisatleast0.13higheron
+causeinstanceanddeterminethefailuretype.Wecarefully
+bothdatasetsthanbaselinesusingsingle-modaldatadueto
+select different evaluation metrics for both tasks to better
+the advantage of using multimodal data. Compared with
+reflectthereal-worldperformanceofallselectedmethods.
+PDiagnose, which also uses multimodal data, the Avg@5
+For Task #1, we use Top-k accuracy (A@k) and Top-5 of DiagFusion is higher by at least 0.18. This indicates that
+average accuracy (Avg@5) as the evaluation metrics. A@k is learning from historical failures improves the accuracy of
+a well-adopted metric that quantifies the probability that diagnosissignificantly.
+top-k instances output by each method indeed contain the The result of Task #2 is shown in Table 3. For this task,
+root cause instance [5]. Formally, given |A| as the test set DiagFusion is better than almost all baselines. On D1, the
+of failures, RC i as the ground truth root cause instance, precision, recall, and F1-score of DiagFusion are over 0.80.
+RC s [k] as the top-k root cause instances set generated by On D2, DiagFusion manages to maintain an F1-score of
+amethod,A@kisdefinedas: 0.80, which is at least 0.195 higher than the baselines. Con-
+(cid:40) sidering both systems and tasks, DiagFusion consistently
+A@k = 1 (cid:88) 1, ifRC ia ∈RC sa [k] (5) demonstrates superior performance, thereby substantiating
+|A| 0, otherwise itseffectiveness.
+a∈A
+Avg@5isanotherpopularmetricthatevaluatesamethod’s 5.3 AblationStudy(RQ2)
+overall capability of localizing the root cause instance [49].
+To evaluate the effects of the three key technique contri-
+Inpractice,operatorsoftenexaminethetop5results.Avg@5
+butions of DiagFusion: 1) data augmentation; 2) fastText
+iscalculatedby:
+embedding; 3) DG and GNN, we create five variants of
+1 (cid:88) DiagFusion. C1: Remove the data augmentation. C2: Use
+Avg@5= A@k (6) word2vec embedding instead of fastText. C3: Use GloVe
+5
+1≤k≤5 embeddinginsteadoffastText.C4:ReplacetheGNNoutput
+layerwithadecisiontree.C5:ReplacetheGNNoutputlayer
+ForTask#2,whichisamulti-classclassificationproblem, withakNNmodel.
+we use the weighted average precision, recall, and F1-score Table4liststhatDiagFusionoutperformsallthevariants
+to test the performances. These metrics have been selected on D1 and D2, demonstrating each component’s signifi-
+basedonapreviousstudy[50]asareliablewaytoassessthe cance. When removing the data augmentation (C1), the
+model’seffectivenessinthisspecificcontext.WithTruePos- performance reduces across the board as models trained
+itives (TP), False Positives (FP), and False Negatives (FN), from imbalanced data are more likely to bias predictions
+the calculation is given by F1-score = 2× p p r r e e c c i i s s i i o o n n × +r r e e c c a a l l l l , toward classes with more samples. Data augmentation can
+whereprecision= TP andrecall= TP . alleviate this problem. The performance becomes worse
+TP+FP TP+FN
+8
+
+--- PDF PAGE 9 ---
+TABLE4:Contributionsofcomponents TABLE 5: The comparison of training time
+(Offline)anddiagnosistime(Online)percase
+Task#1 Task#2 (“-”meansnoneedtraining)
+Method
+A@1 A@3 A@5 Avg@5 Precision Recall F1-score
+DiagFusion 0.419 0.813 0.914 0.750 0.860 0.829 0.839
+D1 D2
+C1 0.341 0.678 0.833 0.641 0.809 0.793 0.779 Method
+C2 0.306 0.639 0.780 0.594 0.780 0.765 0.768 Offline Online Offline Online
+D1
+C3 0.309 0.632 0.770 0.588 0.773 0.797 0.781
+DiagFusion 11.02 10.95 3.59 3.26
+C4 0.359 0.657 0.760 0.616 0.351 0.102 0.104
+MicroHECL - 65.98 - 28.40
+C5 0.419 0.809 0.905 0.744 0.089 0.102 0.095
+MicroRank 22.9 34.47 53.2 54.94
+DiagFusion 0.646 0.848 0.873 0.790 0.822 0.797 0.800 Cloud19 0.41 0.03 0.03 0.03
+C1 0.304 0.506 0.646 0.471 0.567 0.608 0.576 LogCluster <0.1 <0.01 0.2 <0.01
+C2 0.646 0.823 0.861 0.780 0.793 0.734 0.753 AutoMap - 0.299 - 0.511
+D2
+C3 0.671 0.823 0.848 0.785 0.787 0.747 0.747 MS-Rank - 1.14 - 12.94
+C4 0.494 0.620 0.646 0.587 0.780 0.595 0.639 PDiagnose - 42.51 - 68.74
+C5 0.582 0.709 0.709 0.671 0.778 0.797 0.764 CloudRCA 1.43 0.06 0.83 0.07
+when replacing fastText embedding strategy (C2 & C3). best when the layer number is lower than 3. We do not
+ThereasonisthatfastTextcanlearnfromoperators’failure recommendsettingthelayernumbertoolargesincetraining
+labeling as well as co-occur relationships, while word2vec deepGNNrequiresextratrainingsamples,whichishardto
+and GloVe can only learn from the co-occur relationships meetinreal-worldmicroservicesystems.
+betweenevents.ReplacingtheGNNoutputlayerwithclas- Time window.Thelengthofthetimewindowhaslittle
+sifiers such as decision trees and kNN (C4 & C5) degrades impactonperformancebecausethemomentswhenfailures
+performance because the GNN can capture the interaction occur are sparse, and the anomaly events reported in a
+patternsandfaultpropagationamonginstancesinmicroser- time window are only relevant to the current failure. With
+vice systems, but traditional classifiers cannot understand accurate anomaly detection, the performance of DiagFusion
+thegraphstructureinformation. isstable.
+5.4 Efficiency(RQ3) 6 DISCUSSION
+We record the running time of all methods and compare 6.1 WhyLearning-BasedMethods?
+them in Table 5. The offline training time of DiagFusion
+The DiagFusion approach incorporates several learning-
+is acceptable, particularly when considering its infrequent
+basedtechniques,suchasfastTextintheUnifiedEventRep-
+need for retraining. It shows that DiagFusion can diagnose
+resentation(Section4.2)andGNN(Section4.3).Bydoingso,
+one failure within 12 seconds on average online, which
+DiagFusion significantly outperforms baseline approaches.
+means it can achieve quasi-real-time diagnosis because the
+WechosetobuildDiagFusionusinglearning-basedmethods
+intervalofdatacollectioninD1andD2isatleast30seconds.
+forthefollowingreasons:(1)Accuracy:learning-basedmeth-
+Although DiagFusionmay not possess apparent advantages
+odsprovidehighaccuracy(Section5)andarethereforeideal
+among the methods in Table 5, DiagFusion can meet the
+fordiagnosingfailures.(2)Generalizationability:failurecases
+needsofonlinediagnosis.
+usedtotrainDiagFusioncontaindifferentpatternsoffailure
+propagation for different systems. A strong generalization
+5.5 HyperparameterSensitivity(RQ4)
+ability allows DiagFusion to perform robust diagnosis for
+WediscusstheeffectoffourhyperparametersofDiagFusion. eachsystem.(3)Abilitytohandlecomplicateddata:asmicroser-
+Figure 9 shows how Avg@5 (Task #1), F1-score (Task #2) vice systems become increasingly complex and monitoring
+changewithdifferenthyperparameters. data more high-dimensional, manually setting up rules for
+Embedding dimension.TheperformanceofDiagFusion failurediagnosisbecomestime-consuminganderror-prone.
+reactsdifferentlyondifferentdatasetsintermsofsensitivity Learning-based methods, on the other hand, take this data
+to dimensionality (D1 remains stable while D2 fluctuates as input and learn their relationships, making them well-
+more),andtheoptimaldimensionalityisinconsistentacross suitedtohandlecomplicateddata.
+datasets and tasks. We choose the 100 dimensions in our Why fastText? FastText was chosen because trace, log,
+experimentsbecauseithasthebestoverallperformance. andmetricdatahaveverydifferentformats.However,they
+The number of augmented samples. The experiments all share timestamps, meaning they can be sequenced ac-
+in Section 5.2 show that data augmentation has some im- cording to their temporal order. FastText provides superior
+provementinthemodel’sperformance.However,whenthe performance over other static embeddings like word2vec
+number of samples increases to a certain amount, the in- and GloVe, which was demonstrated in Section 5.3. Al-
+formationinthetrainingsethasalreadybeenfullyutilized. though deep dynamic embeddings like ELMo, BERT, and
+Instead,theperformancemaybedegradedduetotheexces- GPT are popular in Natural Language Processing, they
+sive introduction of noise. Generally speaking, DiagFusion are not suitable for microservice settings as the number of
+does not need an excessive number of augmented samples failurecasesisinsufficienttotraintheselargemodels.
+aslongasthesamplesarebalanced. Why GNN? GNN was chosen because the structure
+The number of layers in GNN.Asthelayernumberof of microservice systems involves many instances and their
+GNN varies from 1 to 5, the performance of DiagFusion in relationships, which form the structure of a graph. Vari-
+three tasks shows a decreasing trend. The model performs ousapproachesincorporatingRandomWalk[12],[13]exist
+9
+
+--- PDF PAGE 10 ---
+0.9
+0.8
+D1
+0.7
+0.6
+0.9
+0.8
+D2
+0.7
+0.6
+5 10 30 50 75 10015020050 200 1000 2000 40001 2 3 4 5 2 5 10 20
+EventEmbeddingDimension #AugmentedSample #LayersofGNN TimeWindow
+Avg@5(D1) F1-score(D1) Avg@5(D2) F1-score(D2)
+Fig.9:TheeffectivenessofDiagFusionunderdifferenthyperparameters.
+to accomplish failure diagnosis on such graph structures. may face missing modality problems. However, an excel-
+However,theirabilitytogeneralizeislimitedsincedomain lentmultimodal-basedapproachshouldperformwelleven
+knowledge can vary greatly between different systems. when some modalities are missing. We discover that 62
+The domain knowledge contained in graph data can be failurecasesofD1lackmetricdata.DiagFusioniscompared
+effectively learned by GNNs [51], giving them a stronger withPDiagnoseinthesecases.AsPDiagnosecannotaddress
+generalization ability than approaches based on Random Task#2,weonlypresenttheresultsofTask#1.
+Walk. TABLE6:RobustnesscomparedtoPDiagnose(Task#1)
+Concerns about learning-based methods. While
+DiagFusion PDiagnose
+learning-based methods offer several advantages, they do Modality
+requirelabeled samplesfor training.This canbeaddressed A@1 A@3 A@1 A@3
+by (1) utilizing the well-established failure management Trace,Log,Metric 0.419 0.813 0.272 0.554
+systeminmicroservicesystemsasanaturalsourceoffailure Trace,Log 0.274 0.661 0 0.161
+labeling, (2) DiagFusion not requiring too many training As shown in Table 6, the performance of PDiagnose
+samplestoachievegoodperformance(thesizesofthetrain- dropsdramaticallyinthesecases,whileDiagFusionpresents
+ing set of D1 and D2 are 160 and 80, respectively), and (3) salient robustness. Although DiagFusion also witnesses a
+theincreasingadoptionofchaosengineering,whichenables performance degradation, it is still better than PDiagnose
+operators to quickly obtain sufficient failure cases. Several and other Task #1 baselines. DiagFusion has seen com-
+successfulpracticeswiththehelpofchaosengineeringhave pletedatamodalitiesduringtrainingandlearnedaunified
+beenreported[6],[16],[18],[52]. representation, allowing it to capture anomalous patterns’
+correlationtofailuresbetterthansingle-modal-basedmeth-
+ods. On the other hand, PDiagnose treats each modality
+6.2 Robustness
+independently, making it ineffective when facing missing
+modalities.Tosumup,DiagFusiondemonstratesrobustness
+Inpractice,somemodalitiescanbeabsent,hinderingasuc-
+sinceitachievessatisfactoryperformanceevenwhenwork-
+cessful failure diagnosis system to some extent. The cause
+ingwithdatawithincompletemodalities.
+of missing modalities can be generally classified into three
+categories. The first category refers to missing modalities
+6.3 ConcernsaboutDeploymentandValidity
+caused by data collection problems. Modern microservice
+systems are developing rapidly; the same truth applies to TherearesomeconcernsaboutdeployingDiagFusiontoreal-
+their monitoring agents. Therefore, it is hard to guarantee world microservice systems: (1) DiagFusion needs to adapt
+that all monitoring data are ideally collected and transmit- to the highly dynamic nature of microservice architecture.
+ted. As a result, missing data is inevitable, which can give The stored model of DiagFusion can still be effective when
+rise to missing modalities when specific modalities of the service instances are created or destroyed, for DiagFusion
+monitoringdataarehavingcollectionproblems.Thesecond utilizes the concept of service group as a middle layer. The
+category refers to missing modalities caused by data avail- only situation in which DiagFusion needs to be retrained is
+ability problems. In some large corporations, monitoring whennewservicegroupsarecreated.However,thecreation
+data is individually collected by many different divisions. of service groups is very rare in practice. (2) Some pro-
+Sometimes,specificmodalitiescanbeexclusivelygoverned duction systems do not monitor all three modalities at the
+by a division that does not want to disclose its service same time. The workflow of DiagFusion is general because
+maintenance data. Thus, these modalities are collected but the event embedding model is trained on event sequences
+notavailabletogeneraloperators.Thethirdcategorystands and does not rely on any specific modality. Besides, the
+for missing modalities caused by data retrieval problems. GNNmoduledealswithfeaturevectorsratherthanoriginal
+In practice, we often encounter situations where it is very monitordata.DiagFusioncanworkgiventhatanytwoofthe
+inconvenient to retrieve monitoring data from the data threemodalitiesareavailable.
+pool. Multimodal failure diagnosis requires much more There are two main threats to the validity of the study.
+data to be collected than single-modal-based methods and Thefirstoneliesinthelimitedsizesofthetwodatasetsused
+10
+
+--- PDF PAGE 11 ---
+TABLE7: ComparisonofDiagFusionandexistingrepresentativeapproaches
+Modality RepresentativeApproach CoreTechnique DiagnosisResult
+Metric AutoMAP[13] Causalinference&randomwalk RootCauseInstance
+Metric MS-Rank[12] Causalinference&randomwalk RootCauseInstance
+Log LogCluster[7] Word2vec&traditionalclassifier FailureType
+Log Cloud19[8] Clustering FailureType
+Trace MicroRank[6] Spectrumanalysis&PageRank RootCauseInstance
+Trace MicroHECL[5] Graphtraverse&Pearsoncorrelation RootCauseInstance
+Multimodal CloudRCA[48] Bayesianinference FailureType
+Multimodal PDiagnose[47] Vote-basedstrategy RootCauseInstance
+Multimodal DiagFusion(ours) Eventembedding&GNN RootCauseInstance&FailureType
+inthestudy.D1andD2arerelativelysmallerthancomplex Then it constructs a hierarchical Bayesian Network to infer
+industrial microservice systems. The second one lies in the the failure type. PDiagnose [47] combines metric, log, and
+limitationofthefailurecasesusedinthestudy.Somefailure trace. It uses lightweight anomaly detection of the three
+casesofD1aresimplerthanindustrialfailuresandrepresent modalities to detect anomaly patterns. Then its vote-based
+only a limited part of different types of failures. However, strategyselectsthemostseverecomponentastherootcause.
+according to our experiments, DiagFusion is effective and However,thesetwomethodsignorethetopologyfeatureof
+robust. It is very promising that DiagFusion can also be microservice systems. Groot [55] integrates metrics, status
+effectively applied to much larger industrial microservice logs, and developer activity. It needs numerous predefined
+systemsandmorecomplexfailurecases. rulestoconductaccuratefailurediagnosis,whichdegrades
+itsapplicabilitytomostscenarios.
+We compare DiagFusion and existing representative ap-
+7 RELATED WORK
+proaches in Table 7. In conclusion, compared to single-
+Metric-based failure diagnosis methods. Monitoring met- modal-basedmethods,DiagFusiontakesthethreeimportant
+rics are one of the most important observable data in mi- modalitiesintoaccount.Comparedtoexistingmultimodal-
+croservice systems. Many works try to build a dependency based methods, DiagFusion is among the first to represent
+graphtodepicttheinteractionbetweensystemcomponents different modalities in a unified manner, thus performing
+during failure, such as Microscope [11], MS-Rank [12], and morerobustlyandaccurately.
+AutoMAP[13].However,thecorrectnessoftheaboveworks
+heavilydependsontheparametersettings,whichdegrades
+their applicability. Besides, many methods extract features
+8 CONCLUSION
+fromsystemfailures,suchasGraph-RCA[53]andiSQUAD
+Failurediagnosisisofgreatimportanceformicroservicesys-
+[50]. Nonetheless, failure cases are few in microservice sys-
+tems.Inthispaper,wefirstconductanempiricalstudytoil-
+temsbecauseoperatorstrytorunthesystemasrobustlyas
+lustratetheimportanceofusingmultimodaldata(i.e.,trace,
+possible,severelyaffectingtheperformanceofthesefeature-
+metric, log) for failure diagnosis of microservice systems.
+basedmethods.
+ThenweproposeDiagFusion,anautomaticfailurediagnosis
+Trace-based failure diagnosis methods. Trace can be method,whichfirstextractseventsfromthreemodalitiesof
+used to localize the culprit service, for example, TraceRCA dataandappliesfastTextembeddingtounifytheeventfrom
+[4],MEPFL[18],MicroHECL[5],andMicroRank[6]. How- different modalities. During training, DiagFusion leverages
+ever, these trace-based methods often focus on the global data augmentation to tackle the challenge of data imbal-
+featureofthesystemsanddonotdealwiththelocalfeatures ance.Thenitconstructsadependencygraphbycombining
+ofaserviceinstance. traceanddeploymentdata.Moreover,DiagFusionintegrates
+Log-based failure diagnosis methods. LogCluster [7] eventembeddingandthedependencygraphthroughGNN.
+performs hierarchical clustering on log sequences and Finally, the GNN reports the root cause instance and the
+matches online log sequences to the most similar cluster. failure type of online failure. We evaluate DiagFusion using
+Cloud19 [8] applies word2vec to construct the vectorized tworeal-worlddatasets.Theevaluationresultsconfirmthe
+representationofalogitemandtrainsclassifierstoidentify effectivenessandefficiencyofDiagFusion.
+the failure type. Onion [9] performs contrast analysis on
+agglomerated log cliques to find incident-indicating logs.
+DeepLog[10]andLogFlash[54]integrateanomalydetection REFERENCES
+and failure diagnosis. They calculate the deviation from
+[1] X.Guo,X.Peng,H.Wangetal.,“Graph-basedtraceanalysisfor
+normalstatusandsuggesttherootcauseaccordingly. Log-
+microservicearchitectureunderstandingandproblemdiagnosis,”
+based methods often ignore the topological feature of mi- inProceedingsofthe28thACMJointMeetingonEuropeanSoftware
+croservicesystems. EngineeringConferenceandSymposiumontheFoundationsofSoftware
+Engineering,2020,pp.1387–1397.
+Multimodaldata-basedfailurediagnosismethods.Re-
+[2] X.Zhou,X.Peng,T.Xieetal.,“Faultanalysisanddebuggingof
+cently, combining multimodal data to conduct failure di- microservice systems: Industrial survey, benchmark system, and
+agnosis has drawn increasing attention. CloudRCA [48] empiricalstudy,”IEEETrans.SoftwareEng.,vol.47,no.2,pp.243–
+uses both metric and log. It uses the PC algorithm to 260,2021.
+[3] AWS, “Summary of the aws service event in the northern
+learn the causal relationship between anomaly patterns of
+virginia (us-east-1) region,” 2021. [Online]. Available: https:
+metrics, anomaly patterns of logs, and types of failure. //aws.amazon.com/cn/message/12721/
+11
+
+--- PDF PAGE 12 ---
+[4] Z. Li, J. Chen, R. Jiao et al., “Practical root cause localization for IEEE/ACM International Symposium on Quality of Service, IWQoS
+microservicesystemsviatraceanalysis,”in2021IEEE/ACM29th 2017,VilanovailaGeltrú,Spain,June14-16,2017. IEEE,2017,pp.
+InternationalSymposiumonQualityofService(IWQOS). IEEE,2021, 1–10.
+pp.1–10. [24] P. He, J. Zhu, S. He et al., “Towards automated log parsing
+[5] M.Jin,A.Lv,Y.Zhuetal.,“Ananomalydetectionalgorithmfor for large-scale log data analysis,” IEEE Trans. Dependable Secur.
+microservice architecture based on robust principal component Comput.,vol.15,no.6,pp.931–944,2018.
+analysis,”IEEEAccess,vol.8,pp.226397–226408,2020. [25] S. Messaoudi, A. Panichella, D. Bianculli et al., “A search-based
+[6] G. Yu, P. Chen, H. Chen et al., “Microrank: End-to-end latency approach for accurate identification of log message formats,” in
+issuelocalizationwithextendedspectrumanalysisinmicroservice Proceedingsofthe26thConferenceonProgramComprehension,ICPC
+environments,”inProceedingsoftheWebConference2021,2021,pp. 2018,Gothenburg,Sweden,May27-28,2018,F.Khomh,C.K.Roy,
+3087–3098. andJ.Siegmund,Eds. ACM,2018,pp.167–177.
+[7] Q.Lin,H.Zhang,J.-G.Louetal.,“Logclusteringbasedproblem [26] M.DuandF.Li,“Spell:Onlinestreamingparsingoflargeunstruc-
+identificationforonlineservicesystems,”inProceedingsofthe38th turedsystemlogs,”IEEETrans.Knowl.DataEng.,vol.31,no.11,
+International Conference on Software Engineering Companion, 2016, pp.2213–2227,2019.
+pp.102–111. [27] H.Dai,H.Li,C.Chenetal.,“Logram:Efficientlogparsingusing
+[8] Y.Yuan,W.Shi,B.Liangetal.,“Anapproachtocloudexecution n-gramdictionaries,”IEEETrans.SoftwareEng.,vol.48,no.3,pp.
+failure diagnosis based on exception logs in openstack,” in 2019 879–892,2022.
+IEEE 12th International Conference on Cloud Computing (CLOUD). [28] M.Sun, Y. Su,S. Zhang et al., “CTF:anomaly detectionin high-
+IEEE,2019,pp.124–131. dimensional time series with coarse-to-fine model transfer,” in
+[9] X. Zhang, Y. Xu, S. Qin et al., “Onion: identifying incident- 40thIEEEConferenceonComputerCommunications,INFOCOM2021,
+indicatinglogsforcloudsystems,”inProceedingsofthe29thACM Vancouver,BC,Canada,May10-13,2021. IEEE,2021,pp.1–10.
+JointMeetingonEuropeanSoftwareEngineeringConferenceandSym- [29] Y.Su,Y.Zhao,M.Sunetal.,“Detectingoutliermachineinstances
+posiumontheFoundationsofSoftwareEngineering,2021,pp.1253– through gaussian mixture variational autoencoder with one di-
+1263. mensionalCNN,”IEEETrans.Computers,vol.71,no.4,pp.892–
+[10] M. Du, F. Li, G. Zheng et al., “Deeplog: Anomaly detection and 905,2022.
+diagnosisfromsystemlogsthroughdeeplearning,”inProceedings [30] L.Shen,Z.Yu,Q.Maetal.,“Timeseriesanomalydetectionwith
+ofthe2017ACMSIGSACconferenceoncomputerandcommunications multiresolutionensembledecoding,”inThirty-FifthAAAIConfer-
+security,2017,pp.1285–1298. ence on Artificial Intelligence, AAAI 2021, Thirty-Third Conference
+[11] J. Lin, P. Chen, and Z. Zheng, “Microscope: Pinpoint perfor- on Innovative Applications of Artificial Intelligence, IAAI 2021, The
+manceissueswithcausalgraphsinmicro-serviceenvironments,” EleventhSymposiumonEducationalAdvancesinArtificialIntelligence,
+in Service-Oriented Computing: 16th International Conference, IC- EAAI2021,VirtualEvent,February2-9,2021. AAAIPress,2021,
+SOC2018,Hangzhou,China,November12-15,2018,Proceedings16. pp.9567–9575.
+Springer,2018,pp.3–20. [31] M.Ma,S.Zhang,J.Chenetal.,“Jump-startingmultivariatetime
+[12] M.Ma,W.Lin,D.Panetal.,“Self-adaptiverootcausediagnosisfor series anomaly detection for online service systems,” in 2021
+large-scale microservice architecture,” IEEE Trans. Serv. Comput., USENIXAnnualTechnicalConference,USENIXATC2021,July14-
+vol.15,no.3,pp.1399–1410,2020. 16,2021,I.CalciuandG.Kuenning,Eds. USENIXAssociation,
+[13] M. Ma, J. Xu, Y. Wang et al., “Automap: Diagnose your 2021,pp.413–426.
+microservice-basedwebapplicationsautomatically,”inWWW’20: [32] Z. Li, Y. Zhao, J. Han et al., “Multivariate time series anomaly
+TheWebConference2020,Taipei,Taiwan,April20-24,2020,Y.Huang, detection and interpretation using hierarchical inter-metric and
+I.King,T.Liuetal.,Eds. ACM/IW3C2,2020,pp.246–258. temporalembedding,”inKDD’21:The27thACMSIGKDDCon-
+[14] Y.Pan,M.Ma,X.Jiangetal.,“Faster,deeper,easier:crowdsourcing ference on Knowledge Discovery and Data Mining, Virtual Event,
+diagnosis of microservice kernel failure from user space,” in Singapore,August14-18,2021,F.Zhu,B.C.Ooi,andC.Miao,Eds.
+Proceedings of the 30th ACM SIGSOFT International Symposium on ACM,2021,pp.3220–3230.
+SoftwareTestingandAnalysis,2021,pp.646–657. [33] L.Dai,T.Lin,C.Liuetal.,“SDFVAE:staticanddynamicfactorized
+[15] B.H.Sigelman,L.A.Barroso,M.Burrowsetal.,“Dapper,alarge- VAEforanomalydetectionofmultivariateCDNkpis,”inWWW
+scale distributed systems tracing infrastructure,” Google, Inc., ’21:TheWebConference2021,VirtualEvent/Ljubljana,Slovenia,April
+Tech.Rep.,2010. 19-23,2021,J.Leskovec,M.Grobelnik,M.Najorketal.,Eds. ACM
+[16] T. Yang, J. Shen, Y. Su et al., “Aid: efficient prediction of aggre- /IW3C2,2021,pp.3076–3086.
+gated intensity of dependency in large-scale cloud systems,” in [34] T. Mikolov, K. Chen, G. Corrado et al., “Efficient estimation of
+202136thIEEE/ACMInternationalConferenceonAutomatedSoftware word representations in vector space,” in 1st International Con-
+Engineering(ASE). IEEE,2021,pp.653–665. ference on Learning Representations, ICLR 2013, Scottsdale, Arizona,
+[17] J. Kaldor, J. Mace, M. Bejda et al., “Canopy: An end-to-end per- USA, May 2-4, 2013, Workshop Track Proceedings, Y. Bengio and
+formance tracing and analysis system,” in Proceedings of the 26th Y.LeCun,Eds.,2013.
+SymposiumonOperatingSystemsPrinciples,Shanghai,China,October [35] J.Pennington,R.Socher,andC.D.Manning,“Glove:Globalvec-
+28-31,2017. ACM,2017,pp.34–50. torsforwordrepresentation,”inProceedingsofthe2014Conference
+[18] X.Zhou,X.Peng,T.Xieetal.,“Latenterrorpredictionandfault onEmpiricalMethodsinNaturalLanguageProcessing,EMNLP2014,
+localizationformicroserviceapplicationsbylearningfromsystem October 25-29, 2014, Doha, Qatar, A meeting of SIGDAT, a Special
+trace logs,” in Proceedings of the 2019 27th ACM Joint Meeting InterestGroupoftheACL,A.Moschitti,B.Pang,andW.Daelemans,
+onEuropeanSoftwareEngineeringConferenceandSymposiumonthe Eds. ACL,2014,pp.1532–1543.
+FoundationsofSoftwareEngineering,2019,pp.683–694. [36] P. Bojanowski, E. Grave, A. Joulin et al., “Enriching word vec-
+[19] C.Zhang,X.Peng,C.Shaetal.,“Deeptralog:Trace-logcombined torswithsubwordinformation,”Trans.Assoc.Comput.Linguistics,
+microserviceanomalydetectionthroughgraph-baseddeeplearn- vol.5,pp.135–146,2017.
+ing,”inProceedingsofthe44thInternationalConferenceonSoftware [37] M.E.Peters,M.Neumann,M.Iyyeretal.,“Deepcontextualized
+Engineering,2022,pp.623–634. wordrepresentations,”inProceedingsofthe2018Conferenceofthe
+[20] B. Li, X. Peng, Q. Xiang et al., “Enjoy your observability: an NorthAmericanChapteroftheAssociationforComputationalLinguis-
+industrial survey of microservice tracing and analysis,” Empir. tics:HumanLanguageTechnologies,NAACL-HLT2018,NewOrleans,
+Softw.Eng.,vol.27,no.1,p.25,2022. Louisiana, USA, June 1-6, 2018, Volume 1 (Long Papers), M. A.
+[21] P. Liu, H. Xu, Q. Ouyang et al., “Unsupervised detection of Walker,H.Ji,andA.Stent,Eds. AssociationforComputational
+microservicetraceanomaliesthroughservice-leveldeepbayesian Linguistics,2018,pp.2227–2237.
+networks,”in2020IEEE31stInternationalSymposiumonSoftware [38] J. Devlin, M.-W. Chang, K. Lee et al., “Bert: Pre-training of deep
+ReliabilityEngineering(ISSRE). IEEE,2020,pp.48–58. bidirectional transformers for language understanding,” arXiv
+[22] P. He, J. Zhu, Z. Zheng et al., “Drain: An online log parsing ap- preprintarXiv:1810.04805,2018.
+proachwithfixeddepthtree,”in2017IEEEInternationalConference [39] T.B.Brown,B.Mann,N.Ryderetal.,“Languagemodelsarefew-
+onWebServices,ICWS2017,Honolulu,HI,USA,June25-30,2017, shotlearners,”inAdvancesinNeuralInformationProcessingSystems
+I.AltintasandS.Chen,Eds. IEEE,2017,pp.33–40. 33: Annual Conference on Neural Information Processing Systems
+[23] S. Zhang, W. Meng, J. Bu et al., “Syslog processing for switch 2020, NeurIPS 2020, December 6-12, 2020, virtual, H. Larochelle,
+failurediagnosisandpredictionindatacenternetworks,”in25th M.Ranzato,R.Hadselletal.,Eds.,2020.
+12
+
+--- PDF PAGE 13 ---
+[40] W. Meng, Y. Liu, Y. Zhu et al., “Loganomaly: Unsupervised de- ShenglinZhangreceivedB.S.innetworkengi-
+tection of sequential and quantitative anomalies in unstructured neering from the School of Computer Science
+logs,”inProceedingsoftheTwenty-EighthInternationalJointConfer- andTechnology,XidianUniversity,Xi’an,China,
+enceonArtificialIntelligence,IJCAI2019,Macao,China,August10-16, in2012andPh.D.incomputersciencefromTs-
+2019,S.Kraus,Ed. ijcai.org,2019,pp.4739–4745. inghuaUniversity,Beijing,China,in2017.Heis
+[41] T. N. Kipf and M. Welling, “Semi-supervised classification with currentlyanassociateprofessorwiththeCollege
+graphconvolutionalnetworks,”in5thInternationalConferenceon of Software, Nankai University, Tianjin, China.
+Learning Representations, ICLR 2017, Toulon, France, April 24-26, His current research interests include failure
+2017,ConferenceTrackProceedings,2017. detection, diagnosis and prediction for service
+[42] W.L.Hamilton,Z.Ying,andJ.Leskovec,“Inductiverepresenta- management.HeisanIEEEMember.
+tion learning on large graphs,” in Advances in Neural Information
+Processing Systems 30: Annual Conference on Neural Information
+ProcessingSystems2017,December4-9,2017,LongBeach,CA,USA,
+I.Guyon,U.vonLuxburg,S.Bengioetal.,Eds.,2017,pp.1024–
+1034.
+[43] L. Zhou, Q. Zeng, and B. Li, “Hybrid anomaly detection via
+multihead dynamic graph attention networks for multivariate
+timeseries,”IEEEAccess,vol.10,pp.40967–40978,2022. Pengxiang Jin received his bachelor degree
+[44] L.Zhang,B.Morin,P.Halleretal.,“Achaosengineeringsystem insoftwareengineeringfromNankaiUniversity,
+for live analysis and falsification of exception-handling in the Tianjin,China,in2020.Heiscurrentlyamaster
+JVM,” IEEE Trans. Software Eng., vol. 47, no. 11, pp. 2534–2548, studentintheCollegeofSoftwareatNankaiUni-
+2021. versity. His research interests include anomaly
+[45] Y. Wang, G. Li, Z. Wang et al., “Fast outage analysis of large- detectionandanomalylocalization.
+scaleproductioncloudswithservicecorrelationmining,”in43rd
+IEEE/ACM International Conference on Software Engineering, ICSE
+2021,Madrid,Spain,22-30May2021. IEEE,2021,pp.885–896.
+[46] Y. Zhou, H. Zheng, X. Huang et al., “Graph neural networks:
+Taxonomy,advances,andtrends,”ACMTrans.Intell.Syst.Technol.,
+vol.13,no.1,pp.15:1–15:54,2022.
+[47] C. Hou, T. Jia, Y. Wu et al., “Diagnosing performance issues in
+Y.Sunetal.:HotSpot:AnomalyLocalizationforAdditiveKPIsWithMulti-DimensionalAttributes
+microserviceswithheterogeneousdatasource,”in2021IEEEIntl
+ConfonParallel&DistributedProcessingwithApplications,BigData
+&CloudComputing,SustainableComputing&Communications,Social
+Computing & Networking (ISPA/BDCloud/SocialCom/SustainCom), ZihanLinreceivedhisbachelordegreeinsoft-
+th N a e t w it Yo is rk i C nf it e y a , s N ib Y l , e U t S o A d , o Se a pt f e a m ir be c r o 3 m 0 p - a O ri c s t. o 3 n , w 20 i 2 t 1 h . [1 I 9 E ] E i E n ,2 th 02 e 1, [16] H.Yanetal.,‘‘Argus: w En a d r - e to e -e n n g d i s n e e rv e i r c i e n a g no fr m o a m ly N de a te n c k ti a on i U an n d iv lo e c r a s li it z y a , - Tian-
+epvpa.lu4a9t3i–o5n00s.ection. tionfromanISP’spoi
+j
+n
+in
+t
+,
+of
+C
+v
+h
+ie
+i
+w
+n
+,
+a
+’’
+,
+in
+in
+Pr
+2
+oc
+0
+.
+2
+IE
+1
+E
+.
+E
+H
+I
+e
+NF
+i
+O
+s
+C
+c
+O
+u
+M
+rr
+,
+e
+M
+nt
+a
+l
+r
+y
+.2
+a
+012
+m
+,
+aster
+[48] Y.Zhang,Z.Guan,H.Qianetal.,“Cloudrca:Arootcauseanalysis pp.2756–2760. student in the College of Software at Nankai
+[17] B.Nguyen,Z.Ge,J.VanderMerwe,H.Yan,andJ.Yates,‘‘Absence:
+I f X ra . m C e O w N o C rk LU fo S r IO c N loud computing platforms,” in CIKM ’21: The Usage-basedfailured U et n ec iv ti e on rs i i n ty. m H ob is ile re n s et e w a o r r c k h s,’’ in i t n e P re ro s c ts .2 i 1 n s c t lu A d nn e u. failure
+30th ACM International Conference on Information and Knowledge localizationandanomalydetection.
+For an additive KPI with multi-dimensional attributes, it is Int.Conf.MobileComput.Netw.,2015,pp.464–476.
+Management, Virtual Event, Queensland, Australia, November 1 - 5,
+[18] D.Liuetal.,‘‘FOCUS:Sheddinglightonthehighsearchresponsetimein
+a20h2a1r,dG.pDroebmleamrtintio,Gl.oZcualciczoen,tJh.eS.oCvuelrpaelplpKerPeIt’sal.a,nEodms.alyACtoM,
+thewild,’’inProc.IEEEINFOCOM,Apr.2016,pp.1–9.
+th20e21r,opopt.4c3a7u3s–e4,38w2.hich is one (or more) combination of [19] F.Ahmed,J.Erman,Z.Ge,A.X.Liu,J.Wang,andH.Yan,‘‘Detectingand
+[49] a Y tt . r M ibu en te g, v S a . lu Z e h s a i n n g, m Y u . l S ti u p n le et di a m l., e “ n L si o o c n a s li . zi F n i g rs f t a ly il , u w re e r c o o o n t s c i a d u e s r es localizingend-to-endperformancedegradationforcellulardataservices,’’
+inamicroservicethroughcausalityinference,”in28thIEEE/ACM inProc.IEEEINFOCOM,Apr.2016,pp.1–9.
+thInitserannaotimonaallySloymcaploisziautmiononasQausaeliatyrchofprSoebrlveicme, wIWithQoaShu2g02e0,
+sHpaancegz.hTouo,Cdheianla,wJuinthe1t5h-e17h,2u0g2e0.seIaErEchE,s2p02a0c,ep,po.u1r–1p0r.o[Oponsliende].
+fAravmaielawboler:kh,tHtpos:t/S/pdooti,.oardgo/p1t0s.1t1h0e9/MIWCQToSS4a9p3p6r5o.2a0c2h0.9(t2h1e30fi58rst
+[50] M. Ma, Z. Yin, S. Zhang et al., “Diagnosing root causes of inter-
+time in anomaly localization literature) whose action value
+mittentslowqueriesinlarge-scaleclouddatabases,”Proc.VLDB
+isEnoduowr.,nvoovle.l13p,ontoe.n8t,iaplps.c1o17re6–b11a8s9e,d20o2n0.the ‘‘ripple effect’’,
+YongqianSunreceivedtheB.S.degreeinsta-
+[51]wZh.icZhhacnagp,tuPr.esChuoi,wanadnoWm.alZiehsup,r“oDpaeegpatelefarronmingtheonrogortacpahuss:eA Y
+t
+O
+is
+N
+tic
+G
+a
+Q
+l
+I
+s
+A
+p
+N
+ec
+S
+i
+U
+al
+N
+ty
+re
+f
+c
+ro
+ei
+m
+ved
+N
+t
+o
+he
+rt
+B
+hw
+.S
+e
+.d
+s
+e
+te
+g
+r
+re
+n
+e
+P
+in
+o
+s
+ly
+ta
+t
+-
+echni-
+survey,”IEEETrans.Knowl.DataEng.,vol.34,no.1,pp.249–270, tisticalspecialtyfromNorthwesternPolytechnical
+throughouttheaggregationhierarchy.Inaddition,wepropose calUniversity,Xi’an,China,in2012,andPh.D.in
+2020. Universityin2012.Heiscurrentlypursuingthe
+[52] a X h . i Z e h ra o r u c , h X ic . a P l e p n r g u , n T i . n X g ie ap e p t r a o l. a , c “ h Fa to ult fu a r n th al e y r si r s ed an u d ce d t e h b e ug se g a in rc g h of P c h o .D m . p d u e t g e r r ee sc w ie it n h ce the fro D m ep T ar s t i m n e g n h t u o a f U C n o i m ve p r u s te it r y,Bei-
+jing,China,in2018.Heiscurrentlyanassistant
+smpaiccreo.sOeruvriceexspyesrteimmes:nItsndbuassterdialosnutrhveeyd,abteanfcrhommarakrseyaslt-ewmo,raldnd Science,TsinghuaUniversity,Beijing,China.His
+professor with the College of Software, Nankai
+seemarpcihriceanlgsitnuedys,h”oIwEEtEhaTtraHnos.tSSopfotwtaarcehEinegv.e,svoml.u4c7h,nboe.tt2e,rpapc.c2u4-3– c
+U
+ur
+n
+re
+iv
+n
+e
+t
+r
+r
+s
+e
+i
+s
+t
+e
+y
+a
+,
+r
+T
+ch
+ia
+i
+n
+n
+j
+t
+i
+e
+n
+r
+,
+e
+C
+sts
+hi
+i
+n
+n
+a
+cl
+.
+u
+H
+de
+is
+an
+re
+o
+s
+m
+e
+a
+a
+ly
+rc
+d
+h
+et
+i
+e
+n
+c
+t
+-
+erests
+260,2021. tion,rootcauselocalization,andhighperformance
+racythanpreviousapproaches.Ouroperationalexperiences includeanomalydetectionandrootcauselocal-
+[53] Á.Brandón,M.Solé,A.Huélamoetal.,“Graph-basedrootcause switchingindatacenter.
+sahnoawlystihsaftorHsoetrSvpicoet-ocraienntreedduacnedtmheicrlooscearlviizcaetiaornchtiitmeceturferso,m” J. izationinservicemanagement.
+aSbyosut.tSmofotwre.,tvhoal.n1159h,o2u02r0i.nmanualeffortstolessthan20sec-
+[54]oTn.dJisa,,aYn.dWtuh,aCt.HHootuSpetoatli.,s“aLnogapflpasrho:aRcheagl-etinmereasltlryeaamppinligcaanbolemtaoly
+detectionanddiagnosisfromsystemlogsforlarge-scalesoftware
+theanomalylocalizationforadditiveKPImetrics.
+systems,”in32ndIEEEInternationalSymposiumonSoftwareRelia-
+bilityEngineering,ISSRE2021,Wuhan,China,October25-28,2021,
+RZE.FJiEnR,EXN.LCiE,JS.Xiangetal.,Eds. IEEE,2021,pp.80–90.
+YOUJIAN ZHAO receivedtheB.S.degreefrom
+[55] H. Wang, Z. Wu, H. Jiang et al., “Groot: An event-graph-based
+[1] R.Bhagwanetal.,‘‘Adtributor:Revenuedebugginginadvertisingsys- TBsiincghheunagUnZivhearsnitgyiins1c9u9r1r,etnhetlyMa.S.fidresgt-reyeefarrommaster
+approach for root cause analysis in industrial settings,” in 36th
+tems,’’inProc.11thUSENIXSymp.Netw.Syst.DesignImplement.(NSDI), thsetuSdheenntyaangt IFnustditaunteoUfnCivoemrpsuittyin.gHTeechrneocleoigvye,d his
+IEEE/ACMInternationalConferenceonAutomatedSoftwareEngineer-
+2014,pp.43–55. CbhaincehseeloArcdadeegmreyeoffroSmcieNncaens,kiani1U9n9i5v,earsnidtyt.hHeisre-
+ing,ASE2021,Melbourne,Australia,November15-19,2021. IEEE,
+[2] Q.Lin,J.-G.Lou,H.Zhang,andD.Zhang,‘‘iDice:Problemidentification Pshe.Dar.cdhegirneteeirnescotsmipnuctleurdseciecnlocuedfronmatNivoertahneadstA-IOps.
+2021,pp.419–429.
+for emerging issues,’’ in Proc. 38th Int. Conf. Softw. Eng., May 2016, ernUniversity,China,in1999.Heiscurrentlya
+pp.214–224. ProfessorwiththeComputerScienceDepartment,
+[3] J.Han,J.Pei,andM.Kamber,DataMining:ConceptsandTechniques. TsinghuaUniversity.Hisresearchinterestsinclude
+Amsterdam,TheNetherlands:Elsevier,2011.
+high speed Internet architecture, switching and
+[4] C.B.Browneetal.,‘‘AsurveyofMonteCarlotreesearchmethods,’’IEEE
+routing,andhigh-speednetworkequipment.
+Trans.Comput.Intell.AIGames,vol.4,no.1,pp.1–43,Mar.2012.
+[5] D.Silveretal.,‘‘MasteringthegameofGowithdeepneuralnetworksand
+treesearch,’’Nature,vol.529,no.7587,pp.484–489,2016.
+[6] S.-B.Leeetal.,‘‘Thresholdcompressionfor3Gscalablemonitoring,’’in
+Proc.IEEEINFOCOM,Mar.2012,pp.1350–1358.
+[7] L.KocsisandC.Szepesvári,‘‘BanditbasedMonte-Carloplanning,’’in 13
+Proc.Eur.Conf.Mach.Learn.,2006,pp.282–293. YA SU received the B.S. degree from the Uni-
+[8] P. Auer, N. Cesa-Bianchi, and P. Fischer, ‘‘Finite-time analysis of the versityofElectronicScienceandTechnologyof
+multiarmedbanditproblem,’’Mach.Learn.,vol.47,no.2,pp.235–256, Chinain2016.HeiscurrentlypursuingthePh.D.
+2002. degreewiththeDepartmentofComputerScience,
+[9] A.Soule,K.Salamatian,andN.Taft,‘‘Combiningfilteringandstatistical TsinghuaUniversity,Beijing,China.Hiscurrent
+methods for anomaly detection,’’ in Proc. 5th ACM SIGCOMM Conf.
+research interests include data analysis, model
+InternetMeas.,2005,p.31.
+development,andmachinelearning.
+[10] ListofHTTPstatuscodes.Accessed:Oct.1,2017.[Online].Available:
+https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#4xx_Client_
+errors
+[11] M.Y.Chen,E.Kiciman,E.Fratkin,A.Fox,andE.Brewer,‘‘Pinpoint:
+Problemdeterminationinlarge,dynamicInternetservices,’’inProc.Int.
+Conf.Depend.Syst.Netw.(DSN),Jun.2002,pp.595–604.
+[12] R.R.Kompella,J.Yates,A.Greenberg,andA.C.Snoeren,‘‘IPfault
+localization via risk modeling,’’ in Proc. 2nd Conf. Symp. Netw. Syst.
+DesignImplement.,vol.2.2005,pp.57–70.
+DAPENGLIUreceivedtheB.S.degreefromthe
+[13] S. Kandula, D. Katabi, and J.-P. Vasseur, ‘‘Shrink: A tool for failure
+Harbin Institute of Technology in 2010 and the
+diagnosisinIPnetworks,’’inProc.ACMSIGCOMMWorkshopMining
+Ph.D.degreefromTsinghuaUniversity,Beijing,
+Netw.Data,2005,pp.173–178.
+China,in2016.HeiscurrentlyaSeniorEngineer
+[14] R.R.Kompella,J.Yates,A.Greenberg,andA.C.Snoeren,‘‘Detection
+andlocalizationofnetworkblackholes,’’inProc.26thIEEEInt.Conf. atBaidu,Inc.Hiscurrentresearchinterestsinclude
+Comput.Commun.(INFOCOM),May2007,pp.2180–2188. monitoring,anomalydetectionandtroubleshoot-
+[15] P. Bahl, R. Chandra, A. Greenberg, S. Kandula, D. A. Maltz, and ing,dataanalysis,andmachinelearning.
+M.Zhang,‘‘Towardshighlyreliableenterprisenetworkservicesviainfer-
+enceofmulti-leveldependencies,’’ACMSIGCOMMComput.Commun.
+Rev.,vol.37,no.4,pp.13–24,2007.
+10922 VOLUME6,2018
+
+--- PDF PAGE 14 ---
+Sibo Xia , born in 2000. Master candidate. Dai Zhang is employed at ZhejiangE-
+His main research interests include knowledge CommerceBank Co., Ltd., Launched by
+graph,failuredetectionanddiagnosis. Ant Group. As a Technical Expert, he mainly
+focusesonfinancialbasictechnicalarchitecture
+andcloud-nativesystemstability.
+Zhengdan Li is an experimentalist at Nankai
+University,Tianjin,China.Herresearchinterests
+include artificial intelligence and software engi-
+neering.
+Zhenyu Zhu is employed at ZhejiangE-
+CommerceBank Co., Ltd., Launched by Ant
+Group.AsaTechnicalExpert,hemainlyfocuses
+on financial basic technical architecture and
+cloud-nativesystemstability.
+ZhenyuZhongreceivedhisB.S.degreeinsoft-
+ware engineering from Nankai University, Tian-
+jin, China, in 2020. Ph.D. candidate in the Col-
+lege of Software at Nankai University, Tianjin,
+China. His current research interests include
+anomalydetection,deeplearningandNLP.
+MinghuaMaisaresearcherinMicrosoft.Before
+that,hereceivedhisPh.D.degreefromTsinghua
+Universityin2021.Hiscurrentresearchinterests
+includeCloudIntelligence/AIOps.
+Dan Pei received the B.E. and M.S. degree in
+computersciencefromtheDepartmentofCom-
+puter Science and Technology, Tsinghua Uni-
+versity in 1997 and 2000, respectively, and the
+Ph.D.degreeincomputersciencefromtheCom-
+puterScienceDepartment,UniversityofCalifor-
+nia, Los Angeles (UCLA) in 2005. He is cur-
+rentlyanassociateprofessorintheDepartment
+ofComputerScienceandTechnology,Tsinghua
+University. His research interests include net-
+workandservicemanagementingeneral.Heis
+anIEEEseniormemberandanACMseniormember.
+WaJin,bornin2001,bachelorcandidate.Her
+mainresearchinterestsincludeanomalydetec-
+tionandfailurediagnosis.
+14

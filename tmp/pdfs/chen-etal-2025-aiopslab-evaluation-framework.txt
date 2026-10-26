@@ -1,0 +1,1071 @@
+--- PDF PAGE 1 ---
+AIOPSLAB: A HOLISTIC FRAMEWORK TO EVALUATE AI AGENTS FOR
+ENABLING AUTONOMOUS CLOUDS
+YinfangChen1 ManishShetty2 GaganSomashekar3 MinghuaMa3 YogeshSimmhan4 JonathanMace3
+ChetanBansal3 RujiaWang3 SaravanRajmohan3
+ABSTRACT
+AIforITOperations(AIOps)aimstoautomatecomplexoperationaltasks,suchasfaultlocalizationandroot
+cause analysis, to reduce human workload and minimize customer impact. While traditional DevOps tools
+andAIOpsalgorithmsoftenfocusonaddressingisolatedoperationaltasks,recentadvancesinLargeLanguage
+Models (LLMs) and AI agents are revolutionizing AIOps by enabling end-to-end and multitask automation.
+This paper envisions a future where AI agents autonomously manage operational tasks throughout the entire
+incidentlifecycle,leadingtoself-healingcloudsystems,aparadigmwetermAgentOps. Realizingthisvision
+requiresacomprehensiveframeworktoguidethedesign,development,andevaluationoftheseagents. Tothis
+end,wepresentAIOPSLAB,aframeworkthatnotonlydeploysmicroservicecloudenvironments,injectsfaults,
+generatesworkloads,andexportstelemetrydatabutalsoorchestratesthesecomponentsandprovidesinterfaces
+forinteractingwithandevaluatingagents. Wediscussthekeyrequirementsforsuchaholisticframeworkand
+demonstratehowAIOPSLABcanfacilitatetheevaluationofnext-generationAIOpsagents. Throughevaluations
+of state-of-the-art LLM agents within the benchmark created by AIOPSLAB, we provide insights into their
+capabilitiesandlimitationsinhandlingcomplexoperationaltasksincloudenvironments. Thesourcecodefor
+AIOpsLabispubliclyavailableathttps://aka.ms/aiopslab-repo.
+1 INTRODUCTION agentshavebroughtthisvisionclosertoreality(Zhaoetal.,
+2023;Heetal.,2022;Maetal.,2018;Zhangetal.,2018;
+TherapidevolutionofITapplicationsandserviceshasled Ganatraetal.,2023;Somashekaretal.,2024;Zhangetal.,
+enterprises to increasingly depend on hyper-scale, cloud- 2024a;Chenetal.,2024). LargeLanguageModel(LLM)
+based systems. These systems are often distributed, em- agents(Mialonetal.,2023;Schicketal.,2024)integrate
+ployingarchitecturessuchasmicroservicesandserverless external tools to dynamically interact with their environ-
+computing,enablingscalabilitybutalsoaddingcomplexity ment(Weietal.,2022a),enablingthemtoautonomously
+andintroducingnewoperationalchallenges. Insuchcloud managetheentireincidentlifecycle,asshowninFigure1.
+environments,issuescancascadeintolarge-scaleoutages.
+To realize this autonomous self-healing cloud vision, we
+Forinstance,anAmazonoutagecanresultinlossesof$100
+proposeanewparadigmcalledAgentOps(AgentforOpera-
+millioninjustonehour(Wolfe,2018).
+tions). Inthisparadigm,agenticapproachesarenotlimited
+To address the challenges of managing incidents in such toisolatedoperationaltasksbutarecapableofseamlessly
+complexinfrastructures,thereisamovementtowardsthe managingmultiple,cross-layertasksacrosstheentireop-
+adoption of AIOps (Artificial Intelligence for IT Opera- erational stack. AgentOps represents an evolution where
+tions), within the context of DevOps (Development and autonomousagentscanmakereal-timedecisionsandend-
+Operations). The ultimate goal of AIOps is to create au- to-endactionstoensuresystemreliability. Thisalignswith
+tonomousself-healingclouds,whereAI-drivenapproaches recentadvancementsinAI,ashighlightedbyapost:
+can detect, localize, and mitigate faults with minimal hu-
+“State-of-the-artAIresultsareincreasinglyob-
+manintervention. Althoughsuchaconcepthasexistedfor
+tainedbycompoundsystemswithmultiplecom-
+overadecade(Lietal.,2012;Daietal.,2009),therecent
+ponents,notjustmonolithicmodels... compound
+advancementsofAIOpsandLargeLanguageModel(LLM)
+AIsystemswilllikelybethebestwaytomaximize
+1UIUC, Champaign, USA 2UC Berkeley, Berkeley, USA AIresultsinthefuture”–TheShiftfromModels
+3Microsoft,Redmond,USA4IISc,Bengaluru,India.Correspon- toCompoundAISystems(Zahariaetal.,2024)
+denceto:MinghuaMa<minghuama@microsoft.com>.
+AI-driven tools and benchmarks like WebArena (Zhou
+etal.,2023),R2E(Jainetal.,2024b),HumanEval(Chen
+
+--- PDF PAGE 2 ---
+AIOpsLab:AHolisticFrameworktoEvaluateAIAgentsforEnablingAutonomousClouds
+etal.,2021),LiveCodeBench(Jainetal.,2024a),andSWE- suitableagentforagivenoperationscenario.
+bench(Jimenezetal.,2024)havesignificantlyadvancedthe
+Toaddresstheselimitations,wedesignedasetofevaluation
+‘Dev’sideofDevOpsbyacceleratingsoftwaredevelopment.
+scenarios,referredtoasproblems,whichreplicatesrealistic
+However,progressinAIfor‘Ops’,particularlyAgentOps,
+incidents within the microservice system. AIOPSLAB’s
+remainslimited,duetothelackofhigh-qualitybenchmarks
+problempoolisstructuredaroundatask-leveltaxonomythat
+fordiverse,realisticscenarios. Addressingthisgaprequires
+categorizestasksofdifferentproblemsacrosstheincident
+aframeworkthataidsthedesign,development,andevalua-
+managementlifecycle.Ourapproachensuresthatevaluation
+tionofAIOpsagentswithinaninteractiveenvironment,a
+scenariosgobeyondsimpleperformanceorcrashfailures
+keycontributionofthispaper.
+(thatcannotbefurtheranalyzedormitigatedbytheagents),
+incorporating fine-grained root causes to fully assess the
+Challengesandcontributions. Buildingaholisticbench- diagnosticandmitigationabilitiesofAIOpsagents.
+markframeworkthatcanallowagentstointeractdynam-
+ically with the cloud poses several challenges. The first Implementation. We developed AIOPSLAB, an inno-
+challengeistomanageanevaluationflowthatisgenerally vative framework for building AgentOps benchmarks to
+applicabletodiverseagentsandclouds,powerfulenoughto evaluate LLM-based AIOps agents. AIOPSLAB utilizes
+evaluateagentsbycomplexandrealisticoperationaltasks, twomicroserviceapplicationsfromDeathStarBench(Gan
+and valuable enough to provide different feedback or ob- et al., 2019) as testbeds, along with their workload gen-
+servability,togetherwithextensibilitythatmakeitpossible erators. An extensible fault library, integrated with
+toaccommodatenewtasksandagentsbytheusers. While ChaosMesh(ChaosMeshAuthors,2022),enablesdiverse
+existingtoolsaddressindividualcomponentsoftheAIOps faultinjectionsintothesystem. Atelemetryobserver,in-
+evaluation,suchasobservability(Heetal.,2023;Simonsson corporating Prometheus (Prometheus Authors, 2024) for
+etal.,2021),applicationsuites(Ganetal.,2019;Zhouetal., metrics,Jaeger(JaegerAuthors,2024)fortracing,andFile-
+2021; Sriraman and Wenisch, 2018) and chaos engineer- beat (Elasticsearch, 2024b) and Logstash (Elasticsearch,
+ing (Netflix, 2011; ChaosBlade Team, 2019; ChaosMesh 2024a)forlogging,supportson-diskstorageoftelemetry
+Authors,2022),theylacktheintegrationnecessarytosup- data,facilitatingevaluationsofbothtraditionalAIOpsal-
+portaunifiedAIOpsevaluation. gorithms and agentic solutions. We also integrate Helm
+and Kubernetes APIs into the AIOPSLAB’s orchestrator
+WepresentAIOPSLAB,aholisticframeworkthatcanau-
+implementation.
+tomatically manage the entire end-to-end evaluation pro-
+cessforAIOpssolutions. Thisinvolvesdeployingservices, Todemonstratetheapplicationofourframeworkinevalu-
+faultinjection,workloadgeneration,orchestratingtheagent- atingLLM-basedagentsasthebenchmark,weuseAIOP-
+cloudinteraction,andanalyzingresults. Specifically,AIOP- SLABtocreate48problemsasevaluationscenarioscovering
+SLABfeaturestheAgent-CloudInterface(ACI),aunified differenttypesofAIOpstasks,andregisterfouragentsfrom
+interfacethatenablesagentstointeractwiththecloud. ACI differenttypesonthoseproblems. Theagentregistrationis
+allowsagentstocommunicate,takeaction,andreceivefeed- lightweight, withlessthanahundredlinesofcodetoim-
+back,orchestratingtheseinteractionstodetectandresolve plement. Ourevaluationprocessrevealsdistinctchallenges
+issuesindynamicandinteractiveenvironments. agentsfaceacrosstasks.
+Moreover, acommonchallengeinoperationbenchmarks Summary. Thispapermakesthefollowingcontributions:
+isthelackofrealisticevaluationscenarios,asexistingap- • Weunraveltherequirementsandchallengesofachieving
+proachesoftenrelyonstaticdatasets,suchassystemmet- aholisticframeworkthatsupportsthedesign, develop-
+rics(Hanetal.,2022;Jacobetal.,2020)thataretypically ment,andevaluationofautonomousAIOpsagents;
+timeseriesdata, oronfixedquestion-answerformat(Liu
+• Wedevelopaframework,AIOPSLAB,whichcannotonly
+etal.,2023).Suchsetupsdonotcapturethedynamic,unpre-
+deploy microservice cloud environments, inject faults,
+dictable,andevolvingnatureofreal-worldcloudenviron-
+generateworkloads,andexporttelemetrydatabutalso
+ments,whereworkloadsandincidentsfluctuateovertime.
+orchestrate these components and provide agent-cloud
+Tomakemattersworse,recenteffortsonAgentOps(Wang
+interfacesforinteractingwithandevaluatingagents.
+etal.,2023;Zhangetal.,2024a)useproprietaryservices
+• We leverage the AIOPSLAB framework to construct a
+anddatasets. Furthermore,existingAIOpsapproachesand
+benchmarksuitewith48problemsacrossdifferentAIOps
+their benchmarks often focus only on isolated aspects of
+tasks in an interactive environment and evaluate four
+theincidentlifecycle,suchasanomalydetection(Yuetal.,
+LLM-basedagents.
+2024b)orfaultlocalization(Sunetal.,2024). Thislacksa
+cohesiveframeworktoevaluateAIOpsagentscomprehen- • Weprovideadetailedanalysisoftheagents’performance
+sively. Moreover,itlimitssupportfordecision-makingthat andlimitationsbyevaluatingthemonAIOPSLAB.
+could assist in chaining algorithms or selecting the most • ThesourcecodeforAIOPSLABispubliclyavailableat
+
+--- PDF PAGE 3 ---
+AIOpsLab:AHolisticFrameworktoEvaluateAIAgentsforEnablingAutonomousClouds
+work application. AIOPSLAB makes it easy to de-
+Incident Triage after
+Microservice Detection Localization fine this problem in just a few lines by extending the
+Agents
+Slow or Incident Management LocalizationTaskinterface.
+connection Human
+Frontend Storage Operators Mitigation/ Root Cause 1 from aiopslab import LocalizationTask,
+Service Service Resolution Diagnosis SocialNetwork
+2 from aiopslab import Wrk, VirtFaultInjector
+3 class K8STargetPortMisconf(LocalizationTask):
+4 def __init__(self):
+Figure1.Microserviceincidentanditsmanagementlifecycle. 5 self.app = SocialNetwork()
+6 self.ans = "user-service"
+https://aka.ms/aiopslab-repo. 7
+8 def start_workload(self):
+2 AIOPSLAB 9 wrk = Wrk(rate=100, duration=10)
+10 wrk.start_workload(url=self.app.
+In this section, we discuss the design and implementa- frontend_url)
+11
+tionofAIOPSLABanditscomponents,asillustratedin 12 def inject_fault(self):
+Figure2. 13 inj = VirtFaultInjector(self.app.ns)
+14 inj.inject([self.ans], "misconfig_k8s")
+2.1 ProblemDefinition
+15
+Tosupportawiderangeofevaluationscenarios(referred 16 def eval(self, soln, trace, duration):
+17 res["TTL"] = duration
+toasproblems),whichreplicaterealisticincidentswithin 18 res["success"] = is_exact_match(soln,
+the microservice system, we first formalize an AIOps self.ans)
+19 return res
+problem P as a tuple: P = ⟨T,C,S⟩, where T repre-
+sentsatask,C representsacontext,andS representsthe Here,thetaskT isfaultlocalization,andthesolutionS
+expectedsolution(oracle).ThetaskT definesthespecific isthemicroservicenamed“user-service”,whichisalso
+AIOpsoperationtobeperformed,categorizedintofour the fault injection target. The context C includes the
+types: detection,localization,(rootcause)analysis,and socialnetworkapplication,amisconfigurationfaultfrom
+mitigation. WedefinethesetasksinTable1. Eachtask AIOPSLAB’sfaultlibrary,andastandardworkloadusing
+type is associated with success criteria and evaluation thewrktool. AIOPSLABprovidesseveralsuchinterfaces
+metrics. Forinstance,thedetectiontaskemploysTime- for all AIOps tasks (Section 2.4.1) and allows users to
+to-Detect (TTD) to measure the time taken to detect a add newproblems byextendingthem. Once problems
+fault. aredefined,AIOPSLABcaninstantiatethemandallow
+The context C can be further formalized as a tuple: agentstointeractwiththemusinganOrchestratorthat
+C = ⟨E,I⟩, where E is the operational environment wedescribenext.
+inwhichtheproblemoccurs,andI istheprobleminfor-
+2.2 Orchestrator
+mationusedtodescribetheproblemtotheagent. The
+operationalenvironmentincludesthecloudservice,the
+AIOPSLAB’sOrchestratorstrictlyenforcestheseparation
+ofconcernsbetweentheagentandtheservice, usinga
+fault model, and the workload model used to generate
+well-definedcentralpiece,theOrchestrator. Itprovides
+the problem, which is not shared with the agent. The
+arobustsetofinterfacesthatallowseamlessintegration
+probleminformationcomprisesofinformationsuchas
+andextensionofvarioussystemcomponents.
+servicedescriptions,taskdescriptions,anddocumenta-
+2.2.1 AgentCloudInterface
+tion about available APIs that is directly shared with
+AkeyresponsibilityoftheOrchestratoristoprovidea
+theagent. Italsosubsumesindirectinformation(includ-
+well-definedinterfacefortheagenttointeractwiththe
+inglogs,metrics,andtracesobservedintheoperational
+cloudenvironment. Typically,developersoperateclouds
+environment)thatisqueryablebytheagentatruntime.
+andserviceswithvariousprogramming(e.g.,APIs,CLIs)
+Finally,S istheexpectedoutcomeofthetask,whichis
+and user interfaces (incident portals, dashboards, etc.).
+usedtoevaluatetheagent’sperformance. Thesolution
+However, existing interfaces to the cloud are not well-
+is typically problem and task-specific and is carefully
+designedforLLMsandagents. Forinstance,humanscan
+designedforevaluation. Notethatsomeproblems,e.g.,
+reliablyignoreirrelevantinformation,whichcanprove
+mitigationtasks,canbesolvedinmultipleways. Insuch
+distractingforagentsandhamperperformance.
+cases,AIOPSLABevaluatesthegeneralstateoftheen-
+TheACIspecifies(1)thesetofvalidactionsavailableto
+tiresystem,e.g.,checkwhetheralloftheservicesareup
+theagent 7 9, and(2)howtheservice’sstateiscon-
+and running, after the problem is resolved, rather than
+veyedbacktotheagentastheobservationofitsactions
+solely on the targeted resource where the fault was in-
+8.
+jected,becauseotherservicesorresourcesmayhavebeen
+Indoingso,theACIabstractsthecloudenvironment’s
+inadvertentlyaffectedduringthemitigationprocess.
+complexity,simplifyingtheagent’sdecision-makingpro-
+Example2.1. ConsidertheproblemoflocalizingaKu- cess. TheACIisdesignedtobeintuitiveandeasytouse,
+bernetes target port misconfiguration in a social net- withaconciselistofAPIs,eachdocumentedtoensure
+
+--- PDF PAGE 4 ---
+AIOpsLab:AHolisticFrameworktoEvaluateAIAgentsforEnablingAutonomousClouds
+provided by AIOpsLab
+Fault library Services Under Test (§2.3) Workload Policy
+extensible by developer
+(§2.4) (§2.2.3)
+evaluation result SocialNetwork
+external API 4 HotelReservation 6
+Fault Generator Workload
+internal call (§2.4) Others Generator(§2.2.3)
+system state/telemetry
+3 2 8 5
+1 Register
+Orchestrator (§2.2)
+Telemetry Collector (§2.5)
+Agents 7 Action A Problem Pool (§3.3)
+(§3.1) Evaluator (§2.2.3)
+... ... Problem Definition (§2.1): Task (§2.4.1):
+- Task T - Detect
+9 Submit S Customized Evalution
+- Workload W - Localize
+Evaluation - Specified Fault F - RCA
+Result (§3) 10 Common Evaluation - Expected Solution S’ - Mitigate
+Figure2.OverviewofAIOPSLAB.TheOrchestratorcoordinatesinteractionsbetweenvarioussystemcomponentsandservesasthe
+Agent-Cloud-Interface(ACI).AgentsengagewiththeOrchestratortosolvetasks,receivingaproblemdescription,instructions,and
+relevantAPIs.TheOrchestratorgeneratesdiverseproblemsusingtheWorkloadandFaultGenerators,injectingtheseintoapplicationsit
+candeploy.Thedeployedservicehasobservability,providingtelemetrysuchasmetrics,traces,andlogs.AgentsactviatheOrchestrator,
+whichexecutesthemandupdatestheservice’sstate.TheOrchestratorevaluatesthefinalsolutionusingpredefinedmetricsforthetask.
+thatagentscanmakemeaningfulprogresstowardstheir 2.2.2 SessionInterface
+objectives. SomeAPIsthatAIOPSLABprovidesbyde- AnotherkeyresponsibilityoftheOrchestratoristoman-
+faultincludeget_logs(fetchlogs),get_metrics(fetch agethelifecycleoftheagentandtheservice. Weimple-
+metrics),get_traces(fetchtraces),andexec_shell(ex- menttheOrchestratorasasession-basedsystem,wherea
+ecuteshellcommandsafterapplyingsecuritypolicyfil- Sessioniscreatedforeachinstanceofanagentsolvinga
+ters). problem. AgentsareregisteredwiththeOrchestrator,and
+asessionstartswithsimpleAPIcallspassingaunique
+Example2.2. ThisexampleillustrateshowtheACIis problem identifier 1. AIOPSLAB’s design is highly
+definedinAIOPSLABasAPIsthatagentscanuse. flexibleandintegrateswiththegrowingLLMandagent
+frameworkspace. Ouronlyrequirementisthattheagent
+1 class TaskActions:
+2 def get_traces(ns: str, duration: int = 5) mustimplementaget_actionmethodwiththefollowing
+-> str: signature: async def get_action(state: str)-> str.
+3 """
+4 Collects trace data of the services from Ittakestheservice’sstateasinputfromtheOrchestrator
+Jaeger. andreturnsthenextactiontheagentwantstotake. Note
+5 Args:
+6 ns (str): The K8S namespace. thatthiscouldbeasimplewrapperfunctionaroundany
+7 duration (int): Duration to collect existingagentframework.
+traces.
+8 Returns:
+9 str: Path to the directory where Example2.3. Inthissimplifiedexample,weillustrate
+traces saved. howanAgentcanbeonboardedtoAIOPSLAB.
+10 """
+1 1 1 1 1 2 4 3 e t s t n r t r d a a a _ c r c t e t e s s _ _ t t a = a p = r i = d t a t _ = t r e t e n a , t d c T _ i e r e t m _ a n e a c d p e . - _ i A n t P . o t ) I w i e ( ( m x ) e n t s d r e ) a l c t t a _t ( r d a u c r e a s ti ( on) 1 2 3 4 f c r l o a m ss de a f i Ag o e p s _ n s e _ t l l i f a : n b i . t p _ r i _ o m m ( p p o s t r el t f = , O s r e p c r l h o f e b . st , s r e a t i t n _ o s p r t r r o u m c p t t s ( , pro a b pi , s):
+instructs, apis)
+15 return trace_api.save_traces(traces) 5 self.llm = GPT4()
+6
+Asshown,theACIencapsulatescomplexoperationsbe-
+7 async def get_action(self, state: str) ->
+hindsimpleAPIslikeget_traces. Oninitializingaprob- str:
+8 return self.llm.generate(self.prompt +
+lem,theOrchestratorautomaticallyextractsdocumenta-
+state)
+tionfromtheseAPIstoprovideascontextC totheagent. 9
+10 #initialize the orchestrator
+Atruntime, agentscanspecifyawiderangeofactions
+11 orch = Orchestrator()
+on the service (e.g., scaling, redeploying, patching) by 12 pid = "misconfig_app_hotel_res-mitigation-1"
+13 prob_desc, instructs, apis = orch.init_problem(
+wayoftheOrchestrator’sprivilegedaccess. Finally,the
+pid)
+Orchestratorconveystheservice’sstateaftereachaction 14 #register and evaluate the agent
+15 agent = Agent(prob_desc, instructs, apis)
+withhigh-qualityfeedbacktotheagent,includingoutputs,
+16 orch.register_agent(agent, name="myAgent")
+errormessages,andtracebacks. 17 asyncio.run(orch.start_problem(max_steps=10))
+
+--- PDF PAGE 5 ---
+AIOpsLab:AHolisticFrameworktoEvaluateAIAgentsforEnablingAutonomousClouds
+As shown on initializing a problem, the Orchestrator
+FaultsProvidedby
+sharescontextnecessaryfortheagenttosolvetheprob- AIOpsLab(§2.4)
+lem. Itthenpolls(viaget_action)fortheagent’snext
+action. Symptomatic Functional
+Faults(§2.4.2) Faults(§2.4.3)
+2.2.3 OtherInterfaces
+ProblemInitializers. AsdescribedinSection2.1,each Network Pod Application- Virtualization-
+Loss Failure levelFaults levelFaults
+problemisdefinedwithacontext C whichincludesits
+operationalenvironment. Thisenvironmentistheservice,
+fault, and workload conditions under which the prob-
+Figure3.FaultcategoriestoinstantiateproblemsinAIOPSLAB.
+lemoccurs. Here,theOrchestratordeploysservicesand Table1.TasktaxonomyforAIOpsagentevaluation. Thelower
+usesinfrastructure-as-codetoolslike(Helm,2024)tode- thelevel,theeasierthetask. AIOPSLABaimstoevaluateagents
+acrossalltasklevelswithitsproblems.
+ploy the required cloud service for each problem. We
+describeservicesalreadyintegratedintoAIOPSLABin Level Task(#subtasks) EvaluationFocus
+1 Detection(1) Can the approach accurately detect
+Section2.3. anomaliesordeviations?
+AsshowninFigure2,tocreaterealisticbenchmarksce- 2 Localization(1) Cantheapproachpinpointafault’sexact
+source(e.g.,microservice)?
+narios,theOrchestratortheninterfaceswithtwoentities:
+3 RootCauseAnalysis Cantheapproachdeterminetheunderly-
+(1)aworkloadgenerator 5 and(2)afaultgenerator 3. (RCA)(2) ingcauseofthefault?
+4 Mitigation(1) Cantheapproachgiveeffectivesolutions
+Thesegeneratorsintroducecontrolledservicedisruptions
+torecovertheenvironment?
+thatsimulatelivebenchmarkproblems. Astheworkload
+generator,AIOPSLABcurrentlyusesthewrk2tool(Gan fromDeathStarBench(Ganetal.,2019). TheSocialNet-
+etal.,2019), whichsupportsseveralworkloadpolicies workapplicationhas28microservices,includingMem-
+and also replays industry workloads 6. However, the cached,MongoDB,andRedis,thattogetherimplement
+AIOPSLAB isextensibletootherworkloadgenerators. severalfeaturesofreal-worldsocialnetworkingapplica-
+Forfaultgeneration,AIOPSLABusesacustomfaultli- tions. The HotelReservation application, implemented
+brarythatinstantiatesfaultsacrossdifferentlevelsofthe withGoandgRPC,supportsserviceslikerecommending
+systemstack 4,suchasapplicationandvirtualization. andreservinghotels.
+Thelibrarycontainsandextendstoseveralfine-grained 2.4 Task-orientedFaultLibrary
+andparametricfaultsthatgobeyondsurface-levelsymp- 2.4.1 TaskTaxonomy
+toms and engage deeper into more complex resolution We present a task-level taxonomy (Table 1) that cate-
+strategies. WedescribethefaultlibraryindetailinSec- gorizesthetasksthatAIOpsagentsshouldaccomplish
+tion2.4. accordingtothedifferentstagesoftheincidentmanage-
+Problem Evaluators. Finally, the Orchestrator plays a mentlifecycle,withprogressivelyincreasingcomplexity.
+criticalroleinevaluatingtheagent’sperformanceona In Table 1, a higher level indicates a harder and more
+problem. Itcomparestheagent’ssolutionsagainstprede- impactfultasktoevaluateagents.
+finedsuccesscriteriaandevaluationmetricsspecificto Level1focusesonthepreliminaryidentificationofun-
+eachtask 10. AIOPSLABsupportsseveraldefaultand usualbehaviorwithinthesystem,forexample,detecting
+commonmetricsforeachtask(e.g.,Time-to-Detectfor amalfunctioningKubernetespodofamicroservice.Also,
+detection, numberofstepstaken, andtokensproduced userscandefinemorecomplextasksorcreatesub-tasks.
+by an LLM-powered agent sent to AIOPSLAB). Ad- Therootcauseanalysistaskhasboththesystemleveland
+ditionally, AIOPSLAB providesanoptionalqualitative faulttypepredictionsub-taskstobesolved.
+evaluation of agent trajectories using LLMs-as-Judges Toinstantiateproblemsacrossdifferenttasklevels,we
+(Zhengetal.,2024). Beyondthat,alluser-definedevalua- usefaultinjectiontoinjectfaultsintothesystem,andcon-
+tionmetricsspecifictotheproblemarerun. Forinstance, structaproblempoolforAIOPSLAB. Weclassifythem
+forthelocalizationprobleminExample2.1,themetric intotwomaintypes,symptomaticfaultsandfunctional
+successisdefinedbytheagent’ssubmissionmatching faults,asshowninFigure3.
+thefaultmicroservice’sname. Lastly, theOrchestrator 2.4.2 SymptomaticFaults
+maintains comprehensive logs of all agent trajectories, Symptomaticfaults,suchasperformancedegradationand
+including actions taken and resulting system states, fa- crash failures, manifest as observable symptoms, such
+cilitating detailed analysis and debugging. All of the asincreasedlatency,resourceexhaustion,orserviceout-
+evaluationresultswillbeautomaticallycollected. ages. These faults typically help to construct Level 1
+2.3 CloudServices and Level 2 tasks in the taxonomy, which can create
+AIOPSLAB deploys live microservice applications as problemsthatevaluateAIOpsapproaches’detectionand
+cloud environments 2. AIOPSLAB is currently inte- localization ability. These faults provide an overview
+grated with the HotelReservation and SocialNetwork of potential problems but do not necessarily reveal the
+
+--- PDF PAGE 6 ---
+AIOpsLab:AHolisticFrameworktoEvaluateAIAgentsforEnablingAutonomousClouds
+7 def recover_revoke_auth(self, microservices:
+Frontend
+list[str]):
+8 """Recover the revoke admin privileges
+fault."""
+Search User Recommend 9 ...
+10 # Usage Example
+Error: Not authorized on 11 class MongoDBRevokeAuth:
+Rate Geo geo-db to execute command 12 def __init__(self):
+13 self.app = HotelReservation()
+Mongodb-geo Revoke the admin’s 14
+privilege during execution 15 def inject_fault(self):
+Figure4.Revokeauthenticationfaultexample.Injectionhappens 16 injector = ApplicationFaultInjector(ns)
+17 injector._inject(["mongodb-geo"], "
+atMongodb-geoservice,whileGeoservicewillbeabnormaland revoke_auth")
+generateerrorlogs.
+deeper, underlyingrootcausesofissues(sincetheydo Userscandefineproblemsusingtheexistingfaultlibrary.
+nothaveone). AIOPSLABintegratesthefaultinjection Forinstance,userscanspecifydifferentfaultyservices
+tool,Chaos-Mesh(ChaosMeshAuthors,2022),toinject orevenconstructataskthatinjectsmultiplefaultsinto
+symptomaticfaultsintomicroserviceapplications. multipleservicesconcurrently. Userscanalsocustomize
+2.4.3 FunctionalFaults their faults to generate various problems. AIOPSLAB
+Though there are many fault injection tools for testing providestheinjectionfunctionforitsassociatedfailure
+theresilienceofcloudsystems(MarinescuandCandea, scenariosandoffersthecorrespondingmitigationmecha-
+2009;BanabicandCandea,2012;Christakisetal.,2017; nismtorecoverthesystemfromtheerroneousstate. In
+ZhangandElbaum,2012;Kingsbury,2022;Pillaietal., Section3.3,wewilldiscussthecurrentproblempoolwe
+2014;Alquraanetal.,2018;Luetal.,2019;Chenetal., implement.
+2020; Leesatapornwongsa et al., 2014; Gunawi et al., 2.5 Observability
+2011;MajumdarandNiksic,2018;Juetal.,2013;Heo- AIOPSLAB is equipped with an extensible observabil-
+rhiadietal.,2016;Alagappanetal.,2016;Mohanetal., itylayertoprovidecomprehensivemonitoringcapabil-
+2018;Sunetal.,2022;Caninietal.,2012),mostofthem ities. AIOPSLAB collects a wide array of telemetry
+focussolelyoninjectingsystemsymptoms.Thesecoarse- databyitstelemetrycollector,including(1)tracesfrom
+grainedfaultscanonlydisruptwithoutmodelingtheun- Jaeger (Jaeger Authors, 2024) detailing the end-to-end
+derlying,fine-grainedrootcauses,e.g.,misconfigurations pathsofrequeststhroughdistributedsystems,(2)applica-
+or software bugs, and hence are unable to evaluate the tionlogsretrievedbyKubectl,orformattedandrecorded
+capabilities of AIOps agents to diagnose and mitigate by Filebeat (Elasticsearch, 2024b) and Logstash (Elas-
+rootcauses. ticsearch,2024a),and(3)systemmetricsmonitoredby
+The failure scenarios to evaluate AIOps agents across Prometheus (Prometheus Authors, 2024). AIOPSLAB
+tasksmustgobeyondsimpleperformanceorcrashfail- notonlysupportsdatacollectionduringtheinteraction
+ures, and reflect realistic cases that challenge agents, withtheLLMagentbutcanalsoexportthedataofflineto
+wherefunctionalfaultscomeintoplay. Functionalfaults facilitateevaluatingothertraditionalAIOpsapproaches.
+requireapproachestonotonlydetect(Level1)andlocal- Besides,AIOPSLABisdesignedtocaptureinformation
+ize(Level2)thefailurebutalsodiagnosetherootcause fromotherdimensions,e.g.,codebase,configuration,and
+(Level 3), such as incorrect deployment or operations, clusterinformation. Developerscanalsodesignandex-
+andapplythecorrectmitigationstrategies(Level4). For poselow-levelsysteminformation(suchassyscalllogs)
+instance,thefaultinFigure4revokestheadminauthen- toagentsusingAIOPSLAB’sinterface.
+tication for the MongoDB database of the geographic 3 EVALUATION
+microservice(Mongodb-geo). SincetheGeoservicere- Thissectionbeginsbyoutliningtheevaluationsetupand
+liesonitsbackenddatabase,errorswillappearduringits metricsemployedwithinAIOPSLAB. Wethendelveinto
+invocation. theselectedfaultslistedinTable2,whichserveasdiverse
+Example 2.4. In the following example, we illustrate
+evaluationscenarioswithinAIOPSLAB. Followingthis,
+weevaluatetheperformanceoftheAIOpsagentssolving
+the structure of the application-level fault injector for
+theseproblems,andthenanalyzethecostoftheagents.
+a revoke authentication fault and its usage example in
+Wealsodigintothereasonsbehindtheperformancedif-
+AIOPSLAB.
+ferencestounderstandthechallengesandpotentialagent
+1 from aiopslab.generators.fault.base import improvements. Notethat,alloftheresultsareautomat-
+FaultInjector
+2 from aiopslab.service.apps.hotelres import icallycollectedandrecordedbytheproblemevaluators
+HotelReservation (Section2.2.3).
+3 class ApplicationFaultInjector(FaultInjector):
+4 def inject_revoke_auth(self, microservices: 3.1 EvaluationSetup
+list[str]): We evaluate four LLM-based agents with AIOPSLAB.
+5 """Revoke MongoDB admin privileges."""
+6 ... Note that, for a fair comparison, we register the
+
+--- PDF PAGE 7 ---
+AIOpsLab:AHolisticFrameworktoEvaluateAIAgentsforEnablingAutonomousClouds
+Table2.SelectedfaultsusedtoinstantiatetheproblemsforevaluationinAIOPSLAB.Ext.standsforextensibility. denotesthe
+faultcanbeeasilyusedtoconstructotherproblems; denotesthereissomemanualeffortneededtocreatenewprobl(cid:32)ems;while
+meansthefaultisspecifictosomeproblemsandcanno(cid:71)(cid:35)tbeappliedtocreateotherproblems. (cid:35)
+No. Name Application TaskLevel Category Ext. #Problem Description
+Functional Missingauthenticationcredentialscause
+1 AuthenticationMissing HotelReservation 1,2,3,4 4
+Virtualization accessdenialtoMongoDB.
+Functional (cid:71)(cid:35) Theservicecannotconnecttothespecified
+2 TargetPortMisconfig SocialNetwork 1,2,3,4 12
+Virtualization portduetomisconfiguration.
+Functional (cid:32) Revokedauthenticationcausesdatabase
+3 RevokeAuth HotelReservation 1,2,3,4 8
+Application connectionfailure.
+Functional (cid:71)(cid:35) Thedatabaseservicehasaccessfailures
+4 UserUnregistered HotelReservation 1,2,3,4 8
+Application aftertheuserwasunregistered.
+Functional (cid:71)(cid:35) Connectioncodebugintheapplication
+5 BuggyAppImage HotelReservation 1,2,3,4 4
+Application imagecausesaccessissues.
+Functional (cid:35) Incorrectscalingoperationmakesthe
+6 ScalePod SocialNetwork 1,2,3,4 4
+Virtualization numberofpodzeroforaservice.
+Functional (cid:32) Podinapendingafailurestatusdueto
+7 AssignNonExistentNode SocialNetwork 1,2,3,4 4
+Virtualization wrongassignmenttoanon-existentnode.
+(cid:32) Networklosscausescommunication
+8 NetworkLoss HotelReservation 1,2 Symptomatic 2
+failuresforaspecificservice.
+9 PodFailure HotelReservation 1,2 Symptomatic (cid:32) 2 Serviceinterruptionduetoapodfailure.
+10 Noop HotelReservation 1 - (cid:32) 2 Nofaultsinjectedintothesystem.
+SocialNetwork
+(cid:32)
+naive agent in AIOPSLAB without any fine-tuning or theproblemisalsorecorded. Notethatthisisthenumber
+modifications. We use GPT-3.5-TURBO and GPT-4- oftimestheagentinteractswiththeAIOPSLABinstead
+TURBO (Achiam et al., 2023) that have access to only ofthenumberofrequestssenttothebackendLLM.
+asecureshellasbaselines(GPT-W-SHELL). Inaddition, Cost. Weusethenumberoftokens,includingboththe
+wealsoevaluatetheperformanceofREACT(Yaoetal., inputtokenandoutputtokens,generatedbytheagents/en-
+2023), whichextendschain-of-thoughtreasoning(Wei vironmentasanindicatorofthecost.
+etal.,2022b)byintegratingreasoningandactinginan
+3.3 ProblemPoolofAIOPSLABBenchmark
+interleavedmanner,
+Currently, AIOPSLAB benchmark consists of 48 prob-
+As for cloud operation-specific agents, we choose
+lemsinitsproblempool. Withsixagents,weevaluatea
+FLASH (Zhang et al., 2024b). FLASH employs a work-
+totalof288cases. Table2liststhefaultsusedtoinstan-
+flow automation system that monitors execution status
+tiatetheproblems. AsshowninTable2,allfunctional
+anddecomposescomplexinstructionsintomanageable,
+faults(includingFault1-7)areusedtocreateproblemsat
+conditionalsegments. Itincorporateshindsightgenera-
+allofthefourtasklevels;whilethesymptomaticfaults
+tiontolearnfrompastinteractions. As FLASH wasnot
+(includingFault8-9)canonlybeusedtocreateproblems
+publicly available at the time of writing, we develop a
+atthedetectionandlocalizationlevels(Level1andLevel
+simplifiedversionthatretrospectivelygeneratesinsights
+2). Inthedetection-leveltask,theagentsmustidentify
+aftereachstep.
+thepresenceoffaultsinreal-time. Thistaskisabinary
+TocomparewithotherAIOpsapproachesspecifictoa
+classification, where the agents have to respond either
+certain type of task, we evaluate three state-of-the-art,
+“yes” if a fault is present or “no” on the contrary. The
+non-LLM-basedAIOpsalgorithmson AIOPSLAB, us-
+detectiontask(Level1)canbemademorecomplex,e.g.,
+ing (multi-modal) telemetry data as input. They are:
+byaskingtheagentstolabeltheabnormaltelemetrydata;
+MKSMC (Çetin and Tasgin, 2020) for detection, RM-
+however,wekeepitsimplehereandleavethecomplex
+LAD (Wang et al., 2020) and PDiagnose (Hou et al.,
+taskstootherlevels. Thelocalization(Level2)taskasks
+2021)forlocalization.
+theagentstospecifytheexactlocationofthefault,usu-
+3.2 Metrics
+allyaserviceorpodnameinKubernetes. TheRCAtask
+Correctness. Thismetricmeasurestheaccuracyofthe (Level3)requirestheagentstoidentify(1)thesystem
+agent’s response to problems. It evaluates whether the layerthefaultaffectsand(2)thetypeofthefault,e.g.,
+agent successfully detects, localizes, analyzes and re- misconfigurationoroperationerror. Themitigationtask
+solvestheproblemsasexpected. (Level 4) requires the agents to interact with the envi-
+Time/Steps. Thesemetricsevaluatetheefficiencyofthe ronment to fix the fault with a series of actions, such
+AIOpsagentforeachtypeoftask. Forexample,Time- asupdatingtheconfiguration,orrollbacktoaprevious
+to-Detect(TTD)isthetimeelapsedfromtheoccurrence version,etc.
+ofafaulttoitsdetection,andTime-to-Mitigate(TTM)is Mostfaultsenableuserstoextendandcreatenewprob-
+thetimetakenfromdetectiontocompletemitigationof lemseasilybyinjectingthefaultintoothertargets,such
+thefault. Thenumberofstepsoractionstakentosolve asservices.Forexample,Fault2inAIOPSLABcanbein-
+
+--- PDF PAGE 8 ---
+AIOpsLab:AHolisticFrameworktoEvaluateAIAgentsforEnablingAutonomousClouds
+Table3.Overallperformanceofdifferentagents.Weshowthe
+0.8
+linesofcode(LoC)toregistertheagentinAIOPSLAB,average
+runningtimeinseconds,averagenumberofstepstaken,average 0.7
+tokensused,andaccuracyacrossallproblems. 0.6
+0.5 Agent LoC Time(s) #Steps Tokens Acc.
+GPT-4-W-SHELL 41 28.61 6.44 6,394.5 49.15% 0.4
+GPT-3.5-W-SHELL 41 12.44 14.70 2,557.95 15.25%
+REACT 49 43.79 11.50 16,941.46 55.93% 0.3
+FLASH 60 99.64 8.48 6,484.25 59.32% 0.2
+jectedinto10servicesbysimplyconfiguringtheinjection 0.1
+target. Weselectthe“user-service”,“text-service”,and 0.0
+3 5 10 15 20
+“post-storage-service”fromSocialNetworkasinjection K (# Steps Taken)
+targets. Injecting faults into different targets is crucial
+becauseeachservicemayhavedistinctdependencies,re-
+sultinginvariedfault“blastradius”orfailurepropagation
+topologies. Consequently,faultscanmanifestatdiffer-
+entlocationswithinthemicroservicearchitecturetohelp
+evaluatetheabilityoftheAIOpsagentssincedifferentlo-
+cationsmayindicatedistinctdifficulties. Applyingsome
+faultstoconstructproblemsmayrequireadditionaleffort.
+Forexample,Fault3andFault4requiretheuserstonot
+only prepare the scripts to trigger the admin privilege
+revokeoruserunregisterationduringthetesting,butalso
+updatetheconfigmapoftheapplicationinKubernetes;
+andFault1needstoenforceitsTLSrequirementsthrough
+aHelmconfigurationupdate. Furthermore,somefaults
+are designed for specific problems and are not readily
+adaptable,suchasFault5,whichinvolvesanapplication-
+levelcodebuginthemicroservice’simage.
+3.4 PerformanceResults
+Theoverallperformanceoftheagentsissummarizedin
+Table 3, with task-specific results in Table 4. As illus-
+trated in Table 3, FLASH achieves the highest accuracy
+amongallagents. AlthoughGPT-3.5-TURBOcompletes
+thetasksthefastest,ithasthelowestaccuracyat15.25%.
+Thedetectiontask,beingabinarychoicequestion,should
+bethesimplesttaskandthefirststepanAIOpsagentper-
+forms. However, as shown in Table 4(a), only FLASH
+answersallthedetectionproblemscorrectly. Forlocal-
+ization task, agents are allowed to come up with a list
+ofpotentialfaultyservicesastheiranswers(sincethere
+couldbemultiplefaultshappenninginthesystematthe
+sametime). Toevaluatetheiraccuracy,weconsiderboth
+thetop1andtop3answers. In Table4(b),REACTper-
+formsbestwhenevaluatedusingthetop3answers,but
+itsaccuracydropswhenconsideringthetop1. TheRCA
+andmitigationtasksprovetobethemostchallengingfor
+theagents. GPT-3.5-W-SHELLfailstorecoveranyfailure
+initsmitigationattempts.
+Problemdifficultydiffersacrosstasklevels.Despiteshow-
+ingpromiseinaddressingrealisticoperationaltasks,none
+oftheagentsconsistentlyachievehighproblem-solving
+accuracyacrossfourtaskcategoriesinAIOPSLABbench-
+mark. Eventhetop-performingagents, suchas FLASH,
+exhibitlimitations,particularlywhentacklingmorecom-
+ycaruccA
+GPT4-w-Shell
+GPT3.5-w-Shell
+ReAct
+Flash
+Figure5. Agentperformancevs.numberofstepstaken.
+plextaskslikemitigation. InSection3.6,wewillexplore
+indetailthefailuremodesandchallengescontributingto
+theseperformancelimitationsofagents,andopportuni-
+tiesforimprovement.
+3.5 InfluenceoftheStepLimit
+Weexaminetheimpactofthemaximumnumberofal-
+lowedstepsontheagent’sperformance,withtheresults
+showninFigure5. Thesteplimitsignificantlyaffectsthe
+performanceofcertainagents. Forinstance,REACTand
+FLASH show improved accuracy with more steps, with
+FLASH reaching the highest accuracy of 59.32% when
+thesteplimitissetto20. However,forGPT-3.5-TURBO,
+increasingthesteplimitbeyond5doesnotyieldbetter
+performancebutmerelyincreasesthetokenconsumption.
+Notably,theplateauingofaccuracyafteracertainnum-
+berofstepsindicatesthatself-repairwithenvironment
+feedbackcansaturatequicklyforAIOpsproblems. On
+thecontrary,indevelopmenttasks(Dev),suchascode
+generation,feedbackviavariouscompositionaltoolssuch
+aslinters,typecheckers,andtestcaseshelpagentscontin-
+uouslyimprove. Thissuggeststheneedfor(1)bettertask
+decompositionforAIOpsproblemsusingplanning,(2)
+improvedfeedbackmechanismsforintermediatesteps,
+and(3)solutionsthatgobeyondenvironmentfeedback
+andself-repair.
+3.6 AgentBehavior: TheGood,theBadandthe
+Gaps
+We now delve into the behaviors of the agents and an-
+alyze the good, the challenges, and opportunities for
+improvement. In Table 4, we see that all agents per-
+formbetterthanthetraditionalnon-LLMAIOpsmethods
+intermsoftheproblemsfordetectionandlocalization
+tasks. Figure6,showsthetelemetryAPIusagepatterns
+amongagents. Theget_logsAPIisthemostfrequently
+used API across all agents, then the get_metrics, and
+the get_traces APIs. However, agents also diverge in
+their patterns of API usage. For example, FLASH does
+not use the get_traces API at all. We present the oc-
+currencesofothersystemcommandsforeachagentin
+Table 5. We next discuss the underlying reasons and
+patternscontributingtotheagents’poorperformance.
+
+--- PDF PAGE 9 ---
+AIOpsLab:AHolisticFrameworktoEvaluateAIAgentsforEnablingAutonomousClouds
+Table4.Agentperformancebytask.Thistablesummarizestheperformanceofdifferentagentsacrossvarioustasksincludingdetection,
+localization,RCA,andmitigation.Acc.standsforaccuracy.Input/Outputrepresentsthenumberoftokensgiventoandproducedbythe
+agent,respectively.
+(a) DetectionTask (b) LocalizationTask
+Agent Accuracy Time(s) #Steps Input Output Agent Acc.@3 Acc.@1 Time(s) #Steps Input Output
+GPT-4-W-SHELL 69.23% 7.08 3.85 5,492 132 GPT-4-W-SHELL 61.54% 61.54% 7.04 4.23 4,588.07 133.23
+GPT-3.5-W-SHELL 23.07% 11.05 13.60 1,940.44 385.56 GPT-3.5-W-SHELL 30.77% 30.77% 6.26 11.92 1,784.23 217.08
+REACT 76.92% 39.00 11.46 15,608.08 933.15 REACT 69.23% 53.85%↓ 38.65 11.08 4,760.77 880.92
+FLASH 100% 78.27 6.77 12,869.08 125.69 FLASH 61.54% 46.15%↓ 56.60 5.77 1,875.08 123.31
+MKSMC 15.38% 1.00 N/A N/A N/A PDIAGNOSE 15.38% 15.38% 1.02 N/A N/A N/A
+RMLAD 7.69% 7.69% 1.98 N/A N/A N/A
+(c) RootCauseAnalysis(RCA)Task (d) MitigationTask
+Agent Accuracy Time(s) #Steps Input Output Agent Accuracy Time(s) #Steps Input Output
+GPT-4-W-SHELL 40.90% 8.68 4.81 4,297.91 176.18 GPT-4-W-SHELL 27.27% 99.47 13.72 10,142.55 1,060.00
+GPT-3.5-W-SHELL 9.09% 10.06 14.00 1,495.55 406.27 GPT-3.5-W-SHELL 0% 23.78 20.00 3,178.33 967.71
+REACT 45.45% 32.16 8.00 16,276.09 757.27 REACT 36.36% 67.18 15.54 29,211.90 1,464.90
+FLASH 36.36% 59.00 6.09 1,193.90 152.45 FLASH 54.55% 216.41 16.09 8,469.00 760.36
+Table5. Occurrencesofsystemcommands.
+Agent find echo py awk mongo grep ls cat ip
+REACT 0 0 0 3 0 1 26 30 0
+FLASH 0 3 0 0 0 0 8 10 0
+70
+60
+50
+40
+30
+20
+10
+0
+ReAct Flash
+Agents
+)%(
+egatnecreP
+Submit Submit
+kubectl get 23.5% kubectl get 20.5% 23.0% 22.3%
+get_metrics2.6% get_metrics
+get_traces2.6% kubectl other
+get_trace
+8
+s
+.2%
+Actions kubectl other get_logs 16.9% get_logs 5.8%
+get_logs 25.6% Others 16.7% Others 17.4%
+get_metrics 58.1% 6.0% 8.9%
+get_traces
+Others
+K8S 48.2%
+(a) Successfulcases. (b) Failurecases.
+Figure7. Actiondistributionbysuccessandfailurecases.
+35.1%
+orfailureofproblem-solving,aswellasthedistribution
+25.5%
+ofactionsacrosssteps. InFigure7,wepresentthedis-
+16.4%
+tributionofactionsforbothsuccessfulandfailedcases.
+5.8% 4.1% 5.4% Agents tend to use get_metrics and get_traces APIs
+1.3% 0.0% sparingly in successfully resolved problems, typically
+onlywhennecessary. Thisisunderstandable,asthemet-
+Figure6.Totalpercentageofactionstakenbydifferentagents. ricsdata,e.g.,CPUandmemoryusagehavenumerous
+values, which are hard to directly interpret, and trace
+3.6.1 Wastingstepsonunnecessaryactions data are descriptive records of the system’s dependen-
+Weobservethatagentsoftenwastestepsonunnecessary cies, which are more comprehensible when visualized.
+actions, such as repeatedly calling the same API, gen- However,agentsmaysubsequentlyconsumethesedata
+erating non-existent APIs, or spending excessive steps withacatcommanddirectly,whichcanoverwhelmthe
+in multi-agent communication. Specifically, the GPT- model’sinputcontextwindowandcausedistractionand
+3.5-W-SHELL agent often generates incorrect API com- moretokenstobeconsumed. Consequently,usingthese
+mands in loops, leading to repeated errors in execu- telemetryAPIswithoutcarefulconsiderationoranalysis
+tion. For instance, setting speaker_selection_method canaddmorenoiseintotheagents’reasoning,possibly
+asround_robinallowseveryagenttospeakineverystep, leading to token exhaustion. We expect more refined
+but this often prevents decisive, efficient decisions, as telemetry data processing and filtering mechanisms to
+agentsrepeatedlyresorttotelemetryAPIsformoreinfor- beimplementedintheagentstoavoidthisissueinthe
+mation. Even with the speaker_selection_method set future.
+toauto,wherethenextspeakerisautomaticallychosen, 3.6.3 InvalidAPIusage
+aselectedagentalwaysspeakstentimesinastepwithout Wenoticethatagentscanstrugglewithimproperformat-
+communication(withamaximumoftencommunication tingofAPIcalls. Forinstance, GPT-3.5-W-SHELL con-
+roundsperstep). sistentlygeneratesincorrectcommandformats(though
+3.6.2 Overloadedinformationwhenconsumingdata theAPInameiscorrect),suchasmalformedparameters,
+Todigdeeperintotheagentfailuremodes,weanalyzethe andrepeattheerrorinsubsequentsteps. Inmanycases,
+correlationbetweentheagents’actionsandthesuccess GPT-3.5-W-SHELLrepeatedlyrespondswith:“Iapologize
+
+--- PDF PAGE 10 ---
+AIOpsLab:AHolisticFrameworktoEvaluateAIAgentsforEnablingAutonomousClouds
+fortheerror. HereistheAPIcallagain:” followedbythe 5 RELATED WORK
+same/similarmistake. Thisissueisobservedasmanyas
+AgentOps. Recentadvancementsincloudmanagement
+14timeswithina20-stepproblem-solvingcase.
+haveincreasinglyincorporatedLLMstoenhanceopera-
+SimilarissueswithinvalidAPIusagearealsoobservedin
+tionaltasks. Approachessuchasfine-tunedGPTmodels
+otheragents. Forinstance,theREACTagentoccasionally
+(Ahmed et al., 2023), RCACopilot (Chen et al., 2024),
+generatesincorrectAPIcommands,buttypicallyrecov-
+RCAgent(Wangetal.,2023),MonitorAssistant(Yuetal.,
+ersbyreasoningthroughtheerrorsandself-correctingits
+2024a),andXpert(Jiangetal.,2024)illustratetheeffec-
+commands. Inthefollowingexample,REACTusesanin-
+tivenessofLLMsinmonitoringandanalyzingcomplex
+correctparameterfortheget_logsAPI,butsubsequently
+systembehaviors. However,beyondthelackofpublicly
+corrects it by checking the existing services in its next
+availableimplementationsandassociatedprivatedatasets,
+step.
+there is a notable gap: the absence of a unified bench-
+markcapableofprovidingrealisticevaluationscenarios
+REACT:get_logs("test-social-network", "Social Network") toassessagents’performanceacrossoperationaltasks.
+AIOPSLAB:Error:Yourservice/namespacedoesnotexist.
+REACT: AIOpsbenchmarks. ExistingAIOpsbenchmarkspri-
+Thought:Ishouldchecktheservicesdeployedwithinthetest-social-network marilyrelyonstaticortext-baseddatasets,suchassystem
+namespacetoensureIusethecorrectservicename.
+Action: Iwilllisttheservicesinthetest-social-networknamespaceto metrics(Hanetal.,2022;Jacobetal.,2020), typically
+confirmthecorrectnameoftheservice. time series data, or fixed question-answer format (Liu
+exec_shell("kubectl get services -n test-social-network")
+etal.,2023).Thesebenchmarks,togetherwiththegeneral
+LanguageModelbenchmarks(Hendrycksetal.,2021b;a;
+3.6.4 Falsepositivedetectionissues
+Liangetal.,2023;Leeetal.,2024;BIG-benchauthors,
+Tofurtherevaluatetheagents’performance,wesetuptwo 2023;Huangetal.,2023),donotsimulatethedynamic
+detectionproblemsforthetwomicroserviceapplications andcomplexcloudenvironments,nottomentionallow-
+wherenofaultsexist,referredtoasnooperation(Fault ingagentstointeractwiththemtosolveoperationaltasks.
+10–NoopinTable2)problems. OnlyGPT-4-W-SHELL 6 CONCLUSION
+correctlyidentifythesecasesasnormalsystemexecution,
+Inthispaper,weunraveltherequirementsandchallenges
+while the others report false positives, misinterpreting
+for a comprehensive framework that supports the de-
+normalactivities(e.g.,standardworkloadgeneration)as
+sign,development,andevaluationofautonomousAIOps
+faults.
+agents. We develop a framework, AIOPSLAB, which
+4 DISCUSSION combines a fault injector, workload generator, cloud-
+agent orchestrator, and telemetry observer to simulate
+AIOPSLABhelpsengineerstoeasilycreatecustomized
+cloudincidentsandprovideanagent-cloudinterfacefor
+incident scenarios for evaluating agents. By providing
+orchestrating and evaluating AIOps agents. We lever-
+AgentCloudInterfaces(ACIs)asguard-rails,AIOPSLAB
+ageAIOPSLABtoconstructabenchmarksuitewith48
+ensures that agents are tested within a controlled envi-
+problemsandevaluatefouragentstodemonstratetheap-
+ronment,allowinguserstofocusondesigningscenarios
+plicationofAIOPSLABinevaluatingLLM-basedagents
+thataccuratelyrepresentincidentsintheirsystemsand
+acrossdifferenttypesofAIOpstasks.
+definingthespecificproblemstheiragentsshouldsolve.
+REFERENCES
+AIOPSLAB is also adaptable to other fault types. For
+example,ananomalydetectionworkloadscenariocanbe Josh Achiam, Steven Adler, Sandhini Agarwal, Lama
+introducedfordetectiontasks. Further,userscancreate Ahmad,IlgeAkkaya,FlorenciaLeoniAleman,Diogo
+problemswhereagentsarerequiredtolabeltheworkload Almeida,JankoAltenschmidt,SamAltman,Shyamal
+ortelemetrydatatoidentifyanomalies. Anadkat, et al. 2023. Gpt-4 technical report. arXiv
+When implementing problem evaluators, fine-grained preprintarXiv:2303.08774(2023).
+evaluation oracles, or AIOPSLAB’s optional LLM-as-
+Toufique Ahmed, Supriyo Ghosh, Chetan Bansal,
+Judge, may be necessary. For instance, in the binary-
+Thomas Zimmermann, Xuchao Zhang, and Saravan
+choicedetectiontask,agentsmayanswercorrectlybut
+Rajmohan. 2023. Recommending Root-Cause and
+provide incorrect interpretations or reasoning. In one
+MitigationStepsforCloudIncidentsusingLargeLan-
+case,anagentclaimedtodetectanabnormalsystembe-
+guageModels.InProceedingsofthe45thInternational
+havior,butitsexplanationreferencedaworkloadthatwas,
+ConferenceonSoftwareEngineering(ICSE’23).
+infact,normalandunrelatedtotheinjectedfault. Lever-
+agingAIOPSLAB’sLLM-as-Judgescanhelpaddressthis RamnatthanAlagappan,AishwaryaGanesan,YuvrajPa-
+issuebycomparingtheLLMreasoningchainswiththe tel,ThanumalayanSankaranarayanaPillai,AndreaC.
+problemdescription(includingthefault,workload,and Arpaci-Dusseau,andRemziH.Arpaci-Dusseau.2016.
+environmentsetup). Correlated Crash Vulnerabilities. In Proceedings of
+
+--- PDF PAGE 11 ---
+AIOpsLab:AHolisticFrameworktoEvaluateAIAgentsforEnablingAutonomousClouds
+the 12th USENIX Conference on Operating Systems Maria Christakis, Patrick Emmisberger, Patrice Gode-
+DesignandImplementation(OSDI’16). froid,andPeterMüller.2017. AGeneralFramework
+for Dynamic Stub Injection. In Proceedings of the
+AhmedAlquraan,HatemTakruri,MohammedAlfatafta,
+39thInternationalConferenceonSoftwareEngineer-
+andSamerAl-Kiswany.2018.AnAnalysisofNetwork-
+ing(ICSE’17).
+PartitioningFailuresinCloudSystems.InProceedings
+ofthe13thUSENIXConferenceonOperatingSystems YuanshunDai,YanpingXiang,andGeweiZhang.2009.
+DesignandImplementation(OSDI’18). Self-healingandHybridDiagnosisinCloudComput-
+ing.InCloudComputing,MartinGiljeJaatun,Gansen
+RaduBanabicandGeorgeCandea.2012. FastBlack-Box
+Zhao, and Chunming Rong (Eds.). Springer Berlin
+TestingofSystemRecoveryCode.InProceedingsof
+Heidelberg,Berlin,Heidelberg.
+the 7th European Conference on Computer Systems
+(EuroSys’12). Elasticsearch.2024a. Centralize,transform&stashyour
+data. https://www.elastic.co/logstash.
+BIG-benchauthors.2023. BeyondtheImitationGame:
+Quantifyingandextrapolatingthecapabilitiesoflan- Elasticsearch. 2024b. Lightweight shipper for logs.
+guage models. Transactions on Machine Learning https://www.elastic.co/beats/filebeat.
+Research(2023).
+Yu Gan, Yanqi Zhang, Dailun Cheng, Ankitha Shetty,
+MarcoCanini, DanieleVenzano, PeterPerešíni, Dejan PriyalRathi,NayanKatarki,ArianaBruno,JustinHu,
+Kostic´,andJenniferRexford.2012. ANICEWayto Brian Ritchken, Brendon Jackson, et al. 2019. An
+TestOpenFlowApplications.InProceedingsofthe9th
+open-source benchmark suite for microservices and
+USENIX Conference on Networked Systems Design
+theirhardware-softwareimplicationsforcloud&edge
+andImplementation(NSDI’12). systems.InProceedingsofthe24thInternationalCon-
+ference on Architectural Support for Programming
+UzayÇetinandMurselTasgin.2020. Anomalydetection
+LanguagesandOperatingSystems(ASPLOS’19).
+with multivariate K-sigma score using Monte Carlo.
+In 2020 5th International Conference on Computer
+Vaibhav Ganatra, Anjaly Parayil, Supriyo Ghosh, Yu
+ScienceandEngineering.
+Kang,MinghuaMa,ChetanBansal,SumanNath,and
+ChaosBlade Team. 2019. ChaosBlade. https:// JonathanMace.2023. DetectionIsBetterThanCure:
+github.com/chaosblade-io/chaosblade. Ac- ACloudIncidentsPerspective.InProceedingsofthe
+31stJointEuropeanSoftwareEngineeringConference
+cessed: 2024-07-08.
+andSymposiumontheFoundationsofSoftwareEngi-
+ChaosMesh Authors. 2022. ChaosMesh. https:// neering(ESEC/FSE’23).
+chaos-mesh.org/. Accessed: 2024-07-08.
+Haryadi S. Gunawi, Thanh Do, Pallavi Joshi, Peter
+HaichengChen,WenshengDou,DongWang,andFeng Alvaro, Joseph M. Hellerstein, Andrea C. Arpaci-
+Qin. 2020. CoFI: Consistency-Guided Fault Injec- Dusseau,RemziH.Arpaci-Dusseau,KoushikSen,and
+tion for Cloud Systems. In Proceedings of the 35th DhrubaBorthakur.2011. FateandDestini: AFrame-
+ACM/IEEE International Conference on Automated workforCloudRecoveryTesting.InProceedingsof
+SoftwareEngineering(ASE’20). the 8th USENIX Symposium on Networked Systems
+DesignandImplementation(NSDI’11).
+MarkChen, JerryTworek, HeewooJun, QimingYuan,
+HenriquePondeDeOliveiraPinto,JaredKaplan,Harri
+SongqiaoHan,XiyangHu,HailiangHuang,MinqiJiang,
+Edwards, YuriBurda, NicholasJoseph, GregBrock-
+andYueZhao.2022. ADBench: AnomalyDetection
+man, et al. 2021. Evaluating large language models
+Benchmark.InThirty-sixthConferenceonNeuralIn-
+trained on code. arXiv preprint arXiv:2107.03374
+formation Processing Systems Datasets and Bench-
+(2021).
+marksTrack.
+Yinfang Chen, Huaibing Xie, Minghua Ma, Yu Kang,
+ShilinHe, BotaoFeng, LiqunLi, XuZhang, YuKang,
+Xin Gao, Liu Shi, Yunjie Cao, Xuedong Gao, Hao
+QingweiLin,SaravanRajmohan,andDongmeiZhang.
+Fan, Ming Wen, Jun Zeng, Supriyo Ghosh, Xuchao
+2023. STEAM:Observability-PreservingTraceSam-
+Zhang,ChaoyunZhang,QingweiLin,SaravanRajmo-
+pling.AssociationforComputingMachinery.
+han, Dongmei Zhang, and Tianyin Xu. 2024. Auto-
+maticRootCauseAnalysisviaLargeLanguageMod- ShilinHe,XuZhang,PinjiaHe,YongXu,LiqunLi,Yu
+els for Cloud Incidents. In Proceedings of the Nine- Kang,MinghuaMa,YiningWei,YingnongDang,Sar-
+teenth European Conference on Computer Systems avanakumarRajmohan,etal.2022.Anempiricalstudy
+(EuroSys’24). ofloganalysisatMicrosoft.InProceedingsofthe30th
+
+--- PDF PAGE 12 ---
+AIOpsLab:AHolisticFrameworktoEvaluateAIAgentsforEnablingAutonomousClouds
+ACM Joint European Software Engineering Confer- NamanJain,ManishShetty,TianjunZhang,KingHan,
+enceandSymposiumontheFoundationsofSoftware Koushik Sen, and Ion Stoica. 2024b. R2E: Turning
+Engineering(ESEC/FSE). anyGithubRepositoryintoaProgrammingAgentEn-
+vironment.InForty-firstInternationalConferenceon
+Helm. 2024. Helm: The package manager for Kuber- MachineLearning(ICML’24).
+netes.
+YuxuanJiang,ChaoyunZhang,ShilinHe,ZhihaoYang,
+Dan Hendrycks, Collin Burns, Steven Basart, Andrew MinghuaMa,SiQin,YuKang,YingnongDang,Sar-
+Critch, Jerry Li, Dawn Song, and Jacob Steinhardt. avan Rajmohan, Qingwei Lin, and Dongmei Zhang.
+2021a. AligningAIWithSharedHumanValues. Pro- 2024. Xpert: EmpoweringIncidentManagementwith
+ceedingsoftheInternationalConferenceonLearning QueryRecommendationsviaLargeLanguageModels.
+Representations(ICLR’21)(2021). InProceedingsofthe46thIEEE/ACMInternational
+ConferenceonSoftwareEngineering(ICSE’24).
+DanHendrycks,CollinBurns,StevenBasart,AndyZou,
+CarlosEJimenez,JohnYang,AlexanderWettig,Shunyu
+Mantas Mazeika, Dawn Song, and Jacob Steinhardt.
+Yao,KexinPei,OfirPress,andKarthikRNarasimhan.
+2021b. MeasuringMassiveMultitaskLanguageUnder-
+2024. SWE-bench: Can Language Models Re-
+standing. ProceedingsoftheInternationalConference
+solve Real-world Github Issues?. In The Twelfth In-
+onLearningRepresentations(ICLR’21)(2021).
+ternationalConferenceonLearningRepresentations
+VictorHeorhiadi,ShriramRajagopalan,HaniJamjoom,
+(ICLR’24).
+Michael K Reiter, and Vyas Sekar. 2016. Gremlin:
+Xiaoen Ju, Livio Soares, Kang G. Shin, Kyung Dong
+SystematicResilienceTestingofMicroservices.InPro-
+Ryu,andDilmaDaSilva.2013. OnFaultResilience
+ceedingsof theIEEE36thInternational Conference
+ofOpenStack.InProceedingsofthe12thACMSympo-
+onDistributedComputingSystems(ICDCS’16).
+siumonCloudComputing(SOCC’13).
+ChuanjiaHou,TongJia,YifanWu,YingLi,andJingHan. KyleKingsbury.2022. Jepsen. https://jepsen.io/.
+2021. Diagnosingperformanceissuesinmicroservices
+Tony Lee, Michihiro Yasunaga, Chenlin Meng, Yifan
+with heterogeneous data source. In 2021 IEEE Intl
+Mai, Joon Sung Park, Agrim Gupta, Yunzhi Zhang,
+Conf on Parallel & Distributed Processing with Ap-
+DeepakNarayanan,HannahTeufel,MarcoBellagente,
+plications,BigData&CloudComputing,Sustainable
+etal.2024.Holisticevaluationoftext-to-imagemodels.
+Computing&Communications,SocialComputing&
+AdvancesinNeuralInformationProcessingSystems
+Networking(ISPA/BDCloud/SocialCom/SustainCom).
+(NeurIPS’24)(2024).
+YuzhenHuang,YuzhuoBai,ZhihaoZhu,JunleiZhang,
+Tanakorn Leesatapornwongsa, Mingzhe Hao, Pallavi
+JinghanZhang,TangjunSu,JuntengLiu,Chuancheng
+Joshi,JeffreyF.Lukman,andHaryadiS.Gunawi.2014.
+Lv, Yikai Zhang, Jiayi Lei, Yao Fu, Maosong Sun,
+SAMC:Semantic-AwareModelCheckingforFastDis-
+andJunxianHe.2023. C-Eval: AMulti-LevelMulti-
+coveryofDeepBugsinCloudSystems.InProceedings
+Discipline Chinese Evaluation Suite for Foundation
+ofthe11thUSENIXConferenceonOperatingSystems
+Models.InAdvancesinNeuralInformationProcessing
+DesignandImplementation(OSDI’14).
+Systems(NeurIPS’23).
+WenruiLi,PengchengZhang,andZhongxueYang.2012.
+VincentJacob,FeiSong,ArnaudStiegler,YanleiDiao, AFrameworkforSelf-HealingServiceCompositions
+andNesimeTatbul.2020. AnomalyBench: AnOpen inCloudComputingEnvironments.In2012IEEE19th
+BenchmarkforExplainableAnomalyDetection.CoRR InternationalConferenceonWebServices(ICWS’12).
+(2020).
+Percy Liang, Rishi Bommasani, Tony Lee, Dimitris
+Jaeger Authors. 2024. Jaeger: Open source, Tsipras, Dilara Soylu, Michihiro Yasunaga, Yian
+end-to-end distributed tracing. https: Zhang,DeepakNarayanan,YuhuaiWu,AnanyaKu-
+//www.jaegertracing.io. mar,BenjaminNewman,BinhangYuan,BobbyYan,
+CeZhang, ChristianCosgrove,ChristopherD.Man-
+Naman Jain, King Han, Alex Gu, Wen-Ding Li, Fan- ning, ChristopherRé, DianaAcosta-Navas, DrewA.
+jiaYan,TianjunZhang,SidaWang,ArmandoSolar- Hudson,EricZelikman,EsinDurmus,FaisalLadhak,
+Lezama, Koushik Sen, and Ion Stoica. 2024a. Live- FriedaRong,HongyuRen,HuaxiuYao,JueWang,Ke-
+CodeBench: Holistic and Contamination Free Eval- shavSanthanam,LaurelOrr,LuciaZheng,MertYuk-
+uation of Large Language Models for Code. arXiv sekgonul,MiracSuzgun,NathanKim,NeelGuha,Ni-
+preprintarXiv:2403.07974(2024). ladriChatterji,OmarKhattab,PeterHenderson,Qian
+
+--- PDF PAGE 13 ---
+AIOpsLab:AHolisticFrameworktoEvaluateAIAgentsforEnablingAutonomousClouds
+Huang, Ryan Chi, Sang Michael Xie, Shibani San- ofCraftingCrash-ConsistentApplications.InProceed-
+turkar,SuryaGanguli,TatsunoriHashimoto,Thomas ings of the 11th USENIX Conference on Operating
+Icard, Tianyi Zhang, Vishrav Chaudhary, William SystemsDesignandImplementation(OSDI’14).
+Wang,XuechenLi,YifanMai,YuhuiZhang,andYuta
+Koreeda.2023. HolisticEvaluationofLanguageMod- Prometheus Authors. 2024. Prometheus. https://
+els. prometheus.io.
+Yuhe Liu, Changhua Pei, Longlong Xu, Bohan Chen, TimoSchick,JaneDwivedi-Yu,RobertoDessì,Roberta
+MingzeSun,ZhiruiZhang,YongqianSun,Shenglin Raileanu, Maria Lomeli, Eric Hambro, Luke Zettle-
+Zhang,KunWang,HaimingZhang,etal.2023. Op- moyer,NicolaCancedda,andThomasScialom.2024.
+sEval: AComprehensiveTask-OrientedAIOpsBench- Toolformer: Languagemodelscanteachthemselvesto
+mark for Large Language Models. arXiv preprint usetools. AdvancesinNeuralInformationProcessing
+arXiv:2310.07637(2023). Systems(NeurIPS’24)(2024).
+JieLu,ChenLiu,LianLi,XiaobingFeng,FengTan,Jun Jesper Simonsson, Long Zhang, Brice Morin, Benoit
+Yang, andLiangYou.2019. CrashTuner: Detecting Baudry,andMartinMonperrus.2021. Observability
+Crash-RecoveryBugsinCloudSystemsviaMeta-Info andchaosengineeringonsystemcallsforcontainer-
+Analysis.InProceedingsofthe26thACMSymposium izedapplicationsindocker. FutureGenerationCom-
+onOperatingSystemPrinciples(SOSP’19). puterSystems(2021).
+MinghuaMa,ShenglinZhang,DanPei,XinHuang,and GaganSomashekar,AnuragDutt,MainakAdak,Tania
+Hongwei Dai. 2018. Robust and rapid adaption for LoridoBotran,andAnshulGandhi.2024. GAMMA:
+conceptdriftinsoftwaresystemanomalydetection.In GraphNeuralNetwork-BasedMulti-BottleneckLocal-
+2018IEEE29thInternationalSymposiumonSoftware izationforMicroservicesApplications.InProceedings
+ReliabilityEngineering(ISSRE).IEEE,13–24. oftheACMWebConference2024.
+RupakMajumdarandFilipNiksic.2018. WhyisRan- AkshithaSriramanandThomasFWenisch.2018.µsuite:
+domTestingEffectiveforPartitionToleranceBugs?. a benchmark suite for microservices. In 2018 IEEE
+InProceedingsofthe45thACMSIGPLANSymposium InternationalSymposiumonWorkloadCharacteriza-
+onPrinciplesofProgrammingLanguages(POPL’18). tion.
+PaulDMarinescuandGeorgeCandea.2009.LFI:APrac- XudongSun,WenqingLuo,JiaweiTylerGu,Aishwarya
+ticalandGeneralLibrary-LevelFaultInjector.InPro- Ganesan, Ramnatthan Alagappan, Michael Gasch,
+ceedingsofthe39thIEEE/IFIPInternationalConfer- LalithSuresh,andTianyinXu.2022. AutomaticRelia-
+enceonDependableSystemsandNetworks(DSN’09). bilityTestingforClusterManagementControllers.In
+Proceedingsofthe16thUSENIXSymposiumonOper-
+GrégoireMialon,RobertoDessì,MariaLomeli,Christo- atingSystemsDesignandImplementation(OSDI’22).
+forosNalmpantis, RamPasunuru, RobertaRaileanu,
+BaptisteRozière,TimoSchick,JaneDwivedi-Yu,Asli YongqianSun,BinpengShi,MingyuMao,MinghuaMa,
+Celikyilmaz,etal.2023. Augmentedlanguagemodels: SiboXia,ShenglinZhang,andDanPei.2024. ART:
+asurvey. arXivpreprintarXiv:2302.07842(2023). AUnifiedUnsupervisedFrameworkforIncidentMan-
+agementinMicroserviceSystems.InProceedingsof
+JayashreeMohan,AshlieMartinez,SoujanyaPonnapalli, the39thIEEE/ACMInternationalConferenceonAuto-
+PandianRaju, andVijayChidambaram.2018. Find- matedSoftwareEngineering.
+ingCrash-ConsistencyBugswithBoundedBlack-Box
+Crash Testing. In Proceedings of the 13th USENIX LingzhiWang,NengwenZhao,JunjieChen,PinnongLi,
+ConferenceonOperatingSystemsDesignandImple- WenchiZhang,andKaixinSui.2020. Root-causemet-
+mentation(OSDI’18). riclocationformicroservicesystemsvialoganomaly
+detection.In2020IEEEinternationalconferenceon
+Netflix. 2011. ChaosMonkey. https://github.com/ webservices(ICWS’20).
+Netflix/chaosmonkey. Accessed: 2024-07-08.
+Zefan Wang, Zichuan Liu, Yingying Zhang, Aoxiao
+Thanumalayan Sankaranarayana Pillai, Vijay Chi- Zhong,LuntingFan,LingfeiWu,andQingsongWen.
+dambaram, Samer Al Kiswany, Andrea C. Arpaci- 2023. Rcagent: Cloud root cause analysis by au-
+Dusseau,andRemziH.Arpaci-Dusseau.2014.AllFile tonomousagentswithtool-augmentedlargelanguage
+SystemsAreNotCreatedEqual: OntheComplexity models. arXivpreprintarXiv:2310.16340(2023).
+
+--- PDF PAGE 14 ---
+AIOpsLab:AHolisticFrameworktoEvaluateAIAgentsforEnablingAutonomousClouds
+Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Anderson.2018. Deepview: VirtualDiskFailureDiag-
+Bosma, Ed Chi, Quoc Le, and Denny Zhou. 2022a. nosisandPatternDetectionforAzure.InProceedings
+Chainofthoughtpromptingelicitsreasoninginlarge ofthe15thUSENIXSymposiumonNetworkedSystems
+language models. arXiv preprint arXiv:2201.11903 DesignandImplementation(NSDI’18).
+(2022).
+Xuchao Zhang, Supriyo Ghosh, Chetan Bansal, Rujia
+Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Wang,MinghuaMa,YuKang,andSaravanRajmohan.
+Bosma,FeiXia,EdChi,QuocVLe,DennyZhou,etal. 2024a. AutomatedRootCausingofCloudIncidents
+2022b.Chain-of-thoughtpromptingelicitsreasoningin usingIn-ContextLearningwithGPT-4.InCompanion
+largelanguagemodels.Advancesinneuralinformation Proceedings of the 32nd ACM International Confer-
+processingsystems(NeurIPS’22)(2022). enceontheFoundationsofSoftwareEngineering.
+Sean Wolfe. 2018. Amazon’s one hour of Xuchao Zhang, Tanish Mittal, Chetan Bansal, Rujia
+downtime on Prime Day may have cost it Wang, Minghua Ma, Zhixin Ren, Hao Huang, and
+up to $100 million in lost sales. (2018). SaravanRajmohan.2024b. FLASH:AWorkflowAu-
+https://www.businessinsider.com/amazon- tomation Agent for Diagnosing Recurring Incidents.
+prime-day-website-issues-cost-it- (2024).
+millions-in-lost-sales-2018-7
+Chenyu Zhao, Minghua Ma, Zhenyu Zhong, Shenglin
+Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Zhang,ZhiyuanTan,XiaoXiong,LuLuYu,JiayiFeng,
+Shafran,KarthikNarasimhan,andYuanCao.2023.Re- YongqianSun,YuzhiZhang,etal.2023. RobustMulti-
+Act: SynergizingReasoningandActinginLanguage modalFailureDetectionforMicroserviceSystems.In
+Models.InInternationalConferenceonLearningRep- Proceedingsofthe29thACMSIGKDDConferenceon
+resentations(ICLR’23). KnowledgeDiscoveryandDataMining.
+ZhaoyangYu,MinghuaMa,ChaoyunZhang,SiQin,Yu Lianmin Zheng, Wei-Lin Chiang, Ying Sheng, Siyuan
+Kang,ChetanBansal,SaravanRajmohan,Yingnong Zhuang, Zhanghao Wu, Yonghao Zhuang, Zi Lin,
+Dang,ChanghuaPei,DanPei,QingweiLin,andDong- ZhuohanLi,DachengLi,EricXing,etal.2024. Judg-
+mei Zhang. 2024a. MonitorAssistant: Simplifying ingllm-as-a-judgewithmt-benchandchatbotarena.
+CloudServiceMonitoringviaLargeLanguageModels. AdvancesinNeuralInformationProcessingSystems
+In Companion Proceedings of the 32nd ACM Inter- (NeurIPS’24)(2024).
+nationalConferenceontheFoundationsofSoftware
+ShuyanZhou,FrankFXu,HaoZhu,XuhuiZhou,Robert
+Engineering(FSE’24).
+Lo, Abishek Sridhar, Xianyi Cheng, Yonatan Bisk,
+ZhaoyangYu,ChanghuaPei,XinWang,MinghuaMa, Daniel Fried, Uri Alon, et al. 2023. WebArena: A
+Chetan Bansal, Saravan Rajmohan, Qingwei Lin, RealisticWebEnvironmentforBuildingAutonomous
+DongmeiZhang,XidaoWen,JianhuiLi,etal.2024b. Agents. arXivpreprintarXiv:2307.13854(2023).
+Pre-trainedKPIAnomalyDetectionModelThrough
+XiangZhou,XinPeng,TaoXie,JunSun,ChaoJi,Wen-
+DisentangledTransformer.InProceedingsofthe30th
+haiLi, andDanDing.2021. FaultAnalysisandDe-
+ACMSIGKDDConferenceonKnowledgeDiscovery
+buggingofMicroserviceSystems: IndustrialSurvey,
+andDataMining.
+BenchmarkSystem,andEmpiricalStudy. IEEETrans-
+Matei Zaharia, Omar Khattab, Lingjiao Chen, actionsonSoftwareEngineering(2021).
+JaredQuincyDavis,HeatherMiller,ChrisPotts,James
+Zou,MichaelCarbin,JonathanFrankle,NaveenRao,
+andAliGhodsi.2024. TheShiftfromModelstoCom-
+pound AI Systems. https://bair.berkeley.edu/
+blog/2024/02/18/compound-ai-systems/.
+PingyuZhangandSebastianElbaum.2012. Amplifying
+TeststoValidateExceptionHandlingCode.InProceed-
+ingsofthe34thInternationalConferenceonSoftware
+Engineering(ICSE’12).
+QiaoZhang,GuoYu,ChuanxiongGuo,YingnongDang,
+NickSwanson,XinshengYang,RandolphYao,,Mu-
+raliChintalapati,ArvindKrishnamurthy,andThomas
+
+--- PDF PAGE 15 ---
+AIOpsLab:AHolisticFrameworktoEvaluateAIAgentsforEnablingAutonomousClouds
