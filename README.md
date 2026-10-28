@@ -28,6 +28,11 @@ El corpus bibliográfico actual contiene veinticuatro documentos. A los veintid�
 |-- AGENTS.md                         # memoria compacta y reglas para próximos ciclos
 |-- README.md                         # guía para trabajar el proyecto
 |-- docs/
+|   |-- arquitecturas_etl/            # alternativas técnicas para el flujo en tiempo real
+|   |   |-- README.md                 # comparación y criterios de selección
+|   |   |-- 01_local_kafka_flink_clickhouse.md
+|   |   |-- 02_aws_glue.md
+|   |   `-- 03_prototipo_local_implementado.md
 |   |-- propuesta_investigacion.md    # fuente narrativa vigente del ciclo 6
 |   |-- proyecto_investigacion.md     # fuente conservada del ciclo 5
 |   `-- matriz_evidencia.md           # trazabilidad: afirmación, fuente y página
@@ -40,6 +45,24 @@ El corpus bibliográfico actual contiene veinticuatro documentos. A los veintid�
     |-- docx/propuesta_investigacion.docx
     `-- pdf/propuesta_investigacion.pdf
 ```
+
+## Alternativas técnicas del ETL
+
+Las posibles arquitecturas para adquirir, transformar y fusionar métricas,
+registros y trazas en tiempo casi real se documentan en
+[`docs/arquitecturas_etl/`](docs/arquitecturas_etl/README.md). Se mantienen dos
+candidatas: una implementación local con Kafka, Flink y ClickHouse, y una
+implementación administrada con AWS Glue. La selección queda pendiente del
+perfilado de la telemetría y de una comparación reproducible; estos documentos
+no modifican todavía la arquitectura académica definitiva ni el corpus IEEE.
+
+El [informe académico del prototipo local
+implementado](docs/arquitecturas_etl/03_prototipo_local_implementado.md) registra
+la metodología, los contratos de datos, las decisiones temporales, las
+garantías de entrega, la trazabilidad técnica y las verificaciones realizadas.
+Sus diagramas Mermaid se conservan como figuras reproducibles dentro del propio
+documento. El informe documenta un artefacto de factibilidad y no modifica la
+comparación pendiente entre las dos arquitecturas candidatas.
 
 ## Flujo recomendado para editar
 

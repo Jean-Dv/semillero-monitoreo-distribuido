@@ -149,6 +149,39 @@ No cambiar la numeración sin actualizar simultáneamente `docs/propuesta_invest
 - Salidas vigentes: `output/docx/propuesta_investigacion.docx` y `output/pdf/propuesta_investigacion.pdf`.
 - Guía humana: `README.md`.
 
+## Alternativas técnicas vigentes para el ETL
+
+- Se documentan dos arquitecturas candidatas en `docs/arquitecturas_etl/`:
+  una alternativa local basada en OpenTelemetry Collector, Kafka, Flink,
+  ClickHouse y MinIO; y una alternativa administrada basada en OpenTelemetry
+  Collector, Kinesis o MSK, AWS Glue Streaming y S3.
+- Ninguna alternativa ha sido seleccionada. La decisión requiere observar
+  primero esquemas, caudal, cardinalidad, retrasos, duplicados, datos faltantes
+  y correspondencia de identificadores en métricas, registros y trazas.
+- Ambas alternativas deben conservar las capas lógicas Bronze, Silver, Gold y
+  Results, así como contratos de datos independientes del motor.
+- Grafana permanece como capa de integración y presentación; no realiza la
+  adquisición, la persistencia, la fusión semántica ni la ejecución del método.
+- La alternativa local es la referencia inicial para una validación
+  completamente reproducible en el entorno controlado. AWS Glue se mantiene
+  como opción administrada o híbrida y exige cuantificar latencia de red,
+  costo y diferencias entre las pruebas Docker y la ejecución real en AWS.
+- La observación inicial deberá comparar periodos de operación normal,
+  condición introducida y recuperación, con `adFailure` como primera condición
+  candidata en Astronomy Shop, sin asumir que será el escenario definitivo.
+- Existe un prototipo técnico de la alternativa local en el repositorio hermano
+  `AIOpsLab`. Su documentación académica se conserva en
+  `docs/arquitecturas_etl/03_prototipo_local_implementado.md` y su evidencia de
+  implementación se registra como A01–A07 en `docs/matriz_evidencia.md`.
+- El prototipo local constituye evidencia de factibilidad dentro de diseño y
+  desarrollo de DSRM; no selecciona de manera definitiva la alternativa local
+  ni descarta la alternativa administrada.
+- Se verificaron el despliegue de Kafka, la creación de los cuatro temas, la
+  conectividad desde Kubernetes, la compilación del trabajo de Flink y sus
+  pruebas unitarias. Continúan pendientes la descarga completa de la imagen del
+  trabajo, la ejecución integrada con telemetría real, la persistencia en MinIO
+  y ClickHouse y el protocolo experimental completo.
+
 ## Protocolo para ciclos siguientes
 
 1. Leer este archivo antes de redactar.
@@ -161,6 +194,8 @@ No cambiar la numeración sin actualizar simultáneamente `docs/propuesta_invest
 
 - Definir el entorno empírico o caso de estudio concreto: aplicación, banco de datos, infraestructura local controlada, agentes de evaluación y mecanismo de generación o inyección de condiciones de interés.
 - Determinar las fuentes concretas desde las que la extensión de Grafana obtendrá métricas, logs y trazas.
+- Ejecutar el perfilado de telemetría y seleccionar, con mediciones, entre la
+  arquitectura local y la arquitectura administrada con AWS Glue.
 - Seleccionar y justificar el enfoque de aprendizaje automático, sus variables de entrada y el esquema de entrenamiento o inferencia.
 - Definir cómo se adquirirán, identificarán, sincronizarán, transformarán y fusionarán métricas, logs y trazas en una representación conjunta.
 - Completar la operacionalización de «patrón», «interpretable», «apoyo a la toma de decisiones», «agente de evaluación» y «utilidad de los resultados», y establecer métricas y datos de referencia para validarlos.
