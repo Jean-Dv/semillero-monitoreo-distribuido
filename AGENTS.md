@@ -176,11 +176,31 @@ No cambiar la numeración sin actualizar simultáneamente `docs/propuesta_invest
 - El prototipo local constituye evidencia de factibilidad dentro de diseño y
   desarrollo de DSRM; no selecciona de manera definitiva la alternativa local
   ni descarta la alternativa administrada.
-- Se verificaron el despliegue de Kafka, la creación de los cuatro temas, la
-  conectividad desde Kubernetes, la compilación del trabajo de Flink y sus
-  pruebas unitarias. Continúan pendientes la descarga completa de la imagen del
-  trabajo, la ejecución integrada con telemetría real, la persistencia en MinIO
-  y ClickHouse y el protocolo experimental completo.
+- Se verificaron la construcción de la imagen ETL, el despliegue de Kafka y
+  Flink, los cuatro temas, la conectividad desde Kubernetes, las pruebas
+  unitarias, la ruta OTLP integrada, los checkpoints, la persistencia
+  Bronze/Silver en Parquet/MinIO, Gold en ClickHouse y la consulta desde
+  Grafana. Una repetición funcional al 1 % recorrió calentamiento, operación
+  normal, `adFailure` y recuperación, y restauró la bandera a `off`.
+- El perfil preliminar acumuló 23 800 mensajes Bronze, 436 322 eventos Silver
+  y 6 660 ventanas Gold. Sus retrasos incluyen el drenaje de mensajes previos,
+  por lo que no justifican todavía las ventanas ni marcas de agua definitivas.
+  Continúan pendientes una medición en régimen estacionario y las tres
+  repeticiones nominales del protocolo de 105 minutos.
+- El drenaje inicial reveló tres reinicios por agotamiento del heap al construir
+  lotes JDBC de 200 filas. El lote se redujo a 20 filas; el trabajo Flink
+  sustituto mantuvo diez subtareas y completó 12 checkpoints, ninguno fallido,
+  sin registrar excepciones en la observación posterior. Falta una prueba prolongada
+  para considerar cerrada la validación de memoria.
+- La siguiente iteración mantendrá un Gold canónico por servicio y ventana; no
+  se creará un Gold por algoritmo. Se derivarán un conjunto tabular común y otro
+  secuencial, con etiquetas experimentales separadas y contratos versionados.
+  Una representación Gold adicional solo se justificará si cambia la unidad de
+  análisis, por ejemplo, hacia trazas, secuencias de eventos o grafos.
+- Antes del modelado se corregirán la identidad entre modalidades, la semántica
+  de tasas y errores, las unidades de CPU y memoria, la rejilla temporal y el
+  tratamiento de ausencias. El plan y los criterios de aceptación están en
+  `docs/arquitecturas_etl/04_mejora_gold_y_protocolo_runs.md`.
 
 ## Protocolo para ciclos siguientes
 
@@ -194,8 +214,13 @@ No cambiar la numeración sin actualizar simultáneamente `docs/propuesta_invest
 
 - Definir el entorno empírico o caso de estudio concreto: aplicación, banco de datos, infraestructura local controlada, agentes de evaluación y mecanismo de generación o inyección de condiciones de interés.
 - Determinar las fuentes concretas desde las que la extensión de Grafana obtendrá métricas, logs y trazas.
-- Ejecutar el perfilado de telemetría y seleccionar, con mediciones, entre la
-  arquitectura local y la arquitectura administrada con AWS Glue.
+- Repetir el perfilado con el consumidor al día y ejecutar las tres
+  repeticiones nominales; después comparar, con mediciones estacionarias, la
+  arquitectura local y la alternativa administrada con AWS Glue.
+- Implementar y validar `gold_service_window_v2`, `feature_tabular_v1` y
+  `feature_sequence_v1` antes de entrenar los algoritmos candidatos; congelar
+  las particiones por `run_id` y ajustar todo preprocesamiento solo con datos de
+  entrenamiento.
 - Seleccionar y justificar el enfoque de aprendizaje automático, sus variables de entrada y el esquema de entrenamiento o inferencia.
 - Definir cómo se adquirirán, identificarán, sincronizarán, transformarán y fusionarán métricas, logs y trazas en una representación conjunta.
 - Completar la operacionalización de «patrón», «interpretable», «apoyo a la toma de decisiones», «agente de evaluación» y «utilidad de los resultados», y establecer métricas y datos de referencia para validarlos.

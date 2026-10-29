@@ -61,8 +61,16 @@ implementado](docs/arquitecturas_etl/03_prototipo_local_implementado.md) registr
 la metodología, los contratos de datos, las decisiones temporales, las
 garantías de entrega, la trazabilidad técnica y las verificaciones realizadas.
 Sus diagramas Mermaid se conservan como figuras reproducibles dentro del propio
-documento. El informe documenta un artefacto de factibilidad y no modifica la
-comparación pendiente entre las dos arquitecturas candidatas.
+documento. El informe incorpora la validación integrada y el perfil preliminar
+del 28 de octubre de 2026, distinguiéndolos de las tres repeticiones nominales
+que continúan pendientes. Documenta un artefacto de factibilidad y no modifica
+la comparación pendiente entre las dos arquitecturas candidatas.
+
+El siguiente paso se especifica en el [plan de mejora del Gold y protocolo de
+ejecuciones](docs/arquitecturas_etl/04_mejora_gold_y_protocolo_runs.md). El plan
+mantiene una representación Gold canónica, deriva conjuntos tabulares y
+secuenciales para los algoritmos candidatos y establece las tres runs que deben
+validar identidad, semántica, cobertura y temporalidad antes del modelado.
 
 ## Flujo recomendado para editar
 

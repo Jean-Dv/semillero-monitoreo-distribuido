@@ -15,7 +15,8 @@ selección definitiva de la arquitectura ni una validación experimental
 concluida. La alternativa administrada con AWS Glue continúa vigente para la
 comparación posterior. Asimismo, las características, ventanas, marcas de agua
 y recursos configurados son hipótesis de ingeniería que deberán revisarse con
-el perfil cuantitativo de la telemetría real.
+mediciones estacionarias de la telemetría real. El primer perfil integrado se
+conserva como evidencia preliminar, no como calibración definitiva.
 
 Las figuras se codifican en Mermaid compatible con el renderizador nativo de
 GitHub. De este modo, se presentan como gráficos en la vista web del repositorio
@@ -310,7 +311,7 @@ modifica la bandera de fallo del servicio de anuncios y restaura la variante
 original incluso ante una excepción. Una prueba con duración reducida verifica
 la integración técnica, pero no sustituye las tres repeticiones completas.
 
-El perfilador previsto mide:
+El perfilador implementado mide:
 
 - registros, eventos y bytes por modalidad;
 - eventos y bytes por segundo;
@@ -324,6 +325,47 @@ El perfilador previsto mide:
 Estas mediciones deberán justificar la cantidad de particiones, el paralelismo,
 la retención, los recursos, las ventanas y las marcas de agua. La aceptación no
 se basará únicamente en que los contenedores estén activos.
+
+### 8.1 Demostración técnica abreviada y perfil preliminar
+
+El 28 de octubre de 2026 se ejecutó una repetición al 1 % de la duración
+nominal. Esta prueba no se considera una repetición experimental válida para la
+evaluación, pero permitió recorrer la secuencia completa y comprobar la
+integración del artefacto. La ejecución
+`fd06592a-f186-4d6f-a26f-4594aafb2ceb` finalizó con estado `complete`, registró
+las fases de calentamiento, operación normal, `adFailure` y recuperación, y
+restauró la variante de la bandera a `off`. Durante el intervalo se observaron
+99 mensajes OTLP de métricas, 329 de registros y 411 de trazas en Kafka.
+
+La asociación de los intervalos experimentales produjo 756 ventanas Gold para
+esa ejecución. Además de las cuatro condiciones, aparecieron 280 ventanas
+`mixed`, resultado esperado cuando una ventana deslizante cruza una frontera de
+fase. La consulta al esquema confirmó que `condition`, `fault_type` y
+`affected_component` están disponibles para evaluación en Gold y ausentes de
+la vista `pattern_input`.
+
+El perfil acumulado, que también incluyó telemetría retenida antes de iniciar
+la prueba, produjo los siguientes resultados:
+
+| Capa o dimensión | Observación preliminar |
+|---|---:|
+| Bronze | 130 archivos; 23 800 mensajes; 205 550 889 bytes |
+| Silver de métricas | 54 archivos; 256 992 eventos; 137,22 eventos/s |
+| Silver de registros | 46 archivos; 45 748 eventos; 24,23 eventos/s |
+| Silver de trazas | 56 archivos; 133 582 eventos; 71,22 eventos/s |
+| Cuarentena de esquema | 0 archivos; 0 eventos |
+| Servicios presentes en las tres señales | 14 |
+| Registros con `trace_id` y `span_id` | 80,27 % |
+| Gold acumulado | 6 660 ventanas; 32 servicios; 2 identificadores de ejecución |
+
+Los percentiles p99 del retraso entre el tiempo OTLP y la recepción por el ETL
+fueron 1 292 945 ms para métricas, 1 277 709 ms para registros y 1 284 044 ms
+para trazas. Estos valores no describen todavía el retraso estacionario de la
+arquitectura: Flink estaba drenando mensajes acumulados cuando se obtuvo el
+perfil. Por tanto, no justifican ampliar la marca de agua a aproximadamente 21
+minutos. Su función es evidenciar que la siguiente medición deberá aislar una
+ejecución iniciada con el consumidor al día y distinguir el retraso de transporte
+del retraso inducido por reproducción o acumulación.
 
 ## 9. Articulación con DSRM
 
@@ -342,11 +384,13 @@ flowchart LR
 propia a partir de [23].
 
 El código implementado constituye un producto verificable de diseño y
-desarrollo. La demostración se completará cuando la ruta Collector–Kafka–Flink–
-MinIO/ClickHouse opere con Astronomy Shop. La evaluación deberá comparar la
-salida con los objetivos de integración y con los datos de referencia, y podrá
-devolver el trabajo al diseño si la cobertura, el retraso o la correspondencia
-semántica resultan insuficientes.
+desarrollo. La prueba abreviada demuestra que la ruta Collector–Kafka–Flink–
+MinIO/ClickHouse–Grafana puede operar con Astronomy Shop y conservar datos de
+referencia. No completa la demostración ni la evaluación de DSRM: faltan las
+tres repeticiones nominales, una medición sin acumulación previa y la
+comparación con criterios de integración, desempeño, interpretabilidad y
+utilidad. Esos resultados podrán devolver el trabajo al diseño si la cobertura,
+el retraso o la correspondencia semántica resultan insuficientes.
 
 ## 10. Estado verificable del artefacto
 
@@ -359,23 +403,35 @@ documentación se verificó:
 - clúster `kind` con dos nodos disponibles;
 - Kafka 4.2.0 saludable, cuatro temas creados y conectividad desde Kubernetes;
 - producción y consumo de un evento de control;
-- compilación del trabajo Flink y dos pruebas Java aprobadas;
+- construcción de la imagen `aiopslab/telemetry-etl:1.0.0`, compilación del
+  trabajo Flink y cinco pruebas Java aprobadas;
 - tres pruebas del ejecutor experimental aprobadas;
-- definición de los contratos Parquet, el esquema ClickHouse y las fuentes de
-  Grafana.
+- ejecución del trabajo Flink con diez subtareas activas y checkpoints
+  persistidos en MinIO. Durante el drenaje inicial, el historial reveló tres
+  reinicios por agotamiento del heap al construir lotes JDBC de 200 filas; se
+  redujo el lote configurable a 20 filas y el trabajo sustituto completó 12
+  checkpoints, ninguno fallido, sin excepciones durante la observación posterior;
+- escritura de Bronze y Silver en Parquet/MinIO y de Gold en ClickHouse;
+- una repetición funcional abreviada de las fases normal–falla–recuperación;
+- exclusión efectiva de las etiquetas de evaluación en `pattern_input`;
+- fuente ClickHouse saludable y tablero Gold aprovisionado en Grafana.
 
-La imagen `aiopslab/telemetry-etl:1.0.0` no terminó de construirse por
-interrupciones DNS/TLS durante la descarga de la imagen base de Flink. Este hecho
-no se interpreta como un defecto demostrado del trabajo Java. Tampoco se han
-validado todavía el flujo OTLP completo, los archivos Parquet, las consultas
-Gold ni el experimento de 105 minutos.
+La construcción que antes estaba detenida por interrupciones DNS/TLS se completó
+al disponer de una conexión estable. El flujo integrado quedó demostrado con
+telemetría real, pero el experimento nominal de 105 minutos, sus tres
+repeticiones y la evaluación del método de aprendizaje automático continúan
+pendientes. La corrección del contrato Gold y las condiciones que deben
+satisfacerse antes de esas ejecuciones se especifican en el [plan de mejora del
+Gold y protocolo de ejecuciones](04_mejora_gold_y_protocolo_runs.md).
 
 ## 11. Limitaciones y decisiones pendientes
 
 1. La implementación local es un artefacto para estudiar factibilidad y no
    cierra la comparación con AWS Glue.
 2. La marca de agua, el tamaño y avance de ventana y el TTL de deduplicación no
-   cuentan todavía con justificación empírica.
+   cuentan todavía con justificación empírica definitiva. El primer perfil
+   estuvo afectado por el drenaje de mensajes acumulados y no representa un
+   régimen estacionario.
 3. Los eventos que superan la tolerancia máxima no disponen de una salida
    lateral específica para analizar descartes extremos.
 4. La selección de CPU y memoria depende de coincidencias nominales.
@@ -386,7 +442,9 @@ Gold ni el experimento de 105 minutos.
 7. La asociación de intervalos experimentales usa el timestamp Kafka y deberá
    compararse con el tiempo de evento cerca de las fronteras de fase.
 8. El sink JDBC ofrece entrega al menos una vez e idempotencia en consulta, no
-   una transacción distribuida exactamente una vez.
+   una transacción distribuida exactamente una vez. El lote reducido resolvió
+   el OOM en la verificación corta, pero deberá someterse a una prueba prolongada
+   bajo el caudal máximo observado.
 9. La técnica de aprendizaje automático y sus variables definitivas continúan
    pendientes de comparación empírica.
 10. Los resultados solo podrán generalizarse a los sistemas, versiones, cargas,

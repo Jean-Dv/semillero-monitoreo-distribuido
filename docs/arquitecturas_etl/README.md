@@ -23,9 +23,16 @@ verificación. Este prototipo aporta evidencia de factibilidad para la actividad
 de diseño y desarrollo de DSRM; no constituye por sí mismo la selección
 definitiva de la arquitectura local frente a la alternativa administrada.
 
-Los dos documentos de arquitectura son notas técnicas de diseño y el tercero
-registra el artefacto implementado. Ninguno modifica por sí solo la formulación
-académica, la numeración IEEE ni el corpus de
+El [plan de mejora del Gold y protocolo de
+ejecuciones](04_mejora_gold_y_protocolo_runs.md) define la siguiente iteración:
+un Gold canónico por servicio y ventana, conjuntos derivados para algoritmos
+tabulares y temporales, criterios de calidad, tres runs nominales y reglas para
+una comparación sin fuga temporal. El plan no selecciona un algoritmo ni crea
+un Gold independiente para cada candidato.
+
+Los dos primeros documentos son notas técnicas de diseño, el tercero registra
+el artefacto implementado y el cuarto especifica su siguiente iteración. Ninguno
+modifica por sí solo la formulación académica, la numeración IEEE ni el corpus de
 `docs/propuesta_investigacion.md`.
 
 ## Contexto común
