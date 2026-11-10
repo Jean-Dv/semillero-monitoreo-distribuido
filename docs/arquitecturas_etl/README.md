@@ -23,15 +23,24 @@ verificación. Este prototipo aporta evidencia de factibilidad para la actividad
 de diseño y desarrollo de DSRM; no constituye por sí mismo la selección
 definitiva de la arquitectura local frente a la alternativa administrada.
 
-El [plan de mejora del Gold y protocolo de
-ejecuciones](04_mejora_gold_y_protocolo_runs.md) define la siguiente iteración:
-un Gold canónico por servicio y ventana, conjuntos derivados para algoritmos
-tabulares y temporales, criterios de calidad, tres runs nominales y reglas para
-una comparación sin fuga temporal. El plan no selecciona un algoritmo ni crea
-un Gold independiente para cada candidato.
+La [mejora del Gold y protocolo de
+ejecuciones](04_mejora_gold_y_protocolo_runs.md) especifica e informa la
+iteración vigente: un Gold canónico por servicio y ventana, conjuntos derivados
+para algoritmos tabulares y temporales, criterios de calidad, tres runs nominales
+y reglas para una comparación sin fuga temporal. Los contratos v2.2 y el
+protocolo automatizado ya están implementados; las tres runs nominales correctas
+y la aceptación del Gold permanecen pendientes. Los paquetes generados durante
+el desarrollo se conservan localmente y no son evidencia experimental. La
+iteración no selecciona un algoritmo ni crea un Gold independiente para cada
+candidato.
+
+La guía ejecutable para subir, redesplegar, validar, correr escenarios y
+conservar cada paquete de evidencia se mantiene junto al código en
+`../AIOpsLab/deploy/etl/GUIA_EJECUCION.md` (ruta relativa entre los dos
+repositorios hermanos).
 
 Los dos primeros documentos son notas técnicas de diseño, el tercero registra
-el artefacto implementado y el cuarto especifica su siguiente iteración. Ninguno
+el artefacto base y el cuarto especifica y registra su iteración vigente. Ninguno
 modifica por sí solo la formulación académica, la numeración IEEE ni el corpus de
 `docs/propuesta_investigacion.md`.
 

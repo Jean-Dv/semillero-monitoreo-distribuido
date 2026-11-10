@@ -328,44 +328,14 @@ se basará únicamente en que los contenedores estén activos.
 
 ### 8.1 Demostración técnica abreviada y perfil preliminar
 
-El 28 de octubre de 2026 se ejecutó una repetición al 1 % de la duración
-nominal. Esta prueba no se considera una repetición experimental válida para la
-evaluación, pero permitió recorrer la secuencia completa y comprobar la
-integración del artefacto. La ejecución
-`fd06592a-f186-4d6f-a26f-4594aafb2ceb` finalizó con estado `complete`, registró
-las fases de calentamiento, operación normal, `adFailure` y recuperación, y
-restauró la variante de la bandera a `off`. Durante el intervalo se observaron
-99 mensajes OTLP de métricas, 329 de registros y 411 de trazas en Kafka.
-
-La asociación de los intervalos experimentales produjo 756 ventanas Gold para
-esa ejecución. Además de las cuatro condiciones, aparecieron 280 ventanas
-`mixed`, resultado esperado cuando una ventana deslizante cruza una frontera de
-fase. La consulta al esquema confirmó que `condition`, `fault_type` y
-`affected_component` están disponibles para evaluación en Gold y ausentes de
-la vista `pattern_input`.
-
-El perfil acumulado, que también incluyó telemetría retenida antes de iniciar
-la prueba, produjo los siguientes resultados:
-
-| Capa o dimensión | Observación preliminar |
-|---|---:|
-| Bronze | 130 archivos; 23 800 mensajes; 205 550 889 bytes |
-| Silver de métricas | 54 archivos; 256 992 eventos; 137,22 eventos/s |
-| Silver de registros | 46 archivos; 45 748 eventos; 24,23 eventos/s |
-| Silver de trazas | 56 archivos; 133 582 eventos; 71,22 eventos/s |
-| Cuarentena de esquema | 0 archivos; 0 eventos |
-| Servicios presentes en las tres señales | 14 |
-| Registros con `trace_id` y `span_id` | 80,27 % |
-| Gold acumulado | 6 660 ventanas; 32 servicios; 2 identificadores de ejecución |
-
-Los percentiles p99 del retraso entre el tiempo OTLP y la recepción por el ETL
-fueron 1 292 945 ms para métricas, 1 277 709 ms para registros y 1 284 044 ms
-para trazas. Estos valores no describen todavía el retraso estacionario de la
-arquitectura: Flink estaba drenando mensajes acumulados cuando se obtuvo el
-perfil. Por tanto, no justifican ampliar la marca de agua a aproximadamente 21
-minutos. Su función es evidenciar que la siguiente medición deberá aislar una
-ejecución iniciada con el consumidor al día y distinguir el retraso de transporte
-del retraso inducido por reproducción o acumulación.
+Durante el desarrollo se utilizaron ejecuciones abreviadas para recorrer la
+integración del artefacto y ajustar su implementación. Sus paquetes y
+mediciones se conservan localmente, no se versionan y no se consideran
+repeticiones experimentales válidas. Por tanto, este documento no utiliza sus
+identificadores ni sus resultados cuantitativos como evidencia. El volumen, el
+caudal, la cobertura multimodal, el retraso, las ventanas Gold y la estabilidad
+de checkpoints deberán medirse de nuevo con el consumidor al día y las tres
+repeticiones nominales correctas.
 
 ## 9. Articulación con DSRM
 
@@ -384,10 +354,10 @@ flowchart LR
 propia a partir de [23].
 
 El código implementado constituye un producto verificable de diseño y
-desarrollo. La prueba abreviada demuestra que la ruta Collector–Kafka–Flink–
-MinIO/ClickHouse–Grafana puede operar con Astronomy Shop y conservar datos de
-referencia. No completa la demostración ni la evaluación de DSRM: faltan las
-tres repeticiones nominales, una medición sin acumulación previa y la
+desarrollo. Las pruebas automatizadas y las validaciones de despliegue permiten
+continuar hacia la demostración controlada, pero no completan la demostración
+ni la evaluación de DSRM: faltan las tres repeticiones nominales, una medición
+sin acumulación previa y la
 comparación con criterios de integración, desempeño, interpretabilidad y
 utilidad. Esos resultados podrán devolver el trabajo al diseño si la cobertura,
 el retraso o la correspondencia semántica resultan insuficientes.

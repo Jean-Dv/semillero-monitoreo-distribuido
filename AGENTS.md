@@ -174,7 +174,7 @@ No cambiar la numeración sin actualizar simultáneamente `docs/propuesta_invest
 - Existe un prototipo técnico de la alternativa local en el repositorio hermano
   `AIOpsLab`. Su documentación académica se conserva en
   `docs/arquitecturas_etl/03_prototipo_local_implementado.md` y su evidencia de
-  implementación se registra como A01–A07 en `docs/matriz_evidencia.md`.
+  implementación se registra como A01–A15 en `docs/matriz_evidencia.md`.
 - El prototipo local constituye evidencia de factibilidad dentro de diseño y
   desarrollo de DSRM; no selecciona de manera definitiva la alternativa local
   ni descarta la alternativa administrada.
@@ -182,27 +182,44 @@ No cambiar la numeración sin actualizar simultáneamente `docs/propuesta_invest
   Flink, los cuatro temas, la conectividad desde Kubernetes, las pruebas
   unitarias, la ruta OTLP integrada, los checkpoints, la persistencia
   Bronze/Silver en Parquet/MinIO, Gold en ClickHouse y la consulta desde
-  Grafana. Una repetición funcional al 1 % recorrió calentamiento, operación
-  normal, `adFailure` y recuperación, y restauró la bandera a `off`.
-- El perfil preliminar acumuló 23 800 mensajes Bronze, 436 322 eventos Silver
-  y 6 660 ventanas Gold. Sus retrasos incluyen el drenaje de mensajes previos,
-  por lo que no justifican todavía las ventanas ni marcas de agua definitivas.
-  Continúan pendientes una medición en régimen estacionario y las tres
+  Grafana. Estas verificaciones son de implementación y no sustituyen las tres
   repeticiones nominales del protocolo de 105 minutos.
-- El drenaje inicial reveló tres reinicios por agotamiento del heap al construir
-  lotes JDBC de 200 filas. El lote se redujo a 20 filas; el trabajo Flink
-  sustituto mantuvo diez subtareas y completó 12 checkpoints, ninguno fallido,
-  sin registrar excepciones en la observación posterior. Falta una prueba prolongada
-  para considerar cerrada la validación de memoria.
-- La siguiente iteración mantendrá un Gold canónico por servicio y ventana; no
-  se creará un Gold por algoritmo. Se derivarán un conjunto tabular común y otro
-  secuencial, con etiquetas experimentales separadas y contratos versionados.
+- Las mediciones generadas durante el desarrollo se conservan localmente y no
+  se versionan ni se presentan como evidencia experimental. La cobertura, el
+  caudal, el retraso, la estabilidad y la aceptación de Gold deberán calcularse
+  de nuevo con las tres repeticiones nominales correctas.
+- Las pruebas locales revelaron presión de heap al construir lotes JDBC grandes;
+  el lote se redujo a 20 filas. La validación prolongada de memoria permanece
+  pendiente del protocolo nominal.
+- La iteración vigente implementa `gold_service_window_v2.2` como Gold canónico
+  por servicio y ventana; no se crea un Gold por algoritmo. De él se derivan
+  `feature_tabular_v1` y `feature_sequence_v1`, con etiquetas experimentales en
+  `evaluation_reference_v1` y un contrato Results versionado.
   Una representación Gold adicional solo se justificará si cambia la unidad de
   análisis, por ejemplo, hacia trazas, secuencias de eventos o grafos.
-- Antes del modelado se corregirán la identidad entre modalidades, la semántica
-  de tasas y errores, las unidades de CPU y memoria, la rejilla temporal y el
-  tratamiento de ausencias. El plan y los criterios de aceptación están en
+- Se implementaron la clave por servicio y namespace Kubernetes, la separación
+  de errores por modalidad,
+  las tasas y latencias basadas en spans de servidor, la validación explícita de
+  unidades, la rejilla temporal y los indicadores de ausencia. `service.namespace`
+  se conserva como contexto y no divide la clave; las identidades no resueltas
+  permanecen en Silver. Las señales sin namespace se mantienen como estrato
+  separado. Las métricas cuantitativas de cobertura, unicidad e integridad
+  quedan pendientes de las runs nominales.
+- El cierre del ejecutor ya no depende solo de una espera fija: exige tres
+  conteos Gold no vacíos e iguales antes de capturar el paquete. Esta lógica
+  está cubierta por pruebas unitarias; su tiempo de estabilización se medirá en
+  las ejecuciones nominales.
+- Cada run genera un paquete con manifiesto, configuración, offsets y
+  checkpoints, perfil, calidad Gold, cronología, logs y checksums. La guía de
+  operación está en `../AIOpsLab/deploy/etl/GUIA_EJECUCION.md`. Los criterios de
+  aceptación están en
   `docs/arquitecturas_etl/04_mejora_gold_y_protocolo_runs.md`.
+- El ejecutor rechaza uso efectivo de disco igual o superior al 90 %, exige
+  estabilidad del plano de control y conserva por separado los
+  errores de ejecución y restauración. Flink usa RocksDB incremental, intervalo
+  de 60 segundos, pausa mínima de 30 segundos y un solo checkpoint concurrente.
+  El comportamiento prolongado de estas salvaguardas se confirmará con las
+  ejecuciones nominales.
 
 ## Protocolo para ciclos siguientes
 
@@ -216,13 +233,13 @@ No cambiar la numeración sin actualizar simultáneamente `docs/propuesta_invest
 
 - Definir el entorno empírico o caso de estudio concreto: aplicación, banco de datos, infraestructura local controlada, agentes de evaluación y mecanismo de generación o inyección de condiciones de interés.
 - Determinar las fuentes concretas desde las que la extensión de Grafana obtendrá métricas, logs y trazas.
-- Repetir el perfilado con el consumidor al día y ejecutar las tres
-  repeticiones nominales; después comparar, con mediciones estacionarias, la
+- Ejecutar las tres repeticiones nominales con la cohorte primaria
+  `k8s_namespace = astronomy-shop`; después comparar, con las mediciones estacionarias, la
   arquitectura local y la alternativa administrada con AWS Glue.
-- Implementar y validar `gold_service_window_v2`, `feature_tabular_v1` y
-  `feature_sequence_v1` antes de entrenar los algoritmos candidatos; congelar
-  las particiones por `run_id` y ajustar todo preprocesamiento solo con datos de
-  entrenamiento.
+- Consolidar la correspondencia de las señales sin namespace, ejecutar las tres
+  runs nominales, decidir la aceptación de `gold_service_window_v2.2` y congelar las
+  particiones por `run_id` antes de entrenar; ajustar todo preprocesamiento solo
+  con datos de entrenamiento.
 - Seleccionar y justificar el enfoque de aprendizaje automático, sus variables de entrada y el esquema de entrenamiento o inferencia.
 - Definir cómo se adquirirán, identificarán, sincronizarán, transformarán y fusionarán métricas, logs y trazas en una representación conjunta.
 - Completar la operacionalización de «patrón», «interpretable», «apoyo a la toma de decisiones», «agente de evaluación» y «utilidad de los resultados», y establecer métricas y datos de referencia para validarlos.

@@ -8,10 +8,42 @@ representación multimodal con semántica suficientemente estable para comparar
 métodos de reconocimiento de patrones. También define las ejecuciones necesarias
 para verificar esa representación antes de entrenar modelos.
 
-El contenido es un plan de diseño y validación, no un resultado experimental ni
-una selección anticipada del método. Los algoritmos candidatos continúan sujetos
-a comparación empírica. La implementación vigente y sus limitaciones se describen
-en [el informe del prototipo local](03_prototipo_local_implementado.md).
+El contenido funciona como especificación de diseño y validación, no como una
+selección anticipada del método. Los algoritmos candidatos continúan sujetos a
+comparación empírica. La implementación base y sus limitaciones se describen en
+[el informe del prototipo local](03_prototipo_local_implementado.md).
+
+### 1.1 Estado de implementación al 10 de noviembre de 2026
+
+La especificación se implementó en el repositorio `AIOpsLab` mediante
+`gold_service_window_v2`, `feature_tabular_v1`, `feature_sequence_v1`,
+`evaluation_reference_v1` y `pattern_results_v1`. Bronze y Silver v2 se
+persisten en prefijos independientes para conservar la versión anterior; las
+unidades de métricas, el tipo de instrumento y el tipo de span forman parte de
+Silver. El despliegue aplica migraciones idempotentes, reinicia el Collector
+después de recrear Kafka y verifica la ruta mediante crecimiento de offsets.
+
+La revisión `gold_service_window_v2.2` limita la excepción TLS al receptor
+`kubeletstats` local, utiliza `container.cpu.usage` en núcleos y
+`container.memory.working_set` en bytes, y fija la clave en servicio y namespace
+Kubernetes. Las identidades no resueltas permanecen auditables en Silver y no
+se imputan en Gold. Estas reglas están implementadas y cubiertas por pruebas de
+contrato, pero su cobertura y estabilidad todavía deben medirse en las tres
+repeticiones nominales correctas. Antes de iniciarlas debe congelarse la cohorte
+de namespaces: la
+evaluación primaria utilizará `astronomy-shop`, mientras las señales que llegan
+sin namespace se informarán por separado y no se fusionarán solo por compartir
+`service.name`. La trazabilidad se registra como A08–A15 en la
+[matriz de evidencia](../matriz_evidencia.md).
+
+El perfil operativo usa RocksDB incremental,
+intervalo de 60 segundos, pausa mínima de 30 segundos y concurrencia uno; además,
+el ejecutor rechaza uso de disco igual o superior al 90 %, exige estabilidad del
+plano de control y no permite que un fallo de restauración oculte el error
+original. Estas salvaguardas forman parte del protocolo que deberá verificarse
+con las tres repeticiones nominales. Los paquetes generados durante el
+desarrollo permanecen locales, no se versionan y no se utilizan como resultados
+experimentales.
 
 ## 2. Decisión central: un Gold canónico, no uno por algoritmo
 
@@ -315,6 +347,12 @@ Las tres repeticiones nominales medirán estabilidad, cobertura y retraso. Solo
 después de satisfacer los criterios de la sección 9 se habilitará la comparación
 de algoritmos.
 
+**Estado vigente.** Los pasos 1–5 están implementados y cubiertos por pruebas
+automatizadas. El paso siguiente es congelar en el
+manifiesto la cohorte primaria `k8s_namespace = astronomy-shop` y ejecutar las
+tres repeticiones nominales sin modificar versiones, carga ni contrato entre
+ellas. Las filas sin namespace se conservarán como estrato de calidad separado.
+
 ## 8. Protocolo de runs
 
 ### 8.1 Precondiciones
@@ -365,7 +403,8 @@ Se observarán sin modificar la condición experimental:
 ### 8.4 Cierre de cada repetición
 
 La bandera se restaurará a `off` incluso si falla la ejecución. Se esperará el
-drenaje del flujo, se generará el perfil por `run_id` y se comprobará la
+drenaje del flujo y tres conteos Gold no vacíos e iguales antes de generar el
+perfil por `run_id`; después se comprobará la
 conciliación entre Kafka, Bronze, Silver y Gold. El paquete de la run incluirá:
 
 ```text
@@ -384,8 +423,13 @@ no se renombrará ni sustituirá silenciosamente por otra.
 
 ## 9. Criterios para aceptar el Gold antes del modelado
 
-Los umbrales numéricos definitivos se fijarán después del primer perfil
-estacionario y quedarán congelados antes de comparar modelos. Como mínimo, las
+Para las ejecuciones nominales se preespecifica como control inicial provisional
+que la cobertura de CPU y memoria no sea inferior al 90 % de las ventanas con
+métricas de los servicios del namespace objetivo. Este umbral, la cohorte
+`astronomy-shop` y el tratamiento separado del namespace vacío permanecerán
+constantes durante las tres repeticiones y solo se considerarán validados con
+sus resultados. Los demás umbrales se fijarán con el informe comparativo antes
+de comparar modelos. Como mínimo, las
 tres repeticiones deberán demostrar:
 
 1. correspondencia documentada de identidad entre las tres modalidades;
@@ -484,3 +528,10 @@ La iteración se considerará completa cuando existan:
 Este cierre habilita la exploración de algoritmos; no implica que el Gold sea
 universal ni que la alternativa local haya sido seleccionada definitivamente
 frente a AWS Glue.
+
+Al 10 de noviembre de 2026 existen los contratos v2.2, trece pruebas Java, diez
+pruebas unitarias del ejecutor en Python, el empaquetado por `run_id`, el perfil
+de correspondencias y los materiales de reproducción. Continúan pendientes las
+tres ejecuciones nominales correctas, la verificación cuantitativa de unicidad,
+cobertura, retraso y estabilidad, el informe comparativo, el manifiesto de
+particiones para modelado y la decisión formal de avance o retorno.

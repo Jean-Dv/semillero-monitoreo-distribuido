@@ -73,6 +73,12 @@ ejecuciones](docs/arquitecturas_etl/04_mejora_gold_y_protocolo_runs.md). El plan
 mantiene una representación Gold canónica, deriva conjuntos tabulares y
 secuenciales para los algoritmos candidatos y establece las tres runs que deben
 validar identidad, semántica, cobertura y temporalidad antes del modelado.
+Gold v2.2, sus contratos y el protocolo automatizado ya están implementados; el
+paso vigente es ejecutar las tres repeticiones nominales correctas con
+`k8s_namespace = astronomy-shop` como cohorte primaria y conservar las señales
+sin namespace como estrato de calidad separado. Los paquetes de desarrollo se
+conservan localmente y no se presentan como evidencia experimental. La guía
+operativa actualizada está en `../AIOpsLab/deploy/etl/GUIA_EJECUCION.md`.
 
 ## Flujo recomendado para editar
 
