@@ -151,6 +151,59 @@ No cambiar la numeración sin actualizar simultáneamente `docs/propuesta_invest
 - Salidas vigentes: `output/docx/propuesta_investigacion.docx` y `output/pdf/propuesta_investigacion.pdf`.
 - Guía humana: `README.md`.
 
+## Alternativas técnicas vigentes para el ETL
+
+- Se documentan dos arquitecturas candidatas en `docs/arquitecturas_etl/`:
+  una alternativa local basada en OpenTelemetry Collector, Kafka, Flink,
+  ClickHouse y MinIO; y una alternativa administrada basada en OpenTelemetry
+  Collector, Kinesis o MSK, AWS Glue Streaming y S3.
+- Ninguna alternativa ha sido seleccionada. La decisión requiere observar
+  primero esquemas, caudal, cardinalidad, retrasos, duplicados, datos faltantes
+  y correspondencia de identificadores en métricas, registros y trazas.
+- Ambas alternativas deben conservar las capas lógicas Bronze, Silver, Gold y
+  Results, así como contratos de datos independientes del motor.
+- Grafana permanece como capa de integración y presentación; no realiza la
+  adquisición, la persistencia, la fusión semántica ni la ejecución del método.
+- La alternativa local es la referencia inicial para una validación
+  completamente reproducible en el entorno controlado. AWS Glue se mantiene
+  como opción administrada o híbrida y exige cuantificar latencia de red,
+  costo y diferencias entre las pruebas Docker y la ejecución real en AWS.
+- La observación inicial deberá comparar periodos de operación normal,
+  condición introducida y recuperación, con `adFailure` como primera condición
+  candidata en Astronomy Shop, sin asumir que será el escenario definitivo.
+- Existe un prototipo técnico de la alternativa local en el repositorio hermano
+  `AIOpsLab`. Su documentación académica se conserva en
+  `docs/arquitecturas_etl/03_prototipo_local_implementado.md` y su evidencia de
+  implementación se registra como A01–A07 en `docs/matriz_evidencia.md`.
+- El prototipo local constituye evidencia de factibilidad dentro de diseño y
+  desarrollo de DSRM; no selecciona de manera definitiva la alternativa local
+  ni descarta la alternativa administrada.
+- Se verificaron la construcción de la imagen ETL, el despliegue de Kafka y
+  Flink, los cuatro temas, la conectividad desde Kubernetes, las pruebas
+  unitarias, la ruta OTLP integrada, los checkpoints, la persistencia
+  Bronze/Silver en Parquet/MinIO, Gold en ClickHouse y la consulta desde
+  Grafana. Una repetición funcional al 1 % recorrió calentamiento, operación
+  normal, `adFailure` y recuperación, y restauró la bandera a `off`.
+- El perfil preliminar acumuló 23 800 mensajes Bronze, 436 322 eventos Silver
+  y 6 660 ventanas Gold. Sus retrasos incluyen el drenaje de mensajes previos,
+  por lo que no justifican todavía las ventanas ni marcas de agua definitivas.
+  Continúan pendientes una medición en régimen estacionario y las tres
+  repeticiones nominales del protocolo de 105 minutos.
+- El drenaje inicial reveló tres reinicios por agotamiento del heap al construir
+  lotes JDBC de 200 filas. El lote se redujo a 20 filas; el trabajo Flink
+  sustituto mantuvo diez subtareas y completó 12 checkpoints, ninguno fallido,
+  sin registrar excepciones en la observación posterior. Falta una prueba prolongada
+  para considerar cerrada la validación de memoria.
+- La siguiente iteración mantendrá un Gold canónico por servicio y ventana; no
+  se creará un Gold por algoritmo. Se derivarán un conjunto tabular común y otro
+  secuencial, con etiquetas experimentales separadas y contratos versionados.
+  Una representación Gold adicional solo se justificará si cambia la unidad de
+  análisis, por ejemplo, hacia trazas, secuencias de eventos o grafos.
+- Antes del modelado se corregirán la identidad entre modalidades, la semántica
+  de tasas y errores, las unidades de CPU y memoria, la rejilla temporal y el
+  tratamiento de ausencias. El plan y los criterios de aceptación están en
+  `docs/arquitecturas_etl/04_mejora_gold_y_protocolo_runs.md`.
+
 ## Protocolo para ciclos siguientes
 
 1. Leer este archivo antes de redactar.
@@ -163,6 +216,13 @@ No cambiar la numeración sin actualizar simultáneamente `docs/propuesta_invest
 
 - Definir el entorno empírico o caso de estudio concreto: aplicación, banco de datos, infraestructura local controlada, agentes de evaluación y mecanismo de generación o inyección de condiciones de interés.
 - Determinar las fuentes concretas desde las que la extensión de Grafana obtendrá métricas, logs y trazas.
+- Repetir el perfilado con el consumidor al día y ejecutar las tres
+  repeticiones nominales; después comparar, con mediciones estacionarias, la
+  arquitectura local y la alternativa administrada con AWS Glue.
+- Implementar y validar `gold_service_window_v2`, `feature_tabular_v1` y
+  `feature_sequence_v1` antes de entrenar los algoritmos candidatos; congelar
+  las particiones por `run_id` y ajustar todo preprocesamiento solo con datos de
+  entrenamiento.
 - Seleccionar y justificar el enfoque de aprendizaje automático, sus variables de entrada y el esquema de entrenamiento o inferencia.
 - Definir cómo se adquirirán, identificarán, sincronizarán, transformarán y fusionarán métricas, logs y trazas en una representación conjunta.
 - Completar la operacionalización de «patrón», «interpretable», «apoyo a la toma de decisiones», «agente de evaluación» y «utilidad de los resultados», y establecer métricas y datos de referencia para validarlos.

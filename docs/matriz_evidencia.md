@@ -68,6 +68,39 @@ Esta matriz permite auditar la evidencia que sustenta el proyecto. La versión s
 | E62 | La secuencia de DSRM es nominal, no rígidamente lineal. La evaluación compara los objetivos de la solución con los resultados observados y puede devolver la investigación al diseño y desarrollo; el proyecto seguirá una entrada centrada en el problema. | [23] | PDF pp. 11–12 | Iteración y punto de entrada de la metodología | Propuesta metodológica del estudio y decisión de aplicación |
 | E63 | La aplicación de DSRM al proyecto debe especificar, para cada actividad, insumos, tareas, productos verificables y un criterio de avance. La evaluación separará integración multimodal, desempeño, interpretabilidad y utilidad, manteniendo la reproducibilidad como control transversal y no como una quinta variable de delimitación. | [9], [12]–[14], [21], [23] | [9] pp. 3–8; [12] pp. 44–46; [13] pp. 9–10; [14] pp. 31–34; [21] pp. 1–4; [23] pp. 11–12 | Aplicación detallada de DSRM y protocolo de evaluación | Síntesis metodológica e inferencia de diseño |
 
+## Registro de evidencia técnica del artefacto ETL
+
+Este registro distingue los hechos verificables de la implementación respecto
+de la evidencia bibliográfica E01–E63. Los elementos A01–A07 describen el estado
+del prototipo en `../AIOpsLab` y una prueba funcional abreviada; no constituyen
+la evaluación experimental completa ni demuestran todavía la conveniencia
+definitiva de la arquitectura local.
+
+| ID | Hecho verificable | Evidencia del artefacto | Estado |
+|---|---|---|---|
+| A01 | El Collector conserva las rutas hacia Prometheus, OpenSearch y Jaeger y añade exportadores Kafka separados para métricas, registros y trazas. | `../AIOpsLab/aiopslab/observer/grafana/astronomy-shop-values.yaml` | Implementado; renderizado del chart verificado |
+| A02 | Kafka se despliega como instancia dedicada y crea cuatro temas versionados con tres particiones y 72 horas de retención inicial. | `../AIOpsLab/deploy/etl/docker-compose.yaml`; inspección de temas mediante `kafka-topics.sh` | Implementado; broker y temas verificados en ejecución |
+| A03 | Flink conserva el OTLP binario en Bronze, normaliza las tres señales en Silver y construye observaciones Gold mediante ventanas deslizantes basadas en tiempo de evento. | `../AIOpsLab/deploy/etl/flink-job/src/main/java/org/aiopslab/etl/TelemetryEtlJob.java` y clases asociadas; trabajo Flink corregido `969b5a8c439a3bade289b2c7bc54299b` | Implementado, compilado y ejecutado; imagen `aiopslab/telemetry-etl:1.0.0` construida; cinco pruebas Java aprobadas. El drenaje inicial reveló tres OOM en el lote JDBC; al reducirlo de 200 a 20 filas, el trabajo sustituto mantuvo diez subtareas y completó 12 checkpoints, ninguno fallido, sin registrar excepciones durante la verificación |
+| A04 | Bronze y Silver se escriben en Parquet/MinIO; Gold se define en ClickHouse mediante una tabla versionada y vistas de cobertura y entrada al método. | `../AIOpsLab/deploy/etl/docker-compose.yaml`; `../AIOpsLab/deploy/etl/clickhouse/init/001_schema.sql`; `../AIOpsLab/deploy/etl/reports/telemetry-profile-20261028T211338Z.json` | Validado con telemetría real: 130 archivos y 23 800 mensajes Bronze; 54/46/56 archivos Silver de métricas/registros/trazas; 6 660 ventanas Gold. Son mediciones preliminares que incluyen el drenaje de datos acumulados, no una línea base estable |
+| A05 | La vista `pattern_input` excluye `condition`, `fault_type` y `affected_component`, que se conservan como datos de referencia para la evaluación. | `../AIOpsLab/deploy/etl/clickhouse/init/001_schema.sql`; consulta a `system.columns` y a las tablas experimentales | Implementado y verificado sobre datos reales: las etiquetas aparecen en Gold y sus tres columnas están ausentes de `pattern_input` |
+| A06 | El protocolo automatizado contempla calentamiento, operación normal, `adFailure`, recuperación y tres repeticiones, y restaura la bandera original ante errores. | `../AIOpsLab/deploy/etl/experiment.py`; `../AIOpsLab/tests/unit/test_etl_experiment.py`; `../AIOpsLab/deploy/etl/reports/experiment-astronomy-ad-failure-v1-1793221524263.json` | Tres pruebas unitarias aprobadas y una repetición funcional al 1 % completada con las cuatro fases; la bandera regresó a `off`. Permanecen pendientes las tres repeticiones de duración completa |
+| A07 | Grafana consulta ClickHouse mediante una fuente aprovisionada y un tablero Gold, sin ejecutar la adquisición ni la fusión semántica. | `../AIOpsLab/deploy/grafana/provisioning/datasources/aiopslab.yaml`; `../AIOpsLab/deploy/grafana/dashboards/etl-multimodal.json`; API local de salud de Grafana | Implementado y validado: el datasource devolvió estado `OK` y el tablero `aiopslab-etl-multimodal` quedó aprovisionado |
+
+## Registro de decisiones para la siguiente iteración del Gold
+
+Las decisiones D01–D05 especifican el trabajo siguiente; no se presentan como
+resultados experimentales. Su cumplimiento deberá verificarse mediante los
+artefactos y las ejecuciones definidos en
+`docs/arquitecturas_etl/04_mejora_gold_y_protocolo_runs.md`.
+
+| ID | Decisión de diseño | Fundamento o evidencia disponible | Estado y verificación requerida |
+|---|---|---|---|
+| D01 | Mantener un Gold canónico, independiente del algoritmo, con una observación por servicio y ventana como unidad inicial. | La comparación debe atribuir las diferencias al método y no a que cada algoritmo reciba una representación semántica distinta; la granularidad actual por recursos exactos puede separar las modalidades cuando sus metadatos no coinciden. | Decisión documentada; pendiente implementar y validar `gold_service_window_v2`. |
+| D02 | Derivar del Gold un conjunto tabular común y otro secuencial, sin crear un Gold por algoritmo. | Reglas, Isolation Forest, One-Class SVM, HDBSCAN y árboles pueden operar sobre observaciones tabulares; el autoencoder temporal requiere ordenar esas mismas observaciones en secuencias. | Decisión documentada; pendientes contratos, pruebas de fuga y materialización reproducible. |
+| D03 | Corregir antes del modelado la identidad entre señales, la semántica de tasas y errores, las unidades de CPU y memoria, el tratamiento temporal y los indicadores de ausencia. | El perfil preliminar evidencia diferencias de cobertura y no justifica todavía las ventanas definitivas; la implementación actual aproxima solicitudes mediante spans, mezcla errores de logs y trazas y selecciona recursos por coincidencia nominal. | Pendiente de implementación y de tres runs nominales con el consumidor al día. |
+| D04 | Comparar los algoritmos sobre la misma cohorte, particiones por `run_id`, variables de origen y datos de referencia, permitiendo solo preprocesamientos propios del método ajustados con entrenamiento. | Las ventanas se solapan y no son observaciones independientes; una partición aleatoria por filas produciría fuga temporal. Los candidatos tampoco responden todos a la misma pregunta: HDBSCAN es exploratorio y el autoencoder temporal evalúa dependencia secuencial. | Pendiente definir y versionar el manifiesto de particiones y el protocolo comparativo. |
+| D05 | Crear una representación Gold adicional solo si cambia justificadamente la unidad de análisis, por ejemplo, de servicio-ventana a traza, secuencia de eventos o grafo de dependencias. | Una necesidad estructural del problema no equivale a una preferencia de formato de un algoritmo. Bronze y Silver permiten reconstruir representaciones alternativas sin alterar el Gold canónico. | Criterio de decisión documentado; no se autoriza todavía una representación Gold adicional. |
+
 ## Mapa de núcleos temáticos para el marco teórico
 
 | Núcleo | Ramas del mapa mental de origen | Eje argumental | Evidencia principal |
