@@ -8,11 +8,10 @@
 \usepackage{array}
 \usepackage{url}
 \usepackage{microtype}
-\usepackage{amsmath}
 \usepackage{graphicx}
 \usepackage[table]{xcolor}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,fit,calc}
+\usetikzlibrary{arrows.meta,positioning,fit}
 
 \definecolor{signalblue}{RGB}{36,99,160}
 \definecolor{signalgreen}{RGB}{42,132,91}
@@ -47,7 +46,7 @@ correo@institucion.edu.co}
 \maketitle
 
 \begin{abstract}
-Los sistemas distribuidos generan métricas, registros y trazas que describen su comportamiento desde perspectivas complementarias. Su heterogeneidad y falta de alineación dificultan convertirlas en información útil para decidir. Este trabajo propone un método interpretable de reconocimiento de patrones sobre una representación conjunta de las tres señales. DSRM orientará la construcción y evaluación del prototipo; CRISP-ML(Q) organizará el desarrollo del componente de aprendizaje automático y prácticas acotadas de MLOps asegurarán trazabilidad. El prototipo incluirá un flujo multimodal, un servicio de procesamiento y una extensión para Grafana. La validación se realizará con agentes de evaluación sobre sistemas controlados desplegados localmente y distinguirá integración, desempeño, interpretabilidad y utilidad. No se presupone una familia de modelos ni se atribuye causalidad automática a los patrones identificados.
+La monitorización de sistemas distribuidos produce métricas, registros y trazas que describen perspectivas complementarias del comportamiento operativo. Sin embargo, sus diferencias de formato, granularidad, frecuencia y semántica dificultan analizarlas conjuntamente y convertirlas en evidencia trazable para una decisión. Este artículo presenta el diseño de una investigación orientada a construir un método interpretable de reconocimiento de patrones sobre una representación conjunta de las tres señales. La metodología general será \textit{Design Science Research Methodology} (DSRM), aplicada mediante identificación del problema, definición de objetivos, diseño y desarrollo, demostración, evaluación y comunicación. El artefacto experimental comprenderá un flujo multimodal, el método, un componente de procesamiento y una extensión para Grafana. Su validación se realizará en sistemas controlados desplegados localmente y distinguirá integración multimodal, desempeño, interpretabilidad y utilidad para tareas de decisión ejecutadas por agentes de evaluación. La propuesta no fija de antemano una familia de aprendizaje automático, no equipara visualización con interpretabilidad y no atribuye causalidad automática a los patrones identificados.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -56,19 +55,61 @@ observabilidad, sistemas distribuidos, aprendizaje automático, datos multimodal
 
 \section{Introducción}
 
-Los sistemas distribuidos sostienen servicios que deben operar continuamente, pero sus dependencias y cambios dificultan detectar y comprender condiciones de interés \cite{ref1,ref10}. La observabilidad utiliza métricas para cuantificar estado y desempeño, registros para documentar acontecimientos y trazas para reconstruir recorridos entre servicios \cite{ref1,ref15}. AIOps busca asistir estas tareas mediante análisis y aprendizaje automático \cite{ref1,ref2}.
+Los servicios digitales dependen de sistemas distribuidos cuyos componentes cooperan mediante redes, procesos y capas de infraestructura. La escala, la concurrencia y las dependencias dificultan observar el estado global y localizar las condiciones asociadas con una degradación \cite{ref1,ref10}. Las métricas cuantifican recursos y desempeño, los registros documentan acontecimientos y las trazas reconstruyen el recorrido de las solicitudes. Estas señales son complementarias, pero ninguna ofrece por sí sola una descripción completa del sistema.
 
-La inspección manual no escala ante grandes volúmenes y las reglas predefinidas solo cubren situaciones conocidas \cite{ref3,ref20}. Además, reunir las señales en una interfaz no produce automáticamente un conjunto apto para aprendizaje: se requieren identificadores compatibles, sincronización, transformación y tratamiento de ausencias \cite{ref11,ref16,ref22}.
+El volumen de telemetría supera la capacidad de inspección manual, mientras que las reglas y firmas predefinidas dependen de situaciones anticipadas \cite{ref3,ref20}. A ello se suman ruido, desbalance, escasez de etiquetas, datos faltantes y eventos intercalados. Los patrones de interés pueden expresarse mediante frecuencias, secuencias, combinaciones de parámetros, relaciones temporales o variaciones contextuales, por lo que su definición debe preceder la selección de una técnica de aprendizaje.
 
-Los estudios multimodales muestran aplicaciones en detección, clasificación y localización \cite{ref5,ref6,ref7,ref8,ref17,ref18,ref19}. Algunos emplean grafos \cite{ref4}, pero ninguna arquitectura es universal. La técnica deberá seleccionarse según los datos, la tarea y la evidencia experimental.
+El análisis conjunto tampoco se obtiene al reunir las fuentes en una misma vista. Métricas, registros y trazas difieren en formato, granularidad, volumen y significado. Relacionarlas exige definir adquisición, identificadores compartidos, sincronización, transformación, fusión y tratamiento de ausencias \cite{ref11,ref16,ref17,ref18,ref19,ref22}. Los estudios multimodales muestran viabilidad para detección, clasificación y localización, pero emplean arquitecturas, sistemas, fallos y métricas diferentes \cite{ref5,ref6,ref7,ref8}. Sus resultados no justifican imponer una representación o una familia de modelos antes de conocer los datos del proyecto.
 
-La interpretabilidad tampoco equivale a mostrar una gráfica. La explicación debe ser fiel al modelo y relacionarse con variables o eventos pertinentes \cite{ref12,ref13}. Por ello, el método mostrará evidencia rastreable sin afirmar que una correlación demuestra causalidad.
+Los profesionales reportan saturación de datos y alertas, dificultad para correlacionar señales por metadatos insuficientes y dependencia del conocimiento experto \cite{ref15,ref20}. Un método que produzca una puntuación o una visualización no resuelve por sí solo este problema. La explicación debe guardar correspondencia con el criterio del método y con variables o acontecimientos pertinentes; además, la atribución algorítmica debe distinguirse de la interpretación que sustenta una decisión \cite{ref12,ref13}.
 
-La pregunta es: \textit{¿Cómo se puede mejorar la toma de decisiones en la monitorización de sistemas distribuidos mediante un método interpretable de reconocimiento de patrones en datos multimodales?} La contribución central será el método; Grafana será el medio de presentación. La Fig.~\ref{fig:arquitectura_corta} separa las responsabilidades del prototipo.
+La investigación se orienta mediante la pregunta: \textit{¿De qué manera un método interpretable de reconocimiento de patrones en métricas, registros y trazas puede apoyar la toma de decisiones en la monitorización de sistemas distribuidos?} El objetivo general es apoyar dichas decisiones mediante el reconocimiento de patrones en datos multimodales. La contribución prevista es un método interpretable acompañado por el flujo y la evidencia experimental necesarios para evaluarlo; la extensión para Grafana será el medio de integración y presentación. Las conclusiones se limitarán a sistemas controlados desplegados localmente y no anticiparán una mejora antes de la validación.
+
+\section{Fundamentos y trabajo relacionado}
+
+\subsection{Observabilidad y dependencias distribuidas}
+
+La observabilidad permite inferir el estado interno a partir de las señales producidas por el sistema, pero esa inferencia permanece condicionada por la instrumentación, el contexto y la tarea de análisis \cite{ref1,ref15}. En una arquitectura distribuida, una solicitud puede atravesar múltiples servicios y recursos. Las relaciones arquitectónicas y temporales ayudan a reconstruir la propagación de una condición, aunque no prueban por sí solas una causa \cite{ref4,ref10}.
+
+\subsection{Señales y representación conjunta}
+
+Los estudios multimodales integran métricas, registros y trazas mediante eventos, identificadores, dependencias temporales, grafos u otros mecanismos de fusión \cite{ref5,ref6,ref7,ref8,ref18,ref19}. Kaiju muestra que una representación orientada a eventos puede conservar módulos específicos por modalidad y añadir una capa de integración \cite{ref11}. La telemetría \textit{schema-first} resalta que compartir el nombre de una dimensión no garantiza que dos campos tengan el mismo significado \cite{ref16}. DeepTraLog vincula registros y trazas mediante identificadores compartidos \cite{ref17}, mientras que LO2 evidencia que trazas incompletas y datos desalineados pueden impedir una validación trimodal directa \cite{ref22}.
+
+\subsection{Aprendizaje e interpretabilidad}
+
+Las reglas continúan siendo frecuentes por su transparencia, costo y soporte, aunque dependen de conocimiento y relaciones previamente especificadas \cite{ref20}. El aprendizaje automático permite explorar regularidades supervisadas o no supervisadas, pero la calidad de los datos, el desbalance y el cambio de distribución limitan el desempeño y la generalización \cite{ref2,ref3}. En consecuencia, la investigación comparará alternativas acordes con la definición de patrón, los datos disponibles y los criterios de interpretabilidad, sin presuponer aprendizaje profundo, grafos, modelos de lenguaje u otra arquitectura.
+
+La detección explicable distingue la anomalía esperada por el usuario, la decisión del detector y la explicación generada; una explicación comprensible puede ser infiel al modelo \cite{ref12}. La interpretabilidad también exige relacionar la atribución con una condición y una tarea \cite{ref13}. Nezha constituye un antecedente multimodal interpretable, pero su arquitectura y su tarea no se adoptarán como requisitos \cite{ref8}.
+
+\subsection{Apoyo a decisiones y validación reproducible}
+
+Detectar una desviación, clasificarla, localizar un componente y proponer una posible causa son tareas diferentes \cite{ref10}. El apoyo a la decisión se entenderá como presentación de información pertinente y trazable para una tarea definida, no como sustitución del juicio del operador. Los marcos de evaluación con agentes permiten separar tareas, resultados y tiempos \cite{ref14}; sin embargo, esta evaluación instrumental no equivale a un estudio de usabilidad o aceptación humana.
+
+AIOpsLab, ITBench y RCAEval aportan antecedentes para desplegar sistemas, generar carga, introducir condiciones, recopilar telemetría y definir casos reproducibles \cite{ref9,ref14,ref21}. Estos recursos orientarán el entorno empírico, pero no sustituyen la selección del sistema, la definición del patrón ni los datos de referencia propios del proyecto.
+
+\section{Metodología propuesta}
+
+\subsection{DSRM como metodología general}
+
+La investigación será aplicada y seguirá el paradigma de ciencia del diseño. El resultado esperado es un artefacto compuesto por el flujo multimodal, el método de reconocimiento de patrones, el componente de procesamiento y la extensión. Por esta razón se adopta DSRM como única metodología general. Sus seis actividades son identificación y motivación del problema, definición de objetivos, diseño y desarrollo, demostración, evaluación y comunicación \cite{ref23}.
+
+El punto de entrada será centrado en el problema y la secuencia será iterativa. La demostración o la evaluación podrán devolver el trabajo a la definición de objetivos o al diseño y desarrollo. CRISP-ML(Q) y MLOps no se adoptarán como metodologías concurrentes: sus prácticas podrán consultarse dentro de las actividades técnicas de DSRM para control de calidad, versionado y trazabilidad \cite{ref2,ref24}.
+
+Los tres objetivos específicos conducirán el proceso:
+
+\begin{enumerate}
+    \item Diseñar un flujo de datos de observabilidad para sistemas distribuidos que integre métricas, registros y trazas en una representación conjunta apta para el análisis.
+    \item Explorar un método de aprendizaje automático para reconocer patrones en la representación conjunta de los datos de observabilidad de sistemas distribuidos e integrarlo en una extensión para una herramienta de observabilidad que presente los patrones identificados como información de apoyo a la toma de decisiones.
+    \item Validar la extensión diseñada mediante pruebas con agentes de evaluación sobre sistemas controlados desplegados localmente, valorando el desempeño del método y la utilidad de los resultados para la toma de decisiones.
+\end{enumerate}
+
+\subsection{Diseño del artefacto}
+
+El diseño separará cuatro responsabilidades. Las fuentes producirán o almacenarán la telemetría; el flujo adquirirá, identificará, sincronizará, transformará y fusionará las señales; el componente de procesamiento ejecutará el método; y la extensión presentará los patrones, la evidencia y los vínculos hacia los datos de origen. Esta separación evita atribuir a Grafana una integración semántica o una ejecución del método que corresponden a otros componentes.
 
 \begin{figure*}[t]
 \centering
-\resizebox{0.95\textwidth}{!}{%
+\resizebox{0.96\textwidth}{!}{%
 \begin{tikzpicture}[node distance=8mm and 9mm]
   \node[signal, fill=signalblue!8] (m) {Métricas};
   \node[signal, fill=signalorange!10, below=4mm of m] (l) {Registros};
@@ -76,8 +117,8 @@ La pregunta es: \textit{¿Cómo se puede mejorar la toma de decisiones en la mon
   \node[process, right=12mm of l, text width=25mm] (prep) {Preparación por modalidad};
   \node[process, right=of prep, text width=25mm] (align) {Semántica, identificadores y tiempo};
   \node[process, right=of align, text width=25mm] (fusion) {Representación conjunta};
-  \node[result, right=of fusion, text width=25mm] (ml) {Reconocimiento y explicación};
-  \node[result, right=of ml, text width=23mm] (svc) {Servicio de resultados};
+  \node[result, right=of fusion, text width=25mm] (ml) {Reconocimiento y evidencia};
+  \node[result, right=of ml, text width=23mm] (svc) {Componente de procesamiento};
   \node[signal, draw=signalgreen, thick, fill=signalgreen!8,
     right=of svc, text width=22mm] (graf) {Extensión para Grafana};
   \draw[flow] (m.east) -- (prep.west);
@@ -89,589 +130,84 @@ La pregunta es: \textit{¿Cómo se puede mejorar la toma de decisiones en la mon
   \draw[flow] (ml) -- (svc);
   \draw[flow] (svc) -- (graf);
 \end{tikzpicture}}
-\caption{Arquitectura lógica. Grafana presenta resultados; la integración y el aprendizaje pertenecen al flujo y al servicio. Fuente: elaboración propia.}
-\label{fig:arquitectura_corta}
-\end{figure*}
-
-\section{Metodología}
-
-\subsection{Diseño metodológico}
-
-La investigación será aplicada, cuantitativa y experimental. DSRM será el marco general porque el conocimiento se obtendrá mediante la construcción y evaluación de un artefacto \cite{ref30,ref31}. Sus actividades serán: identificar el problema, definir objetivos, diseñar el prototipo, demostrarlo, evaluarlo y comunicar resultados y limitaciones.
-
-CRISP-ML(Q) funcionará como subciclo técnico dentro del diseño y la evaluación: comprensión del problema y los datos, ingeniería de datos, modelado, evaluación, despliegue experimental y seguimiento \cite{ref28}. MLOps aportará versionado, pruebas, registro de experimentos y empaquetado, sin implicar operación industrial ni reentrenamiento continuo \cite{ref29}. La relación se muestra en la Fig.~\ref{fig:metodologia_corta}.
-
-\begin{figure}[htbp]
-\centering
-\resizebox{0.98\columnwidth}{!}{%
-\begin{tikzpicture}[node distance=4mm and 4mm]
-  \node[process, text width=19mm] (d1) {Problema};
-  \node[process, text width=19mm, right=of d1] (d2) {Objetivos};
-  \node[process, text width=19mm, right=of d2] (d3) {Diseño y desarrollo};
-  \node[result, text width=19mm, below=7mm of d3] (d4) {Demostración};
-  \node[result, text width=19mm, left=of d4] (d5) {Evaluación};
-  \node[result, text width=19mm, left=of d5] (d6) {Comunicación};
-  \draw[flow] (d1) -- (d2);
-  \draw[flow] (d2) -- (d3);
-  \draw[flow] (d3) -- (d4);
-  \draw[flow] (d4) -- (d5);
-  \draw[flow] (d5) -- (d6);
-  \draw[flow, dashed] (d5.south) -- ++(0,-4mm) -| (d3.south);
-  \node[draw=signalorange, dashed, rounded corners=2pt, fit=(d3)(d4)(d5),
-    inner sep=2mm, label={[font=\scriptsize]below:CRISP-ML(Q) + MLOps}] {};
-\end{tikzpicture}}
-\caption{DSRM como marco general y CRISP-ML(Q) como subciclo técnico. Fuente: elaboración propia a partir de \cite{ref28,ref30}.}
-\label{fig:metodologia_corta}
-\end{figure}
-
-\subsection{Escenarios y oráculo}
-
-Se seleccionará una aplicación distribuida desplegable localmente. Cada ejecución registrará versión, topología, carga, duración, condición introducida y estado de la instrumentación. AIOpsLab, ITBench y RCAEval orientan la preparación de escenarios reproducibles \cite{ref9,ref14,ref21}.
-
-El oráculo no será un algoritmo: será la referencia que indique condición, componente, intervalo y parámetros conocidos. El primer algoritmo será una línea base de reglas y umbrales evaluada contra ese oráculo.
-
-El oráculo conservará tipos mixtos. Latencia, CPU, memoria, duración y tasas permanecerán numéricas porque expresan magnitud. Servicio, operación, plantilla, versión y código de error permanecerán categóricos porque expresan identidad o estado. Si un modelo exige números, se generará una vista codificada sin destruir los valores originales.
-
-\subsection{Datos y representación}
-
-El flujo conservará marcas temporales, servicio, instancia, versión e identificadores de traza y segmento. Se normalizarán unidades y relojes; se extraerán estadísticas de métricas, plantillas de registros y atributos de trazas. La ausencia tendrá un indicador explícito.
-
-Para el componente $s$ y la ventana $t$, la representación será
-\begin{equation}
-\mathbf{x}_{s,t}=\phi(\mathbf{m}_{s,t},\mathbf{l}_{s,t},\mathbf{r}_{s,t},\mathbf{c}_{s,t}),
-\end{equation}
-donde $\mathbf{m}$, $\mathbf{l}$ y $\mathbf{r}$ corresponden a las tres señales y $\mathbf{c}$ al contexto. La función $\phi$ podrá ser tabular, temporal o basada en eventos, siempre que cada característica sea rastreable.
-
-Las particiones se harán por ejecuciones completas para evitar que ventanas próximas aparezcan en entrenamiento y prueba. Cada versión incluirá esquema, diccionario de datos, transformaciones y manifiesto de captura.
-
-\subsection{Modelado y evaluación}
-
-Los algoritmos se compararán bajo las mismas particiones. Los hiperparámetros se ajustarán sin usar la prueba. Las ablaciones compararán modalidades individuales, pares y la representación trimodal. Un candidato se conservará solo si aporta evidencia no redundante, estabilidad y costo aceptable.
-
-\begin{table}[htbp]
-\caption{Dimensiones de evaluación}
-\label{tab:evaluacion_corta}
-\centering
-\footnotesize
-\renewcommand{\arraystretch}{1.12}
-\begin{tabular}{p{0.25\columnwidth}p{0.55\columnwidth}}
-\toprule
-\textbf{Dimensión} & \textbf{Indicadores} \\
-\midrule
-Integración & Cobertura, alineación, ausencias y trazabilidad \\
-Desempeño & Precisión, exhaustividad, F1, falsas alarmas y latencia \\
-Interpretabilidad & Fidelidad y correspondencia con el oráculo \\
-Utilidad & Éxito y tiempo de tareas ejecutadas por agentes \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Cuando existan etiquetas se reportarán matriz de confusión, precisión, exhaustividad y $F_1$. En métodos no supervisados se evaluarán puntuaciones, estabilidad y correspondencia con el oráculo. Las conclusiones se limitarán a los escenarios observados.
-
-\subsection{Prototipo y reproducibilidad}
-
-El modelo aprobado se empaquetará en un servicio. Grafana mostrará ventana, puntuación o clase, componentes, explicación y vínculos hacia las señales originales. Se conservarán versiones de datos, código, modelo y configuración. Cualquier actualización deberá repetir la evaluación.
-
-\section{Resultados esperados}
-
-Se espera un prototipo funcional experimental, no una plataforma industrial. Sus productos serán: un flujo multimodal reproducible; un método seleccionado mediante comparación; evidencia interpretable; un servicio; una extensión para Grafana; y un paquete de validación con escenarios, oráculo, métricas y limitaciones.
-
-La integración podría aportar información complementaria frente a modelos unimodales \cite{ref5,ref6,ref7,ref18,ref19}, pero no se presupone una mejora. Un resultado negativo será válido si muestra que una modalidad o transformación no agrega información suficiente.
-
-La extensión deberá facilitar el paso desde un patrón hacia sus fuentes sin aumentar la saturación reportada por profesionales \cite{ref15}. Los resultados apoyarán identificación, priorización o localización de posibles condiciones, pero no demostrarán causalidad ni garantizarán una causa raíz.
-
-\begin{table}[htbp]
-\caption{Productos y verificación}
-\label{tab:productos_corta}
-\centering
-\footnotesize
-\renewcommand{\arraystretch}{1.12}
-\begin{tabular}{p{0.27\columnwidth}p{0.53\columnwidth}}
-\toprule
-\textbf{Producto} & \textbf{Verificación} \\
-\midrule
-Flujo multimodal & Reejecución y trazabilidad hasta la fuente \\
-Método & Líneas base, prueba reservada y ablaciones \\
-Explicaciones & Fidelidad y correspondencia con el oráculo \\
-Prototipo & Pruebas de integración y latencia \\
-Validación & Repeticiones y análisis de errores \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\section{Algoritmos a usar}
-
-Los algoritmos no forman una lista obligatoria. Cada uno responde una pregunta distinta y deberá justificar su permanencia. La Fig.~\ref{fig:algoritmos_corta} resume la comparación.
-
-\begin{figure}[htbp]
-\centering
-\resizebox{0.98\columnwidth}{!}{%
-\begin{tikzpicture}[node distance=5mm and 5mm]
-  \node[process, text width=22mm] (base) {Reglas\\línea base};
-  \node[process, text width=22mm, below left=8mm and 6mm of base] (nolabel) {Pocas etiquetas};
-  \node[process, text width=22mm, below right=8mm and 6mm of base] (label) {Etiquetas fiables};
-  \node[result, text width=25mm, below=of nolabel] (anom) {Rareza o frontera\\IForest / OC-SVM};
-  \node[result, text width=25mm, below=of label] (sup) {Clasificación\\árboles potenciados};
-  \node[signal, text width=25mm, below=of anom] (cluster) {Regímenes\\HDBSCAN};
-  \node[signal, text width=25mm, below=of sup] (temp) {Secuencias\\autoencoder};
-  \draw[flow] (base) -- (nolabel);
-  \draw[flow] (base) -- (label);
-  \draw[flow] (nolabel) -- (anom);
-  \draw[flow] (label) -- (sup);
-  \draw[flow, dashed] (anom) -- (cluster);
-  \draw[flow, dashed] (sup) -- (temp);
-\end{tikzpicture}}
-\caption{Ruta de selección. HDBSCAN es exploratorio y el autoencoder se incorpora solo si aporta valor temporal. Fuente: elaboración propia.}
-\label{fig:algoritmos_corta}
-\end{figure}
-
-\begin{table*}[t]
-\caption{Aporte y condición de uso de los candidatos}
-\label{tab:algoritmos_corta}
-\centering
-\footnotesize
-\renewcommand{\arraystretch}{1.14}
-\begin{tabular}{p{0.14\textwidth}p{0.28\textwidth}p{0.25\textwidth}p{0.21\textwidth}}
-\toprule
-\textbf{Algoritmo} & \textbf{Valor} & \textbf{Aporte posible} & \textbf{Límite} \\
-\midrule
-Reglas y umbrales & Línea base transparente para condiciones conocidas \cite{ref20} & Verificar flujo, oráculo y falsas alarmas & No descubre relaciones nuevas \\
-\textit{Isolation Forest} & Aísla observaciones raras sin etiquetas \cite{ref23} & Ordenar ventanas por rareza & No modela tiempo; rareza no implica utilidad \\
-\textit{One-Class SVM} & Estima una frontera del comportamiento normal \cite{ref24} & Contrastar frontera con aislamiento & Sensible a escala, núcleo y contaminación \\
-HDBSCAN & Descubre densidades variables y ruido \cite{ref25} & Explorar regímenes operativos & Se descarta si distancia o grupos no son estables \\
-Árboles potenciados & Modelan interacciones tabulares etiquetadas \cite{ref26} & Clasificar y atribuir variables & Requieren etiquetas y control de fuga \\
-Autoencoder temporal & Reconstruye secuencias de referencia \cite{ref27} & Capturar dependencia temporal & Mayor costo e interpretación indirecta \\
-\bottomrule
-\end{tabular}
-\end{table*}
-
-HDBSCAN no es específico de imágenes. Su valor sería descubrir modos operativos y separar ventanas sin pertenencia estable. Antes de usarlo se normalizarán magnitudes y se comprobará la estabilidad de los grupos. Si no produce resultados interpretables, se retirará.
-
-La selección preferirá el modelo más simple cuando dos alternativas sean comparables. Se descartará cualquier candidato cuyo aporte desaparezca en prueba, dependa de artefactos de captura o produzca explicaciones no rastreables.
-
-\section{Trabajo futuro}
-
-El trabajo inmediato será seleccionar la aplicación, las fuentes concretas y las condiciones del oráculo. Después se implementarán el flujo y las líneas base, se compararán los candidatos y se integrará el método aprobado en Grafana.
-
-La validación ampliará cargas, configuraciones, datos ausentes y repeticiones sin generalizar más allá del entorno local. Una etapa posterior podrá estudiar transferencia entre sistemas, deriva y actualización de modelos. La evaluación con operadores humanos, la remediación automática y el endurecimiento para producción quedan fuera del prototipo.
-
-\iffalse
-
-\maketitle
-
-\begin{abstract}
-La monitorización de sistemas distribuidos produce métricas, registros y trazas que describen aspectos complementarios del comportamiento operativo. Sin embargo, sus diferencias de estructura, frecuencia, granularidad y semántica dificultan analizarlas conjuntamente y convertirlas en información útil para decidir. Este trabajo propone diseñar un método interpretable de reconocimiento de patrones basado en aprendizaje automático y en una representación conjunta de las tres señales de observabilidad. La investigación seguirá un proceso experimental e iterativo: definición de escenarios controlados, adquisición y alineación de la telemetría, construcción de la representación multimodal, comparación de algoritmos candidatos, generación de evidencia interpretable, integración de los resultados mediante una extensión para Grafana y validación reproducible con agentes de evaluación. La evaluación diferenciará cuatro dimensiones: integración multimodal, desempeño del reconocimiento, interpretabilidad y utilidad para tareas de decisión. Se espera obtener un prototipo funcional que permita reconocer patrones, rastrear la evidencia que sustenta cada resultado y presentar información pertinente para tareas operativas previamente definidas. La propuesta no presupone una arquitectura de aprendizaje específica ni atribuye causalidad automática a los patrones identificados; la selección del método dependerá del desempeño, la interpretabilidad y la utilidad observados en sistemas controlados desplegados localmente.
-\end{abstract}
-
-\begin{IEEEkeywords}
-observabilidad, sistemas distribuidos, aprendizaje automático, reconocimiento de patrones, datos multimodales, interpretabilidad, Grafana
-\end{IEEEkeywords}
-
-\section{Introducción}
-
-Los servicios digitales dependen de sistemas distribuidos cuya escala, concurrencia y red de dependencias dificultan detectar, localizar y comprender condiciones operativas de interés. La observabilidad aborda este problema mediante tres señales principales: las métricas cuantifican el estado y el desempeño; los registros o \textit{logs} documentan acontecimientos y cambios; y las trazas reconstruyen el recorrido de las solicitudes entre componentes \cite{ref1,ref10}. Aunque AIOps incorpora técnicas de análisis y aprendizaje automático para asistir tareas operativas \cite{ref1,ref2}, persiste una brecha entre la generación masiva de telemetría y su transformación en evidencia oportuna, confiable y comprensible.
-
-La inspección manual de registros no escala frente al volumen de eventos, mientras que las reglas y firmas predefinidas dependen del conocimiento disponible y pierden cobertura ante combinaciones no previstas \cite{ref3,ref20}. Además, los patrones relevantes no se limitan a secuencias: pueden involucrar frecuencias, intervalos, atributos, parámetros, correlaciones y contexto temporal. La información puede llegar intercalada, incompleta o sin identificadores consistentes, lo que dificulta reconstruir relaciones entre acontecimientos \cite{ref3,ref16,ref22}.
-
-Reunir consultas o paneles en una herramienta común no produce por sí mismo un conjunto de datos apto para aprendizaje automático. Las tres modalidades difieren en formato, granularidad, volumen y semántica; por ello, su integración requiere especificar adquisición, identificadores compartidos, sincronización temporal, transformación, fusión y tratamiento de ausencias. Las representaciones gráficas constituyen una alternativa documentada para modelar dependencias \cite{ref4}. Kaiju muestra que las señales pueden representarse como eventos correlacionables sin eliminar el procesamiento específico de cada modalidad \cite{ref11}; la telemetría \textit{schema-first} destaca la necesidad de tipos, unidades y metadatos compatibles \cite{ref16}; y trabajos multimodales como Eadro, DiagFusion, AnoFusion, DeepTraLog, MSTGAD y PDiagnose demuestran alternativas de fusión para detección, clasificación o localización \cite{ref5,ref6,ref7,ref17,ref18,ref19}. No obstante, sus arquitecturas, tareas y bancos de prueba son distintos, por lo que sus resultados no justifican imponer grafos, atención, aprendizaje profundo o votación como solución única.
-
-La interpretabilidad constituye una segunda dificultad. Una explicación visualmente comprensible puede no ser fiel al criterio con el que el modelo produjo un resultado. La literatura distingue la anomalía que busca el usuario, la decisión del detector y la explicación generada, y recomienda evaluar explícitamente la fidelidad y el alcance de las explicaciones \cite{ref12}. También diferencia la atribución algorítmica de la interpretación que realiza un experto para vincular la evidencia con una condición y una decisión \cite{ref13}. Nezha aporta un antecedente de análisis multimodal interpretable, aunque su arquitectura no constituye un requisito para este proyecto \cite{ref8}. Por tanto, el método propuesto deberá producir evidencia rastreable y no limitarse a una puntuación o visualización.
-
-La pregunta que orienta el trabajo es: \textit{¿Cómo se puede mejorar la toma de decisiones en la monitorización de sistemas distribuidos mediante un método interpretable de reconocimiento de patrones en datos multimodales?} El objetivo general es diseñar dicho método a partir del análisis conjunto de métricas, registros y trazas. La contribución central será el método interpretable; la extensión para Grafana actuará como medio de integración y presentación, mientras que la preparación de los datos y la inferencia corresponderán a componentes separados. La validación se restringirá a escenarios reproducibles en sistemas controlados desplegados localmente y no se generalizarán sus conclusiones a cualquier sistema distribuido.
-
-La propuesta se diferencia de una solución limitada a centralizar paneles en tres aspectos. Primero, trata la preparación multimodal como parte explícita del problema de investigación y exige conservar la correspondencia entre cada característica y su señal de origen. Segundo, separa el reconocimiento algorítmico de la interpretación operacional: el método deberá indicar qué elementos sustentan el patrón, pero la evidencia no se presentará como una demostración automática de causalidad. Tercero, evalúa la utilidad mediante tareas y resultados de referencia, además de las métricas predictivas. Esta separación permite analizar si un modelo con buen desempeño produce también información verificable y pertinente para decidir.
-
-Las contribuciones previstas son: i) un flujo reproducible para adquirir, sincronizar y fusionar métricas, registros y trazas; ii) una comparación controlada de métodos de aprendizaje automático con diferentes compromisos entre desempeño y explicabilidad; iii) un mecanismo para relacionar cada resultado con variables, eventos y componentes observados; y iv) una extensión para Grafana que presente la salida del método sin asumir que la interfaz ejecuta por sí sola la integración semántica. La Fig.~\ref{fig:arquitectura} resume la separación de responsabilidades propuesta.
-
-\begin{figure*}[t]
-\centering
-\resizebox{0.98\textwidth}{!}{%
-\begin{tikzpicture}[node distance=8mm and 8mm]
-    \node[signal, fill=signalblue!8] (metrics) {Métricas\\series y atributos};
-    \node[signal, fill=signalorange!10, below=4mm of metrics] (logs) {Registros\\eventos y plantillas};
-    \node[signal, fill=signalgreen!10, below=4mm of logs] (traces) {Trazas\\segmentos y recorridos};
-
-    \node[process, right=12mm of logs, text width=26mm] (acq) {Adquisición y normalización específica por modalidad};
-    \node[process, right=10mm of acq, text width=27mm] (align) {Identificadores, semántica y sincronización temporal};
-    \node[process, right=10mm of align, text width=27mm] (fusion) {Representación conjunta y tratamiento de ausencias};
-    \node[result, right=10mm of fusion, text width=25mm] (model) {Método de aprendizaje automático e interpretación};
-    \node[result, right=10mm of model, text width=25mm] (service) {Servicio de resultados y proveniencia};
-    \node[signal, draw=signalgreen, very thick, fill=signalgreen!9,
-        right=10mm of service, text width=23mm] (grafana) {Extensión para Grafana\\patrones y evidencia};
-
-    \draw[flow] (metrics.east) -- (acq.west);
-    \draw[flow] (logs.east) -- (acq.west);
-    \draw[flow] (traces.east) -- (acq.west);
-    \draw[flow] (acq) -- (align);
-    \draw[flow] (align) -- (fusion);
-    \draw[flow] (fusion) -- (model);
-    \draw[flow] (model) -- (service);
-    \draw[flow] (service) -- (grafana);
-
-    \node[draw=darkgray, dashed, rounded corners=2pt, fit=(metrics)(logs)(traces),
-        inner sep=3mm, label={[font=\scriptsize]above:Fuentes de observabilidad}] {};
-    \node[draw=signalblue, dashed, rounded corners=2pt, fit=(acq)(align)(fusion),
-        inner sep=3mm, label={[font=\scriptsize]above:Flujo multimodal}] {};
-\end{tikzpicture}
-}
-\caption{Arquitectura lógica del prototipo. La preparación multimodal, la ejecución del método y la presentación en Grafana se mantienen como responsabilidades diferenciadas. Fuente: elaboración propia.}
+\caption{Arquitectura lógica propuesta. Grafana presenta resultados; la preparación multimodal y el aprendizaje corresponden al flujo y al componente de procesamiento. Fuente: elaboración propia.}
 \label{fig:arquitectura}
 \end{figure*}
 
-\section{Metodología}
+El flujo conservará marcas temporales, unidades, servicio, instancia, versión e identificadores disponibles. También documentará las transformaciones y diferenciará la ausencia real de una señal, el fallo de instrumentación y la inexistencia de la modalidad para una observación. La representación conjunta podrá ser tabular, temporal, orientada a eventos o híbrida. Su elección deberá conservar la proveniencia y será evaluada, no asumida.
 
-La investigación tendrá un enfoque aplicado, cuantitativo y experimental y adoptará \textit{Design Science Research Methodology} (DSRM) como marco metodológico general. La ciencia del diseño es apropiada cuando el conocimiento se obtiene mediante la construcción y evaluación de un artefacto destinado a resolver un problema identificado \cite{ref30,ref31}. En este proyecto, el artefacto será el prototipo funcional compuesto por el flujo multimodal, el método interpretable, el servicio de procesamiento y la extensión para Grafana.
+Sobre esa representación se construirán líneas base y se explorarán métodos de aprendizaje compatibles con la tarea y los recursos. Los datos se separarán por ejecuciones, escenarios o periodos para evitar que observaciones relacionadas aparezcan en ajuste y prueba. La alternativa se seleccionará por evidencia comparativa, considerando desempeño, estabilidad, costo e interpretabilidad; una mayor complejidad no constituirá por sí sola un criterio favorable.
 
-DSRM organiza la investigación en seis actividades: identificación y motivación del problema, definición de los objetivos de la solución, diseño y desarrollo, demostración, evaluación y comunicación \cite{ref30}. Las dos primeras actividades corresponden al planteamiento del problema, la pregunta y los objetivos acordados. El diseño y desarrollo comprenderá la construcción del flujo, el método y la extensión; la demostración comprobará su funcionamiento en un sistema controlado desplegado localmente; la evaluación analizará integración, desempeño, interpretabilidad y utilidad; y la comunicación documentará el método, los resultados, las limitaciones y los artefactos reproducibles.
+\subsection{Demostración y datos de referencia}
 
-Dentro de las actividades de diseño, desarrollo y evaluación se empleará una adaptación de CRISP-ML(Q) como subciclo técnico. Este modelo organiza el ciclo de vida de una aplicación de aprendizaje automático en seis fases e incorpora aseguramiento de calidad en cada una de ellas \cite{ref28}. Su primera fase, comprensión del negocio y de los datos, se interpretará como \textit{comprensión del problema de monitorización, de la tarea de decisión y de la telemetría}. Esta adaptación conserva la definición de alcance, viabilidad y criterios de éxito sin presentar la investigación como un despliegue comercial.
+La demostración verificará el uso integral del prototipo en un sistema distribuido desplegado localmente. Cada unidad experimental combinará sistema, versión, configuración, carga, escenario, condición y repetición. Para cada ejecución se registrarán la topología, la instrumentación, las ventanas temporales, las transformaciones y las versiones del flujo y del método.
 
-MLOps se utilizará como complemento de ingeniería, no como metodología de investigación. La literatura lo caracteriza como un conjunto de prácticas, componentes, roles y flujos para automatizar y operar productos de aprendizaje automático \cite{ref29}. En este proyecto aportará versionado de datos, código y modelos; registro de experimentos; pruebas del flujo; empaquetado del servicio; trazabilidad y captura de indicadores. No se implementarán operación continua, reentrenamiento automático ni despliegue industrial, porque exceden el alcance del prototipo local.
+Los datos de referencia para la evaluación, denominados también \textit{oráculo de evaluación} en experimentación de software, indicarán las etiquetas, condiciones conocidas, componentes intervenidos, secuencias esperadas o criterios de aceptación contra los que se compararán los resultados. No son un agente ni una herramienta. Los agentes ejecutarán tareas; los datos de referencia permitirán juzgar sus respuestas y las salidas del prototipo.
 
-La unidad de análisis estará constituida por los componentes del sistema distribuido y sus observaciones multimodales dentro de ventanas temporales reproducibles. No se contempla, en esta etapa, una población humana ni un estudio de usabilidad con operadores. El diseño combina construcción de artefactos con experimentación controlada: la construcción materializa el flujo, el método, el servicio y la extensión; la experimentación compara configuraciones bajo condiciones repetibles. Cada decisión deberá quedar vinculada con una versión del código, una configuración, un conjunto de datos y un resultado.
+Cada escenario producirá un paquete trazable con telemetría, transformaciones, salida del método, evidencia presentada y bitácora. La demostración concluirá cuando existan ejecuciones completas y repetibles de los escenarios seleccionados, incluidas observaciones de referencia y al menos una condición de interés. Este resultado verificará funcionamiento integral, no efectividad general.
 
-La Fig.~\ref{fig:metodo} representa el proceso DSRM adoptado. El recorrido no será estrictamente lineal: la demostración o la evaluación podrán revelar la necesidad de revisar los objetivos o el diseño. Sin embargo, el conjunto de prueba permanecerá separado y no se utilizará para ajustar retrospectivamente la representación o los hiperparámetros.
+\subsection{Evaluación}
 
-\begin{figure}[htbp]
-\centering
-\resizebox{0.98\columnwidth}{!}{%
-\begin{tikzpicture}[node distance=5mm and 4mm]
-    \node[process, text width=20mm] (p1) {1. Identificar y motivar el problema};
-    \node[process, text width=20mm, right=of p1] (p2) {2. Definir objetivos de la solución};
-    \node[process, text width=20mm, right=of p2] (p3) {3. Diseñar y desarrollar};
-    \node[result, text width=20mm, below=8mm of p3] (p4) {4. Demostrar el artefacto};
-    \node[result, text width=20mm, left=of p4] (p5) {5. Evaluar resultados};
-    \node[result, text width=20mm, left=of p5] (p6) {6. Comunicar conocimiento};
-    \draw[flow] (p1) -- (p2);
-    \draw[flow] (p2) -- (p3);
-    \draw[flow] (p3) -- (p4);
-    \draw[flow] (p4) -- (p5);
-    \draw[flow] (p5) -- (p6);
-    \draw[flow, dashed] (p6.south) -- ++(0,-4mm) -| (p3.south);
-\end{tikzpicture}
-}
-\caption{Aplicación de DSRM al diseño y evaluación del prototipo. CRISP-ML(Q) se integra como subciclo técnico dentro del diseño, desarrollo y evaluación. Fuente: elaboración propia a partir de \cite{ref30}.}
-\label{fig:metodo}
-\end{figure}
-
-La Tabla~\ref{tab:dsrm} concreta la función de DSRM en la investigación. La contribución no se reducirá a demostrar que el software funciona: deberá relacionar el problema, las decisiones de diseño, la evidencia experimental y los límites del resultado. La comunicación se considera una actividad metodológica porque permite exponer tanto el artefacto como el conocimiento obtenido durante su construcción y evaluación.
-
-\begin{table*}[t]
-\caption{Aplicación de DSRM al proyecto de investigación}
-\label{tab:dsrm}
-\centering
-\footnotesize
-\renewcommand{\arraystretch}{1.17}
-\begin{tabular}{p{0.17\textwidth}p{0.28\textwidth}p{0.24\textwidth}p{0.20\textwidth}}
-\toprule
-\textbf{Actividad DSRM} & \textbf{Aplicación en el proyecto} & \textbf{Evidencia o artefacto} & \textbf{Criterio de avance} \\
-\midrule
-Identificación y motivación & Caracterizar la fragmentación de métricas, registros y trazas y la necesidad de evidencia interpretable para apoyar decisiones & Planteamiento, corpus y matriz de evidencia & Problema delimitado y sustentado sin anticipar la solución \\
-Definición de objetivos & Establecer las capacidades esperadas del método, el flujo, la extensión y la validación & Pregunta, objetivo general, cuatro objetivos específicos y variables tecnológicas & Objetivos medibles, coherentes con el alcance y los datos disponibles \\
-Diseño y desarrollo & Construir la representación conjunta, comparar algoritmos, producir explicaciones e integrar el prototipo & Flujo, modelos, servicio, extensión y documentación técnica & Componentes trazables, reproducibles y aptos para demostración \\
-Demostración & Ejecutar el prototipo sobre escenarios reproducibles de un sistema controlado local & Ejecuciones, capturas de telemetría, patrones y evidencia presentada & Funcionamiento de extremo a extremo bajo condiciones registradas \\
-Evaluación & Contrastar integración, desempeño, interpretabilidad y utilidad mediante oráculos, ablaciones y agentes & Métricas, análisis de errores, resultados por escenario y limitaciones & Respuesta sustentada a la pregunta sin generalizaciones externas \\
-Comunicación & Presentar el método, las decisiones, los resultados y los artefactos reproducibles & Artículo, documentación y materiales de replicación & Trazabilidad entre afirmaciones, evidencia y versiones evaluadas \\
-\bottomrule
-\end{tabular}
-\end{table*}
-
-La Tabla~\ref{tab:crispml} muestra, en un segundo nivel, cómo las actividades técnicas se integran en CRISP-ML(Q). Cada fase producirá un artefacto verificable y aplicará un control de calidad antes de continuar. Los controles no impedirán volver a fases anteriores; funcionarán como criterios para documentar por qué una iteración es necesaria.
-
-\begin{table*}[t]
-\caption{Adaptación de las fases de CRISP-ML(Q) al proyecto}
-\label{tab:crispml}
-\centering
-\footnotesize
-\renewcommand{\arraystretch}{1.17}
-\begin{tabular}{p{0.16\textwidth}p{0.27\textwidth}p{0.24\textwidth}p{0.22\textwidth}}
-\toprule
-\textbf{Fase adaptada} & \textbf{Actividades del proyecto} & \textbf{Producto verificable} & \textbf{Control de calidad} \\
-\midrule
-Comprensión del problema y los datos & Operacionalizar patrón, decisión, interpretabilidad y utilidad; seleccionar el sistema; definir escenarios, oráculo y criterios de éxito & Especificación del problema, inventario de fuentes y protocolo de escenarios & Viabilidad, disponibilidad de las tres señales, coherencia semántica y criterios medibles \\
-Ingeniería de datos & Adquirir métricas, registros y trazas; sincronizar, transformar, relacionar identificadores, tratar ausencias y particionar por ejecuciones & Conjunto multimodal versionado, diccionario de datos y manifiestos de captura & Pruebas de esquema, cobertura, desfase temporal, fuga de información y proveniencia \\
-Ingeniería del modelo & Construir líneas base, entrenar candidatos, ajustar hiperparámetros y generar evidencia interpretable & Modelos, configuraciones, explicaciones y registro de experimentos & Repetibilidad, comparación justa, límites de recursos y trazabilidad de características \\
-Evaluación del modelo & Medir integración, desempeño, interpretabilidad y utilidad; ejecutar ablaciones y pruebas con agentes & Informe de resultados por escenario, matrices, intervalos y análisis de errores & Conjunto de prueba aislado, métricas predefinidas, estabilidad y contraste con el oráculo \\
-Despliegue experimental & Empaquetar el método en un servicio e integrarlo con la extensión para Grafana & Prototipo local funcional, interfaz del servicio y vista de resultados & Pruebas de integración, latencia, manejo de errores, versión del modelo y reproducción de inferencias \\
-Monitorización y mantenimiento acotados & Registrar calidad de entrada, latencia, distribución de puntuaciones y posibles señales de deriva; definir criterios de actualización & Panel técnico, bitácora y procedimiento documentado de reevaluación & Alertas sobre calidad y cambio; toda actualización debe repetir la fase de evaluación \\
-\bottomrule
-\end{tabular}
-\end{table*}
-
-\subsection{Subciclo CRISP-ML(Q), fase 1: comprensión del problema y de los datos}
-
-Se seleccionará una aplicación distribuida que pueda desplegarse localmente y cuya carga, configuración y condiciones de interés puedan repetirse. Cada escenario especificará versión de los servicios, topología, carga, duración, semilla experimental y mecanismo de generación o inyección de condiciones. AIOpsLab aporta un antecedente para desplegar aplicaciones, generar carga, inyectar fallos y exportar telemetría \cite{ref9}; RCAEval ofrece casos y líneas base reproducibles para microservicios \cite{ref21}. Estos recursos orientarán el diseño, pero su adopción o adaptación dependerá del alcance concreto del patrón que se operacionalice.
-
-Para cada ejecución se definirá un oráculo de evaluación con el intervalo, componente y condición introducida o conocida. Este oráculo permitirá contrastar el resultado del método sin asumir que toda desviación corresponde automáticamente a un fallo o a una causa raíz.
-
-Conviene distinguir el oráculo del primer algoritmo que se probará. El oráculo no será un modelo de reconocimiento, sino la referencia construida a partir de la configuración del experimento: indicará qué condición fue introducida, en qué componente, durante qué intervalo y con qué parámetros. El primer algoritmo corresponderá a reglas y umbrales robustos, y sus resultados se contrastarán con esa referencia. Esta separación evita evaluar un algoritmo mediante las mismas reglas que producen sus predicciones y reduce el riesgo de obtener una validación circular.
-
-\subsubsection{Variables categóricas y numéricas en el oráculo}
-
-No resulta conveniente convertir todas las variables a un único tipo. La decisión debe depender de su significado y no del formato en el que fueron almacenadas. Las variables numéricas deben conservarse cuando expresan una magnitud con orden y distancia interpretables, como latencia, utilización de CPU, memoria, tasa de solicitudes, duración de un segmento o número de eventos. Mantenerlas como números permite aplicar rangos, diferencias, tasas de cambio, percentiles y umbrales robustos sin perder la intensidad de la condición observada.
-
-Las variables categóricas deben conservarse cuando representan identidad, estado o pertenencia, como nombre del servicio, operación, plantilla de registro, tipo de error, región, versión o estado de una solicitud. Aunque un código esté escrito con dígitos, no necesariamente constituye una magnitud: por ejemplo, los códigos HTTP 404 y 500 identifican categorías y la diferencia aritmética entre ellos carece de significado operacional. Codificarlos como enteros ordinales introduciría relaciones artificiales de orden y distancia. La telemetría \textit{schema-first} refuerza la necesidad de conservar tipo, unidad y semántica al correlacionar señales \cite{ref16}, mientras que las dificultades de alineación observadas en conjuntos reales muestran que el formato por sí solo no determina el significado de una variable \cite{ref22}.
-
-Por ello, el oráculo mantendrá una representación mixta. La etiqueta de la condición, el componente afectado y el tipo de escenario serán categóricos; la intensidad aplicada, la duración, la carga y los límites de recursos serán numéricos cuando correspondan. Una regla podrá combinar ambos tipos, por ejemplo: \textit{servicio = pagos} y \textit{latencia p95} superior a un umbral durante una ventana determinada. Esta combinación es más fiel al contexto que transformar el servicio en un número o discretizar prematuramente la latencia.
-
-\begin{table}[htbp]
-\caption{Conservación de tipos en el oráculo y en las reglas iniciales}
-\label{tab:tipos_variables}
-\centering
-\footnotesize
-\renewcommand{\arraystretch}{1.14}
-\begin{tabular}{p{0.17\columnwidth}p{0.27\columnwidth}p{0.36\columnwidth}}
-\toprule
-\textbf{Tipo} & \textbf{Ejemplos} & \textbf{Tratamiento propuesto} \\
-\midrule
-Numérico & Latencia, CPU, memoria, duración, conteos y tasas & Conservar valor y unidad; derivar rangos, percentiles y cambios. Escalar solo en la vista usada por el modelo. \\
-\addlinespace
-Categórico & Servicio, operación, plantilla, versión, estado y tipo de condición & Conservar etiqueta y diccionario; evaluar igualdad, pertenencia y frecuencia sin imponer orden artificial. \\
-\addlinespace
-Binario & Error presente, dato ausente o condición activa & Mantener indicador explícito y su definición; no confundir ausencia con el valor cero. \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Si un algoritmo posterior exige una matriz exclusivamente numérica, se generará una vista transformada mediante codificación explícita, preferentemente indicadores binarios para categorías de cardinalidad controlada. La fuente original permanecerá intacta para reconstruir la explicación. La normalización de magnitudes se ajustará solo con el conjunto de entrenamiento, y la ausencia se representará mediante un indicador separado en lugar de sustituirse automáticamente por cero o por una categoría existente. Así se protege la semántica, se evita fuga de información y se conserva la trazabilidad entre la entrada del modelo y la evidencia mostrada al usuario.
-
-Los escenarios se agruparán, al menos, en una condición de referencia y un conjunto de condiciones de interés. La condición de referencia caracterizará el comportamiento del sistema bajo una configuración estable; las demás introducirán variaciones controladas de carga, recursos, comunicación o estado de los servicios, según lo permita el caso de estudio. La etiqueta describirá lo que se conoce por construcción del experimento y no una causa inferida posteriormente. Cada repetición registrará tiempo de inicio y finalización, configuración, carga aplicada, condición introducida y estado de la instrumentación.
-
-\subsubsection{Operacionalización de las variables}
-
-El estudio distinguirá cuatro variables tecnológicas para evitar que una única métrica represente toda la calidad de la propuesta. La integración multimodal evaluará si las señales pueden relacionarse sin perder su contexto; el desempeño medirá la capacidad de reconocer los patrones definidos; la interpretabilidad examinará la correspondencia entre el resultado y su evidencia; y la utilidad establecerá si esa evidencia permite resolver una tarea de evaluación. La Tabla~\ref{tab:variables} presenta la relación entre cada variable, su evidencia y el criterio de aceptación que deberá concretarse antes de ejecutar las pruebas.
+La evaluación comparará los resultados con los objetivos, las líneas base y los datos de referencia. Las cuatro variables de delimitación permanecerán separadas y la reproducibilidad actuará como control transversal.
 
 \begin{table*}[t]
 \caption{Variables de evaluación y evidencia requerida}
-\label{tab:variables}
-\centering
-\footnotesize
-\renewcommand{\arraystretch}{1.18}
-\begin{tabular}{p{0.15\textwidth}p{0.23\textwidth}p{0.25\textwidth}p{0.20\textwidth}}
-\toprule
-\textbf{Variable} & \textbf{Pregunta de evaluación} & \textbf{Indicadores candidatos} & \textbf{Evidencia conservada} \\
-\midrule
-Integración multimodal & ¿Las tres señales quedan alineadas y son rastreables hasta su origen? & Cobertura por modalidad, proporción alineada, desfase temporal, tasa de ausencias y errores de esquema & Identificadores, marcas temporales, reglas de transformación y proveniencia \\
-Desempeño & ¿El método distingue los patrones operacionalizados en datos no usados para el ajuste? & Precisión, exhaustividad, F1, área bajo curva, tasa de falsas alarmas, latencia y estabilidad entre repeticiones & Predicciones, puntuaciones, oráculo, particiones y configuración del modelo \\
-Interpretabilidad & ¿La evidencia explica fielmente la salida y coincide con elementos pertinentes del escenario? & Fidelidad, estabilidad, correspondencia con variables o eventos de referencia y error de atribución & Características, eventos, contribuciones, explicación y versión del método \\
-Utilidad para decidir & ¿Un agente puede completar una tarea definida usando los resultados presentados? & Éxito de tarea, tiempo, número de consultas, concordancia y evidencia utilizada & Secuencia de consulta, respuesta del agente y resultado de referencia \\
-\bottomrule
-\end{tabular}
-\end{table*}
-
-\subsection{Subciclo CRISP-ML(Q), fase 2: ingeniería de datos multimodales}
-
-El flujo capturará métricas, registros y trazas durante periodos normales y escenarios controlados. Cada observación conservará su marca temporal, servicio de origen, instancia, versión y, cuando exista, identificadores de traza y segmento. Antes de fusionar las modalidades se normalizarán unidades y relojes, se extraerán plantillas o atributos de los registros, se derivarán características de los segmentos de traza y se documentarán los datos ausentes. La proveniencia de cada transformación se mantendrá para permitir la trazabilidad del resultado.
-
-Las observaciones se relacionarán mediante identificadores compatibles y ventanas de correlación. Sea $t$ una ventana y $s$ un componente, la representación conjunta se expresará de forma general como
-\begin{equation}
-\mathbf{x}_{s,t}=\phi\!\left(\mathbf{m}_{s,t},\mathbf{l}_{s,t},\mathbf{r}_{s,t},\mathbf{c}_{s,t}\right),
-\end{equation}
-donde $\mathbf{m}$ representa características de métricas, $\mathbf{l}$ de registros, $\mathbf{r}$ de trazas y $\mathbf{c}$ el contexto operacional. La función $\phi$ será objeto de comparación: podrá ser tabular, temporal, basada en eventos o híbrida, siempre que preserve la correspondencia semántica y permita rastrear cada característica hasta su fuente. La integración por identificadores de traza y segmento tiene antecedentes en DeepTraLog \cite{ref17}; MSTGAD y PDiagnose ilustran otras estrategias de fusión \cite{ref18,ref19}; LO2 evidencia que la ausencia de trazas completas y la desalineación deben tratarse explícitamente \cite{ref22}.
-
-La ventana de correlación deberá definirse según la dinámica del sistema y someterse a análisis de sensibilidad. Una ventana demasiado corta puede separar acontecimientos relacionados, mientras que una demasiado amplia puede asociar observaciones independientes. Para cada ventana se calcularán estadísticas robustas de las métricas, conteos y categorías de plantillas de registro, y atributos agregados de las trazas, como duración, errores, profundidad y servicios recorridos. Los valores ausentes no se reemplazarán silenciosamente: se conservará un indicador que distinga la ausencia real, el fallo de instrumentación y la inexistencia de una modalidad para el componente observado.
-
-La preparación generará un diccionario de datos con nombre, tipo, unidad, fuente, transformación y granularidad de cada variable. De este modo, una característica utilizada por el modelo podrá seguirse hasta la observación original. Esta trazabilidad será necesaria tanto para reproducir el experimento como para comprobar que una explicación no atribuya relevancia a artefactos de preprocesamiento.
-
-\subsubsection{Gestión y partición de los datos}
-
-El conjunto experimental se organizará por ejecuciones completas. Una ejecución contendrá la telemetría capturada bajo una configuración y una condición conocidas. Las particiones de entrenamiento, validación y prueba se realizarán a nivel de ejecución para impedir que ventanas adyacentes, altamente correlacionadas, queden distribuidas entre conjuntos diferentes. Cuando el número de ejecuciones lo permita, se reservarán escenarios o configuraciones completas para examinar el comportamiento ante variaciones no observadas durante el ajuste.
-
-La versión de los datos incluirá el manifiesto de captura, el esquema, las transformaciones y los descartes realizados. Se documentarán la tasa de muestreo, la retención, los desfases de reloj y las pérdidas de instrumentación. Si una ejecución no cumple los criterios mínimos de calidad, se excluirá mediante una regla establecida antes del análisis, y su exclusión quedará registrada. Este procedimiento reduce el riesgo de seleccionar manualmente solo las ejecuciones que favorecen al método.
-
-\subsection{Subciclo CRISP-ML(Q), fase 3: ingeniería del modelo}
-
-Se compararán algoritmos de distinta complejidad bajo la misma partición de datos y el mismo protocolo. La selección no se realizará únicamente por exactitud: se considerarán desempeño, costo de inferencia, estabilidad, sensibilidad a datos faltantes y capacidad de producir evidencia interpretable. Cuando las etiquetas sean escasas, se priorizarán métodos no supervisados o de una clase; si el entorno genera etiquetas confiables y suficientes, se incorporarán alternativas supervisadas. Los algoritmos concretos se describen en la Sección~\ref{sec:algoritmos}.
-
-Para evitar fuga de información, las particiones se realizarán por ejecución o por intervalo temporal, no mediante filas aleatorias pertenecientes a la misma ejecución. Los hiperparámetros se ajustarán solo con el conjunto de entrenamiento y validación. Se incluirán como líneas base reglas o umbrales y modelos unimodales, con el fin de estimar la contribución del aprendizaje automático y de la representación conjunta.
-
-La comparación se estructurará en tres niveles. En el primero se enfrentarán reglas y umbrales robustos con algoritmos de aprendizaje para establecer si la complejidad adicional está justificada. En el segundo se comparará cada modalidad por separado con combinaciones de dos señales y con la representación trimodal. En el tercero se examinarán distintas configuraciones del algoritmo seleccionado, incluidas la longitud de la ventana, el conjunto de características y el tratamiento de ausencias. Todas las variantes usarán las mismas ejecuciones de prueba.
-
-No se reducirá la selección a una suma arbitraria de métricas heterogéneas. Se descartarán primero los modelos que incumplan requisitos mínimos de reproducibilidad, latencia o fidelidad; entre los restantes se analizará la frontera de compromiso entre desempeño, estabilidad e interpretabilidad. Si dos modelos obtienen resultados comparables, se preferirá el de menor complejidad y mayor trazabilidad. La decisión final deberá quedar sustentada por resultados de ablación y no únicamente por el mejor valor puntual.
-
-\subsubsection{Interpretabilidad y apoyo a decisiones}
-
-Cada resultado deberá incluir la puntuación del patrón, el intervalo temporal, los componentes relacionados y las variables o eventos que más contribuyeron a la decisión. Para modelos intrínsecamente interpretables se examinarán reglas, coeficientes o estructura de agrupamiento; para modelos complejos se evaluarán explicaciones \textit{post hoc}, sin confundir su legibilidad con fidelidad. La interpretabilidad se valorará mediante cuatro criterios: fidelidad respecto de la salida del modelo, correspondencia con variables o eventos del oráculo, comprensibilidad de la evidencia y utilidad para la tarea definida \cite{ref12,ref13}.
-
-La salida se formulará como apoyo a la identificación, priorización o localización de posibles condiciones. No se afirmará causalidad solo por coexistencia temporal o correlación. La utilidad se medirá por el grado en que la evidencia permita a un agente de evaluación completar tareas previamente especificadas, separando la calidad del método de la conducta del agente.
-
-La fidelidad de una explicación local podrá estimarse perturbando de manera controlada las variables señaladas y comparando la respuesta del modelo original con la respuesta anticipada por la explicación. La estabilidad se calculará entre ejecuciones equivalentes o pequeñas perturbaciones que no cambien el oráculo. La correspondencia operacional se evaluará verificando si las variables, eventos y componentes destacados coinciden con los elementos conocidos del escenario. Estas medidas no sustituyen la interpretación experta, pero permiten identificar explicaciones plausibles que no reflejan el comportamiento real del modelo.
-
-Para la utilidad, cada tarea entregará al agente un estado inicial, un conjunto permitido de consultas y un criterio de finalización. Se registrarán la respuesta, el tiempo, la secuencia de evidencia consultada y la concordancia con el resultado de referencia. La comparación deberá incluir una condición sin las salidas del método o con una presentación básica, de modo que el posible aporte del prototipo no se confunda con la disponibilidad general de la telemetría.
-
-\subsection{Subciclo CRISP-ML(Q), fases 4 y 5: evaluación e integración}
-
-La evaluación se realizará en dos niveles. Primero se evaluará el modelo fuera de línea con ejecuciones reservadas, antes de integrarlo, para comprobar que satisface los criterios mínimos de desempeño, estabilidad e interpretabilidad. Solo una versión aprobada avanzará al despliegue experimental. Después se validará el flujo completo, incluida la adquisición, el servicio y la extensión, con el fin de medir propiedades que no pueden observarse en el modelo aislado, como latencia de extremo a extremo, trazabilidad y utilidad de la presentación. De esta forma se respeta el orden de CRISP-ML(Q) sin confundir evaluación del modelo con validación del prototipo integrado.
-
-El prototipo estará compuesto por cuatro elementos: el flujo multimodal, el método seleccionado, un servicio de procesamiento y una extensión para Grafana. Las fuentes conservarán y expondrán las señales; el flujo realizará la adquisición, sincronización, transformación y fusión; el servicio ejecutará el entrenamiento o la inferencia; y la extensión consultará y presentará los resultados. Esta separación evita atribuir a Grafana una unificación semántica automática de la telemetría.
-
-La interfaz mostrará la ventana analizada, la puntuación o clase, los componentes relacionados, la evidencia explicativa y los enlaces hacia métricas, registros y trazas originales. También conservará la versión del modelo, el conjunto de transformaciones y la proveniencia de los datos para reproducir cada resultado.
-
-\subsubsection{Protocolo de evaluación y validación reproducible}
-
-La validación repetirá escenarios normales y condiciones controladas con configuraciones y semillas registradas. ITBench constituye un antecedente para separar tareas, resultados y tiempos en evaluaciones con agentes \cite{ref14}. El análisis se organizará en cuatro dimensiones:
-
-\begin{enumerate}
-    \item \textit{Integración multimodal}: cobertura de las tres señales, proporción de observaciones correctamente alineadas, pérdida de datos y trazabilidad.
-    \item \textit{Desempeño}: precisión, exhaustividad, F1, área bajo la curva o métricas de agrupamiento, según la tarea y la disponibilidad de etiquetas; además, latencia y costo computacional.
-    \item \textit{Interpretabilidad}: fidelidad de la explicación, correspondencia con el oráculo, estabilidad y error de atribución cuando exista referencia \cite{ref12,ref13}.
-    \item \textit{Utilidad para la decisión}: éxito del agente en tareas predefinidas, tiempo requerido, evidencia consultada y concordancia con el resultado de referencia.
-\end{enumerate}
-
-\begin{figure}[htbp]
-\centering
-\resizebox{0.92\columnwidth}{!}{%
-\begin{tikzpicture}[node distance=7mm and 7mm]
-    \node[process, text width=24mm] (integ) {Integración\\¿se relacionan las señales?};
-    \node[process, text width=24mm, right=of integ] (perf) {Desempeño\\¿se reconoce el patrón?};
-    \node[result, text width=24mm, below=of integ] (interp) {Interpretabilidad\\¿la evidencia es fiel?};
-    \node[result, text width=24mm, right=of interp] (util) {Utilidad\\¿apoya la tarea?};
-    \draw[draw=darkgray, thick, {Latex[length=2mm]}-{Latex[length=2mm]}] (integ) -- (perf);
-    \draw[draw=darkgray, thick, {Latex[length=2mm]}-{Latex[length=2mm]}] (integ) -- (interp);
-    \draw[draw=darkgray, thick, {Latex[length=2mm]}-{Latex[length=2mm]}] (perf) -- (util);
-    \draw[draw=darkgray, thick, {Latex[length=2mm]}-{Latex[length=2mm]}] (interp) -- (util);
-\end{tikzpicture}
-}
-\caption{Dimensiones separadas de la validación. Un resultado favorable en una dimensión no implica automáticamente resultados favorables en las demás. Fuente: elaboración propia.}
-\label{fig:dimensiones}
-\end{figure}
-
-Cuando el oráculo permita formular una tarea de clasificación, se calcularán precisión $P$, exhaustividad $R$ y su media armónica $F_1$:
-\begin{equation}
-P=\frac{TP}{TP+FP},\quad
-R=\frac{TP}{TP+FN},\quad
-F_1=2\frac{PR}{P+R}.
-\end{equation}
-Estas métricas se reportarán junto con la matriz de confusión y la distribución por escenario para evitar que el desbalance quede oculto en un único promedio. En tareas no supervisadas, la evaluación se apoyará en el oráculo experimental, el ordenamiento por puntuación, la estabilidad de los grupos y la capacidad de separar ventanas de referencia y de interés. Ninguna métrica se elegirá después de observar qué alternativa favorece al modelo.
-
-Se realizarán ablaciones para comparar las tres modalidades frente a combinaciones parciales y para medir el efecto del contexto temporal, los identificadores compartidos y el tratamiento de ausencias. Los resultados se acompañarán de intervalos de confianza o dispersión entre repeticiones. Las conclusiones se limitarán a los sistemas, escenarios, datos y ventanas efectivamente evaluados.
-
-La repetibilidad se comprobará reconstruyendo una parte de los resultados a partir del manifiesto del experimento y de los artefactos versionados. Se conservarán parámetros, semillas, dependencias, tiempos y recursos consumidos. Además del promedio se reportarán mediana, dispersión y casos extremos, pues una media favorable puede ocultar inestabilidad entre escenarios. Las comparaciones se interpretarán como evidencia para el entorno controlado, no como una estimación de desempeño en producción.
-
-\subsection{Subciclo CRISP-ML(Q), fase 6: monitorización y mantenimiento acotados}
-
-CRISP-ML(Q) incluye monitorización y mantenimiento porque la distribución de los datos y el desempeño de un modelo pueden cambiar después del despliegue \cite{ref28}. En este proyecto la fase se aplicará al prototipo local y no a una operación industrial continua. Durante las pruebas se observarán cobertura por modalidad, errores de esquema, desfase temporal, proporción de valores ausentes, latencia del servicio, distribución de las puntuaciones y estabilidad de las explicaciones. Estos indicadores permitirán distinguir una condición del sistema observado de una degradación del propio flujo de análisis.
-
-Se definirán criterios que obliguen a regresar a fases anteriores: cambios de esquema o semántica remitirán a ingeniería de datos; pérdida de desempeño o deriva de las puntuaciones remitirá a ingeniería y evaluación del modelo; errores de servicio o interfaz remitirán al despliegue experimental. Cualquier actualización generará una nueva versión del conjunto de datos, las transformaciones, el modelo y la configuración, y deberá repetir la evaluación antes de reemplazar la versión anterior.
-
-Las prácticas de MLOps se limitarán a automatización y trazabilidad proporcionales al prototipo: control de versiones, registro de experimentos, pruebas reproducibles, empaquetado del componente de inferencia y conservación de metadatos. No se implementarán reentrenamiento continuo, despliegue automático en producción, escalamiento elástico ni disponibilidad permanente. Esta delimitación permite aprovechar MLOps para asegurar reproducibilidad sin convertir la investigación en un proyecto de infraestructura industrial \cite{ref29}.
-
-\section{Resultados esperados}
-
-Se espera obtener un prototipo funcional experimental capaz de procesar conjuntamente métricas, registros y trazas y de producir una representación apta para el análisis automático. El primer resultado será un flujo documentado y reproducible que especifique fuentes, esquemas, identificadores, sincronización, transformaciones, ventanas de correlación, mecanismos de fusión y tratamiento de datos faltantes.
-
-El segundo resultado será un método de reconocimiento de patrones seleccionado mediante comparación empírica. Se espera que la integración multimodal aporte información complementaria frente a las líneas base unimodales, como ha ocurrido en estudios previos \cite{ref5,ref6,ref7,ref18,ref19}; sin embargo, el trabajo no presupone una mejora cuantitativa ni una arquitectura ganadora. El resultado válido podrá mostrar también que ciertas modalidades, ventanas o transformaciones no aportan información suficiente en un escenario particular. La presentación deberá evitar aumentar la saturación de información y la dificultad de correlación reportadas por profesionales \cite{ref15}.
-
-El tercer resultado será evidencia interpretable asociada con cada patrón: características relevantes, acontecimientos, componentes e intervalos relacionados, junto con la proveniencia necesaria para comprobarlos. Se espera distinguir entre la explicación producida por el algoritmo y la interpretación operacional del resultado, y medir su fidelidad en lugar de asumirla \cite{ref12,ref13}.
-
-El cuarto resultado será una extensión para Grafana que integre y presente las salidas del servicio de procesamiento sin asumir que la plataforma prepara automáticamente los datos. La extensión deberá facilitar la navegación desde el patrón hacia las señales originales y ofrecer información contextual para tareas definidas de triaje, priorización o localización de posibles causas.
-
-La Tabla~\ref{tab:resultados} concreta los artefactos esperados y la evidencia con la que se comprobará su construcción. Esta formulación evita presentar como resultado empírico lo que todavía corresponde a una expectativa de diseño.
-
-\begin{table*}[t]
-\caption{Resultados esperados, verificación y límites}
-\label{tab:resultados}
-\centering
-\footnotesize
-\renewcommand{\arraystretch}{1.18}
-\begin{tabular}{p{0.18\textwidth}p{0.24\textwidth}p{0.21\textwidth}p{0.19\textwidth}}
-\toprule
-\textbf{Resultado} & \textbf{Contenido verificable} & \textbf{Criterio de comprobación} & \textbf{Límite declarado} \\
-\midrule
-Flujo multimodal & Adquisición, esquemas, alineación, transformación, fusión y proveniencia & Reejecución sobre una captura conocida y trazabilidad hasta las señales originales & No garantiza que toda señal esté completa ni semánticamente alineada \\
-Método interpretable & Modelo, configuración, puntuación, explicación y reglas de selección & Comparación con líneas base, ablaciones y evaluación de fidelidad & El patrón reconocido no demuestra causalidad \\
-Servicio de procesamiento & Interfaz de inferencia, almacenamiento de resultados y versiones & Respuestas reproducibles para una entrada y configuración registradas & Prototipo experimental, sin requisitos de alta disponibilidad \\
-Extensión para Grafana & Vista de patrones, evidencia, contexto y vínculos hacia la telemetría & Ejecución de tareas definidas por agentes de evaluación & No equivale a un estudio de usabilidad con operadores \\
-Paquete de validación & Escenarios, oráculo, manifiestos, métricas y resultados por repetición & Reconstrucción de resultados y documentación de exclusiones & Conclusiones restringidas al entorno local evaluado \\
-\bottomrule
-\end{tabular}
-\end{table*}
-
-Finalmente, se espera obtener un protocolo de validación reproducible, un conjunto de ejecuciones controladas y un informe de limitaciones. Los hallazgos no constituirán evidencia de operación industrial, aceptación por usuarios ni generalización universal. Tampoco se afirmará que el método detecta siempre fallos, identifica su tipo o determina una causa raíz.
-
-Un resultado negativo o mixto también tendrá valor para la investigación. Por ejemplo, si la representación trimodal no supera una línea base más simple, el análisis deberá identificar si la causa probable se encuentra en la calidad de los datos, la alineación, la selección de características o la propia ausencia de información complementaria. De igual modo, si una explicación es comprensible pero poco fiel, el hallazgo impedirá presentarla como sustento de decisión. El informe final incluirá estos casos, las condiciones bajo las que se produjeron y las modificaciones requeridas.
-
-\section{Algoritmos a usar}
-\label{sec:algoritmos}
-
-La investigación no fijará de antemano una única familia de aprendizaje. Se usará una batería inicial de algoritmos candidatos y se conservará únicamente el método que satisfaga los criterios de desempeño, interpretabilidad y costo del escenario. Esta decisión es coherente con la diversidad de enfoques reportada en la literatura y con la ausencia de una técnica universal para todos los sistemas y patrones \cite{ref3,ref10}.
-
-\begin{table*}[t]
-\caption{Valor analítico, aporte esperado y condiciones de uso de los algoritmos candidatos}
-\label{tab:algoritmos}
+\label{tab:evaluacion}
 \centering
 \footnotesize
 \renewcommand{\arraystretch}{1.15}
-\begin{tabular}{p{0.14\textwidth}p{0.27\textwidth}p{0.25\textwidth}p{0.23\textwidth}}
+\begin{tabular}{p{0.15\textwidth}p{0.27\textwidth}p{0.28\textwidth}p{0.20\textwidth}}
 \toprule
-\textbf{Algoritmo} & \textbf{Por qué es valioso para el análisis} & \textbf{Aporte posible al proyecto} & \textbf{Condición o limitación} \\
+\textbf{Variable} & \textbf{Pregunta} & \textbf{Indicadores candidatos} & \textbf{Evidencia conservada} \\
 \midrule
-Reglas y umbrales robustos & Proporcionan una línea base transparente y reproducible para condiciones conocidas; además, siguen siendo comunes en la práctica industrial \cite{ref20}. & Permiten comprobar el flujo, validar el oráculo y cuantificar si los modelos posteriores aportan algo más que condiciones predefinidas. & No descubren por sí solos relaciones no especificadas y dependen de variables, umbrales y ventanas seleccionados correctamente. \\
-\addlinespace
-\textit{Isolation Forest} & Aísla observaciones mediante particiones aleatorias, ofrece entrenamiento eficiente y no requiere ejemplos etiquetados de anomalías \cite{ref23}. & Puede ordenar ventanas multimodales por rareza y servir como primera línea base no supervisada sobre vectores numéricos. & No modela explícitamente la secuencia temporal; requiere codificación y escalado controlados, y una observación rara no equivale necesariamente a una condición operacional relevante. \\
-\addlinespace
-\textit{One-Class SVM} & Estima una frontera que contiene la mayor parte del comportamiento de referencia y puede representar límites no lineales mediante funciones de núcleo \cite{ref24}. & Permite contrastar si una frontera compacta separa mejor las condiciones de interés que el aislamiento aleatorio. & Es sensible al escalado, al núcleo y a sus hiperparámetros; su costo aumenta con el número de observaciones y exige datos de referencia poco contaminados. \\
-\addlinespace
-HDBSCAN & Descubre grupos de densidad variable, identifica ruido y no exige fijar previamente el número de grupos; también produce estabilidad y pertenencia de los grupos \cite{ref25}. & Puede revelar regímenes operativos recurrentes y ventanas que no pertenecen de forma estable a ninguno, complementando la simple puntuación de anomalía. & No es específico para imágenes, pero depende de una distancia informativa. Solo se conservará si produce grupos estables en una representación de dimensionalidad controlada; no sustituye un modelo temporal. \\
-\addlinespace
-Árboles con potenciación de gradiente & Capturan interacciones no lineales en datos tabulares y pueden trabajar con entradas dispersas; XGBoost incorpora un procedimiento consciente de la dispersión \cite{ref26}. & Si existen etiquetas fiables, pueden clasificar patrones y ofrecer una referencia supervisada con contribuciones por característica y reglas locales. & Requieren etiquetas suficientes y representativas; pueden aprender artefactos del escenario o de la captura y su importancia global no equivale automáticamente a explicación causal. \\
-\addlinespace
-Autoencoder temporal & Aprende a reconstruir secuencias de referencia y utiliza el error de reconstrucción para localizar desviaciones multivariadas en el tiempo \cite{ref27}. & Puede representar dependencias temporales que los métodos sobre ventanas agregadas no capturen y descomponer el error por variable e intervalo. & Exige más datos y ajuste, puede reconstruir también observaciones anómalas y ofrece una interpretación más indirecta; se probará solo si los métodos simples resultan insuficientes. \\
+Integración multimodal & ¿Las tres señales quedan relacionadas y son rastreables? & Cobertura, correspondencia semántica, desfase temporal, ausencias y trazabilidad & Identificadores, tiempos, esquemas y proveniencia \\
+Desempeño & ¿El método reconoce el patrón operacionalizado? & Métricas acordes con la tarea, latencia, recursos y estabilidad & Predicciones, puntuaciones, particiones y configuración \\
+Interpretabilidad & ¿La evidencia corresponde con la salida y los acontecimientos relevantes? & Fidelidad, error de atribución cuando aplique, estabilidad y complejidad & Variables, eventos, contribuciones y versión del método \\
+Utilidad & ¿Los resultados apoyan una tarea de decisión definida? & Cumplimiento, exactitud, tiempo, consistencia y concordancia & Secuencia de consultas, respuesta y resultado de referencia \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-La comparación seguirá una secuencia de complejidad creciente, pero no presupone que el último algoritmo sea el mejor. Primero, las reglas y umbrales robustos establecerán una referencia comprensible. Este primer algoritmo operará sobre la representación mixta descrita en la Tabla~\ref{tab:tipos_variables}: aplicará comparaciones de magnitud a las variables numéricas y condiciones de igualdad, pertenencia o frecuencia a las categóricas. Segundo, \textit{Isolation Forest} y \textit{One-Class SVM} se evaluarán como detectores no supervisados o de una clase. HDBSCAN ocupará una rama exploratoria distinta: se utilizará para investigar si existen regímenes operativos recurrentes y no se presentará inicialmente como sustituto de los detectores. Tercero, si el oráculo experimental produce etiquetas suficientes, se evaluarán árboles con potenciación de gradiente. Cuarto, un autoencoder temporal se incorporará solo si los resultados muestran que las dependencias secuenciales no quedan representadas por los métodos anteriores. No se adoptarán Transformers, LLM o redes de grafos salvo que una necesidad empírica y una comparación reproducible los justifiquen.
+El protocolo se aplicará al método seleccionado y a las líneas base pertinentes. Los resultados se resumirán por escenario y repetición mediante estadísticas descriptivas y medidas de variabilidad. También se realizarán comparaciones entre modalidades individuales, pares y la representación trimodal cuando los datos lo permitan. La evaluación con agentes se interpretará únicamente como evidencia sobre tareas reproducibles y no permitirá inferir usabilidad, aceptación o impacto organizacional en operadores humanos.
 
-Las reglas y umbrales se definirán sobre estadísticas robustas y servirán para reconocer desviaciones conocidas de forma transparente. Su valor no consiste en descubrir patrones nuevos, sino en ofrecer un control positivo: si el flujo no permite recuperar una condición deliberadamente expresada como regla, todavía no existe una base confiable para evaluar métodos más complejos. También proporcionarán una referencia de costo, latencia, tasa de falsas alarmas y facilidad de explicación.
+\subsection{Validez y protección de los datos}
 
-\textit{Isolation Forest} permitirá asignar una puntuación a ventanas que se aíslan con pocas particiones. Resulta valioso porque puede trabajar sin etiquetas de anomalía y porque su mecanismo es distinto de medir una distancia global al centro del conjunto. Su posible aporte será priorizar ventanas raras en conjuntos grandes y con características heterogéneas. Sin embargo, la puntuación deberá contrastarse con el oráculo: rareza estadística, cambio de versión o baja frecuencia de una operación no implican por sí mismos un patrón útil para la decisión.
+La validez de constructo se atenderá mediante definiciones operativas vinculadas con cada objetivo. La validez interna requerirá documentar cargas, condiciones, cambios de configuración y factores concurrentes. La validez de conclusión se apoyará en repeticiones, líneas base y reporte de variabilidad. La validez externa quedará limitada a los sistemas, escenarios, datos y ventanas observados. La telemetría sensible se excluirá o anonimizará antes del análisis y de la comunicación.
 
-\textit{One-Class SVM} permitirá comprobar una hipótesis diferente: que las ventanas de referencia ocupan una región delimitable del espacio de características y que las condiciones de interés quedan fuera de ella. Su función de núcleo puede capturar fronteras no lineales, lo que aporta un contraste útil frente a las particiones aleatorias de \textit{Isolation Forest}. Se mantendrá únicamente si la sensibilidad al escalado y a los parámetros $\nu$ y del núcleo puede controlarse con el conjunto de validación y si su costo es compatible con el volumen de ventanas.
+\section{Plan de ejecución y criterios de cierre}
 
-HDBSCAN no fue diseñado principalmente para imágenes. Es un algoritmo general de agrupamiento jerárquico basado en densidad, con aplicaciones posibles sobre cualquier representación para la cual la distancia elegida conserve significado \cite{ref25}. Su valor agregado en este proyecto sería descubrir regímenes operativos: por ejemplo, grupos asociados con cargas, versiones o combinaciones recurrentes de telemetría, además de ventanas marcadas como ruido o con pertenencia débil. Esto permitiría preguntar si una aparente anomalía corresponde en realidad a un modo operativo válido poco frecuente.
+\begin{table*}[t]
+\caption{Secuencia de trabajo y evidencia de cierre}
+\label{tab:plan}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{p{0.16\textwidth}p{0.43\textwidth}p{0.30\textwidth}}
+\toprule
+\textbf{Etapa} & \textbf{Trabajo principal} & \textbf{Evidencia de cierre} \\
+\midrule
+Delimitación & Operacionalizar patrón, interpretabilidad, utilidad y agente de evaluación & Definiciones, métricas y criterios de aceptación \\
+Diseño experimental & Seleccionar sistema, cargas, condiciones, instrumentación y datos de referencia & Protocolo reproducible y matriz de escenarios \\
+Flujo multimodal & Definir fuentes, esquemas, identificadores, sincronización, fusión y ausencias & Conjunto multimodal versionado y trazable \\
+Exploración del método & Construir líneas base y comparar alternativas sin fijar una familia previa & Selección sustentada por resultados comparables \\
+Desarrollo & Implementar procesamiento, contratos de consulta y extensión & Prototipo funcional integrado \\
+Demostración y evaluación & Ejecutar escenarios, repeticiones, pruebas con agentes y análisis de errores & Resultados por variable, escenario y repetición \\
+Comunicación & Documentar arquitectura, datos, protocolo, resultados y límites & Artículo y materiales de reproducción \\
+\bottomrule
+\end{tabular}
+\end{table*}
 
-Esa utilidad es condicional. La representación multimodal puede ser dispersa y de alta dimensión, situación en la que las distancias tienden a perder capacidad discriminante. Antes de aplicar HDBSCAN se seleccionarán características, se normalizarán las magnitudes y se comprobará la estabilidad de los grupos ante cambios de muestra y parámetros. Se examinarán persistencia, pertenencia, proporción de ruido y correspondencia con los escenarios del oráculo. Si no aparecen grupos estables o interpretables, HDBSCAN se retirará del método final; su inclusión no se justificará solo porque produzca una visualización atractiva.
+Antes de redactar resultados deberán cerrarse cuatro decisiones críticas: el entorno empírico, la definición operacional del patrón, las fuentes concretas de las tres señales y el protocolo de evaluación. Los resultados negativos o mixtos se conservarán. Si la representación trimodal no supera una línea base más simple, o si una explicación es comprensible pero poco fiel, esas observaciones formarán parte del resultado y limitarán la contribución afirmada.
 
-Los árboles con potenciación de gradiente solo se entrenarán si las etiquetas describen con suficiente calidad el patrón de interés. Su aporte sería capturar interacciones no lineales entre características tabulares y establecer cuánto mejora un método supervisado cuando dispone de la información del oráculo. También permiten inspeccionar contribuciones por variable y construir explicaciones locales, aunque estas deberán validarse. Si el desempeño depende de identificadores de escenario, versión o marcas temporales que no generalizan, el modelo será considerado contaminado por artefactos y no una solución válida.
+\section{Contribución prevista y limitaciones}
 
-El autoencoder temporal se considerará una alternativa de mayor complejidad para reconstruir ventanas y localizar errores por variable. Su valor potencial es modelar orden y dependencia temporal, dimensiones que \textit{Isolation Forest}, \textit{One-Class SVM}, HDBSCAN y los árboles sobre agregados no representan directamente. Se exigirá demostrar una mejora frente a las líneas base, estabilidad entre repeticiones y explicaciones por error de reconstrucción que correspondan con el escenario. No se asumirá que mayor capacidad expresiva implica mejor generalización o interpretabilidad. En todos los casos se reportará tanto el desempeño agregado como los errores por escenario y componente.
+La contribución científica prevista es un método interpretable de reconocimiento de patrones aplicado a una representación conjunta de métricas, registros y trazas. La contribución tecnológica será un prototipo experimental con responsabilidades separadas entre fuentes, flujo, procesamiento e interfaz. La contribución empírica será la evidencia obtenida al contrastar integración, desempeño, interpretabilidad y utilidad bajo un protocolo reproducible.
 
-\subsection{Criterios para conservar o descartar candidatos}
+Estas contribuciones permanecen sujetas a validación. El proyecto no incluye operación industrial, alta disponibilidad, remediación automática, certificación de seguridad ni demostración definitiva de causalidad. Tampoco incluye por ahora una población humana o un estudio de usabilidad con operadores. La evaluación con agentes no sustituirá esas formas de evidencia y las conclusiones no se generalizarán a cualquier sistema distribuido.
 
-Cada candidato deberá responder una pregunta distinta y aportar evidencia que no duplique innecesariamente a otro método. Las reglas comprobarán condiciones conocidas; \textit{Isolation Forest} evaluará rareza por aislamiento; \textit{One-Class SVM} evaluará separación mediante una frontera; HDBSCAN explorará regímenes de operación; los árboles medirán el valor de las etiquetas; y el autoencoder temporal evaluará dependencias secuenciales. Esta asignación evita interpretar una lista de algoritmos como una decisión de usarlos todos en el prototipo final.
+\section{Conclusiones}
 
-Un algoritmo se conservará si supera una línea base pertinente, mantiene resultados estables entre ejecuciones, satisface los límites de latencia y memoria y produce evidencia cuya fidelidad pueda comprobarse. Se descartará si su aporte desaparece en la prueba, si depende de transformaciones que destruyen la semántica de las variables, si reproduce información ya contenida en las reglas o si su explicación no permite rastrear la decisión hasta métricas, registros o trazas. La selección final se realizará por compromiso entre desempeño, interpretabilidad y costo, no por la mejor puntuación aislada.
-
-\subsection{Estrategias de fusión y ablación}
-
-La representación conjunta se evaluará con fusión temprana y, si la heterogeneidad lo exige, con fusión tardía. En la fusión temprana, las características alineadas de las tres señales formarán un único vector $\mathbf{x}_{s,t}$ sobre el que se ajustará el modelo. En la fusión tardía, cada modalidad producirá una puntuación normalizada y una función de combinación generará la salida conjunta:
-\begin{equation}
-z_{s,t}=g\!\left(z^{(m)}_{s,t},z^{(l)}_{s,t},z^{(r)}_{s,t},q_{s,t}\right),
-\end{equation}
-donde $z^{(m)}$, $z^{(l)}$ y $z^{(r)}$ son las puntuaciones de métricas, registros y trazas, y $q$ representa indicadores de calidad o ausencia. La función $g$ podrá ser una combinación ponderada o un modelo de segundo nivel, pero sus parámetros se aprenderán sin usar el conjunto de prueba. La fusión tardía facilitará aislar la contribución de cada señal; la temprana permitirá modelar interacciones entre modalidades.
-
-La ablación retirará una modalidad o una familia de características manteniendo las demás condiciones. También se compararán versiones sin indicadores de ausencia, sin contexto de componente y con diferentes ventanas temporales. El propósito no será solo identificar la configuración con mayor puntuación, sino determinar qué información sostiene el resultado y bajo qué condiciones deja de hacerlo.
-
-\subsection{Producción de evidencia interpretable}
-
-Cada algoritmo tendrá un mecanismo de evidencia compatible con su estructura. Las reglas reportarán la condición activada; los métodos de frontera o aislamiento usarán sensibilidad y perturbación local; HDBSCAN mostrará pertenencia, estabilidad y ejemplos representativos; los árboles aportarán reglas y contribuciones por característica; y el autoencoder descompondrá el error de reconstrucción por variable e intervalo. Todas las explicaciones incluirán la señal de origen y el vínculo con la observación sin transformar.
-
-Para impedir que la explicación se convierta en una lista extensa de variables, se aplicará un criterio de suficiencia: se mostrará el subconjunto mínimo que conserve una proporción predefinida de la explicación o reproduzca la decisión dentro de una tolerancia. Dicho subconjunto se contrastará con el oráculo y con las perturbaciones del modelo. Una explicación breve pero inestable no se considerará superior a una explicación más extensa y fiel.
-
-El flujo incluirá además algoritmos de soporte: normalización robusta, extracción de plantillas de registros, agregación de segmentos de traza, imputación con indicador de ausencia y alineación por ventanas temporales e identificadores compartidos. Estas operaciones se tratarán como parte del método y se someterán a ablación, pues pueden alterar tanto el desempeño como la interpretación de los patrones.
-
-\section{Trabajo futuro}
-
-El trabajo inmediato consistirá en operacionalizar los términos \textit{patrón}, \textit{interpretable}, \textit{apoyo a la toma de decisiones}, \textit{agente de evaluación} y \textit{utilidad}. También deberá seleccionarse el sistema distribuido, concretarse el mecanismo de carga e inyección de condiciones, definirse el oráculo y establecerse la granularidad de las etiquetas.
-
-Después será necesario determinar las fuentes concretas desde las que se adquirirán métricas, registros y trazas, así como los identificadores, esquemas y relojes disponibles. Esta caracterización permitirá elegir la representación conjunta y evitar que la selección algorítmica anteceda al conocimiento de los datos. En paralelo, se definirá la frontera técnica entre las fuentes de observabilidad, el flujo de preparación, el servicio de procesamiento y la extensión para Grafana.
-
-Una vez construido el prototipo, se ampliará la validación a variaciones de carga, topología, versiones y datos faltantes. También se estudiará la deriva de concepto y la necesidad de actualizar el modelo, sin prometer adaptación continua antes de contar con evidencia. Si los resultados locales son favorables, etapas posteriores podrán incorporar otros sistemas y periodos para estudiar transferibilidad.
-
-Por último, una fase posterior podrá incluir evaluación con operadores humanos para valorar comprensibilidad, confianza, carga cognitiva y utilidad organizacional. Esa fase requerirá un diseño específico y no puede inferirse de la evaluación actual con agentes. La remediación automática, el endurecimiento para producción, la alta disponibilidad y la generalización a entornos industriales permanecen fuera del alcance de este prototipo.
-
-\fi
+La propuesta articula un problema de integración multimodal, reconocimiento de patrones, interpretabilidad y apoyo a decisiones dentro de un único artefacto experimental. DSRM permitirá relacionar la formulación del problema con el diseño, la demostración y la evaluación, mientras que las prácticas técnicas de aprendizaje automático se seleccionarán según los datos y los criterios definidos. El siguiente avance verificable será cerrar el entorno empírico y las definiciones operativas antes de seleccionar una representación o un método concreto.
 
 \begin{thebibliography}{00}
 
@@ -719,23 +255,9 @@ Por último, una fase posterior podrá incluir evaluación con operadores humano
 
 \bibitem{ref22} A. Bakhtin, J. Nyyssölä, Y. Wang, N. Ahmad, K. Ping, M. Esposito, M. Mäntylä, and D. Taibi, ``LO2: Microservice API anomaly dataset of logs and metrics,'' in \textit{Proc. 21st Int. Conf. Predictive Models Data Analytics Softw. Eng. (PROMISE)}, 2025, pp. 1--10, doi: 10.1145/3727582.3728682.
 
-\bibitem{ref23} F. T. Liu, K. M. Ting, and Z.-H. Zhou, ``Isolation Forest,'' in \textit{Proc. 8th IEEE Int. Conf. Data Mining (ICDM)}, 2008, pp. 413--422, doi: 10.1109/ICDM.2008.17.
+\bibitem{ref23} K. Peffers, T. Tuunanen, M. A. Rothenberger, and S. Chatterjee, ``A design science research methodology for information systems research,'' \textit{J. Manage. Inf. Syst.}, vol. 24, no. 3, pp. 45--77, 2007, doi: 10.2753/MIS0742-1222240302.
 
-\bibitem{ref24} B. Schölkopf, J. C. Platt, J. Shawe-Taylor, A. J. Smola, and R. C. Williamson, ``Estimating the support of a high-dimensional distribution,'' \textit{Neural Comput.}, vol. 13, no. 7, pp. 1443--1471, Jul. 2001, doi: 10.1162/089976601750264965.
-
-\bibitem{ref25} R. J. G. B. Campello, D. Moulavi, A. Zimek, and J. Sander, ``Hierarchical density estimates for data clustering, visualization, and outlier detection,'' \textit{ACM Trans. Knowl. Discov. Data}, vol. 10, no. 1, Art. no. 5, 2015, doi: 10.1145/2733381.
-
-\bibitem{ref26} T. Chen and C. Guestrin, ``XGBoost: A scalable tree boosting system,'' in \textit{Proc. 22nd ACM SIGKDD Int. Conf. Knowl. Discov. Data Min.}, 2016, pp. 785--794, doi: 10.1145/2939672.2939785.
-
-\bibitem{ref27} P. Malhotra, A. Ramakrishnan, G. Anand, L. Vig, P. Agarwal, and G. Shroff, ``LSTM-based encoder-decoder for multi-sensor anomaly detection,'' \textit{arXiv preprint arXiv:1607.00148}, Jul. 2016, doi: 10.48550/arXiv.1607.00148.
-
-\bibitem{ref28} S. Studer, T. B. Bui, C. Drescher, A. Hanuschkin, L. Winkler, S. Peters, and K.-R. Müller, ``Towards CRISP-ML(Q): A machine learning process model with quality assurance methodology,'' \textit{Mach. Learn. Knowl. Extr.}, vol. 3, no. 2, pp. 392--413, 2021, doi: 10.3390/make3020020.
-
-\bibitem{ref29} D. Kreuzberger, N. Kühl, and S. Hirschl, ``Machine Learning Operations (MLOps): Overview, definition, and architecture,'' \textit{IEEE Access}, vol. 11, pp. 31866--31879, 2023, doi: 10.1109/ACCESS.2023.3262138.
-
-\bibitem{ref30} K. Peffers, T. Tuunanen, M. A. Rothenberger, and S. Chatterjee, ``A design science research methodology for information systems research,'' \textit{J. Manage. Inf. Syst.}, vol. 24, no. 3, pp. 45--77, 2007, doi: 10.2753/MIS0742-1222240302.
-
-\bibitem{ref31} A. R. Hevner, S. T. March, J. Park, and S. Ram, ``Design science in information systems research,'' \textit{MIS Q.}, vol. 28, no. 1, pp. 75--105, Mar. 2004, doi: 10.2307/25148625.
+\bibitem{ref24} S. Studer, T. B. Bui, C. Drescher, A. Hanuschkin, L. Winkler, S. Peters, and K.-R. Müller, ``Towards CRISP-ML(Q): A machine learning process model with quality assurance methodology,'' \textit{Mach. Learn. Knowl. Extr.}, vol. 3, no. 2, pp. 392--413, Apr. 2021, doi: 10.3390/make3020020.
 
 \end{thebibliography}
 

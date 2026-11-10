@@ -145,6 +145,8 @@ No cambiar la numeración sin actualizar simultáneamente `docs/propuesta_invest
 - Fuente editable vigente: `docs/propuesta_investigacion.md`.
 - Fuente del ciclo anterior conservada: `docs/proyecto_investigacion.md`.
 - Trazabilidad: `docs/matriz_evidencia.md`.
+- Plan de transición al artículo empírico y registro de vacíos: `docs/plan_articulo_evidencia.md`.
+- Borrador IEEE derivado: `articulo_ieee.tex`. Debe conservar la pregunta, los tres objetivos, DSRM como única metodología general y la numeración [1]–[24]; no sustituye la fuente editable vigente.
 - Exportador: `scripts/build_documents.py`.
 - Salidas vigentes: `output/docx/propuesta_investigacion.docx` y `output/pdf/propuesta_investigacion.pdf`.
 - Guía humana: `README.md`.

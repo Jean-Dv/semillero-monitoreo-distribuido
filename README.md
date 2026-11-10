@@ -27,10 +27,12 @@ El corpus bibliográfico actual contiene veinticuatro documentos. A los veintid�
 .
 |-- AGENTS.md                         # memoria compacta y reglas para próximos ciclos
 |-- README.md                         # guía para trabajar el proyecto
+|-- articulo_ieee.tex                 # borrador IEEE derivado y alineado con el ciclo 6
 |-- docs/
 |   |-- propuesta_investigacion.md    # fuente narrativa vigente del ciclo 6
 |   |-- proyecto_investigacion.md     # fuente conservada del ciclo 5
-|   `-- matriz_evidencia.md           # trazabilidad: afirmación, fuente y página
+|   |-- matriz_evidencia.md           # trazabilidad: afirmación, fuente y página
+|   `-- plan_articulo_evidencia.md    # estructura del artículo, vacíos y criterios de cierre
 |-- assets/figures/                    # figuras explicativas generadas
 |-- papers/                           # corpus bibliográfico original
 |-- scripts/

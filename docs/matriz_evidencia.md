@@ -53,7 +53,7 @@ Esta matriz permite auditar la evidencia que sustenta el proyecto. La versión s
 | E47 | RCAEval reúne 735 casos de fallo de tres sistemas de microservicios y once tipos de fallo, con quince líneas base reproducibles y evaluación de causa raíz a granularidad de servicio e indicador. Los sistemas se despliegan en Kubernetes y el propio estudio reporta resultados preliminares moderados, lo que deja margen para nuevos métodos. | [21] | PDF pp. 1–4 | Recurso para diseñar pruebas reproducibles y criterios de evaluación | Banco de prueba y hallazgo reportados |
 | E48 | LO2 aporta datos etiquetados de llamadas correctas y erróneas de un sistema de microservicios en producción: aproximadamente 657 000 archivos de registros, más de dos mil millones de líneas y más de 45 millones de archivos de métricas con 485 métricas distintas. La versión publicada conserva trazas incompletas y propone identificadores compartidos y alineación temporal para una fusión multimodal futura. | [22] | PDF pp. 1, 3–4 y 6–8 | Recurso de datos y requisitos de sincronización multimodal | Conjunto de datos y limitación reportados |
 | E49 | La evidencia conjunta indica que reunir consultas o visualizaciones no equivale a construir una representación multimodal apta para aprendizaje automático: el flujo deberá especificar semántica, identificadores, ventanas o alineación temporal, transformaciones por modalidad y tratamiento de ausencias. | [11], [16]–[19], [22] | [11] pp. 5–8; [16] pp. 1–3; [17] pp. 2–4; [18] pp. 5–7; [19] pp. 2–5; [22] pp. 6–8 | Delimitación del objetivo específico 1 | Inferencia de diseño sustentada en varios estudios |
-| E50 | Para la validación conviene separar el desempeño del método, la calidad o utilidad de la evidencia interpretable y la conducta del agente de evaluación; los bancos disponibles aportan escenarios y datos de referencia, pero no reemplazan la operacionalización específica de esas variables en el proyecto. | [12]–[14], [21] | [12] pp. 44–46; [13] pp. 9–10; [14] pp. 31–34; [21] pp. 2–4 | Delimitación del objetivo específico 4 | Inferencia metodológica sustentada |
+| E50 | Para la validación conviene separar el desempeño del método, la calidad o utilidad de la evidencia interpretable y la conducta del agente de evaluación; los bancos disponibles aportan escenarios y datos de referencia, pero no reemplazan la operacionalización específica de esas variables en el proyecto. | [12]–[14], [21] | [12] pp. 44–46; [13] pp. 9–10; [14] pp. 31–34; [21] pp. 2–4 | Delimitación de la validación del tercer objetivo específico | Inferencia metodológica sustentada |
 | E51 | La pertinencia tecnológica del proyecto puede argumentarse a partir de cuatro variables articuladas: integración multimodal de métricas, registros y trazas; desempeño del reconocimiento de patrones; interpretabilidad de los resultados; y utilidad como apoyo a la toma de decisiones. Estas variables corresponden a dimensiones distintas y deberán operacionalizarse por separado. | [5]–[8], [11]–[13], [15]–[19] | [5]–[8] resultados multimodales; [11] pp. 5–8; [12] pp. 44–46; [13] pp. 1–4 y 9–10; [15] pp. 5–9; [16] pp. 1–3; [17]–[19] diseño y evaluación | Justificación; base de la delimitación y el alcance | Síntesis de diseño sustentada en el corpus |
 | E52 | La extensión para Grafana debe integrar y presentar los resultados del método, mientras que la adquisición, sincronización, transformación y fusión de las señales corresponden al flujo de datos y al componente de procesamiento. La plataforma de visualización no garantiza por sí sola una representación conjunta apta para aprendizaje automático. | [11], [16]–[19], [22] | [11] pp. 5–8; [16] pp. 1–3 y 7–9; [17] pp. 2–4; [18] pp. 5–7; [19] pp. 2–5; [22] pp. 6–8 | Justificación; delimitación tecnológica | Inferencia de diseño sustentada en varios estudios |
 | E53 | La delimitación tecnológica debe distinguir cuatro variables: calidad de la integración multimodal, desempeño del reconocimiento de patrones, interpretabilidad y utilidad para apoyar decisiones. La reunión de fuentes en una interfaz no resuelve la integración, y la explicación producida por el método no equivale por sí sola a una interpretación útil. | [11]–[16], [18], [19], [22] | [11] pp. 5–8; [12] pp. 1–7 y 44–46; [13] pp. 1–4 y 9–10; [14] pp. 31–34; [15] pp. 5–9; [16] pp. 1–3; [18] pp. 5–7; [19] pp. 2–5; [22] pp. 6–8 | Delimitación temática y tecnológica | Síntesis de diseño sustentada en el corpus |
@@ -85,20 +85,20 @@ Esta matriz permite auditar la evidencia que sustenta el proyecto. La versión s
 
 ## Mapa de conceptos derivados
 
-Los términos siguientes se reservan para el marco conceptual. No fueron desarrollados como conceptos autónomos en el marco teórico y cada pareja procede del núcleo indicado.
+Los términos siguientes se integrarán como definiciones operativas dentro del marco teórico o de la metodología. No conforman un marco conceptual separado y cada pareja procede del núcleo indicado.
 
 | Núcleo de origen | Concepto 1 | Concepto 2 | Referencias de apoyo |
 |---|---|---|---|
-| 7.1.1 | Estado interno inferido | Contexto operacional | [1], [15], [16] |
-| 7.1.2 | Cadena de propagación | Granularidad de localización | [4], [10], [14], [21] |
-| 7.1.3 | Plantilla de registro | Segmento de traza | [1], [3], [17] |
-| 7.1.4 | Correspondencia semántica | Ventana de correlación | [11], [16], [18], [22] |
-| 7.1.5 | Regla de decisión | Actualización del modelo | [1]–[3], [20] |
-| 7.1.6 | Deriva de concepto | Desfase temporal | [1]–[3], [16], [22] |
-| 7.1.7 | Atribución de características | Error de atribución | [12], [13] |
-| 7.1.8 | Triaje operativo | Confianza operativa | [12], [14], [15], [20] |
-| 7.1.9 | Proveniencia de datos | Trazabilidad del resultado | [11]–[13], [16] |
-| 7.1.10 | Inyección de fallos | Oráculo de evaluación | [9], [14], [21] |
+| N1 | Estado interno inferido | Contexto operacional | [1], [15], [16] |
+| N2 | Cadena de propagación | Granularidad de localización | [4], [10], [14], [21] |
+| N3 | Plantilla de registro | Segmento de traza | [1], [3], [17] |
+| N4 | Correspondencia semántica | Ventana de correlación | [11], [16], [18], [22] |
+| N5 | Regla de decisión | Actualización del modelo | [1]–[3], [20] |
+| N6 | Deriva de concepto | Desfase temporal | [1]–[3], [16], [22] |
+| N7 | Atribución de características | Error de atribución | [12], [13] |
+| N8 | Triaje operativo | Confianza operativa | [12], [14], [15], [20] |
+| N9 | Proveniencia de datos | Trazabilidad del resultado | [11]–[13], [16] |
+| N10 | Inyección de fallos | Datos de referencia para la evaluación | [9], [14], [21] |
 
 ## Decisiones para el borrador de presentación
 
