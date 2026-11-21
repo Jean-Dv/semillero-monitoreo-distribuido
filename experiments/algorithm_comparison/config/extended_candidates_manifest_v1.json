@@ -1,0 +1,105 @@
+{
+  "manifest_version": "extended_candidates_manifest_v1",
+  "created_at": "2026-11-21",
+  "parent_manifests": [
+    "partition_manifest_v1",
+    "local_reference_manifest_v1"
+  ],
+  "purpose": "Add the preregistered gradient-boosted tree and temporal-autoencoder candidate families without reusing the previously observed test split.",
+  "development_scope": {
+    "allowed_splits": [
+      "train",
+      "validation"
+    ],
+    "forbidden_split": "test",
+    "interpretation": "Validation results are developmental and rank family variants provisionally; they are not confirmatory performance estimates or an automatic algorithm selection.",
+    "future_test_requirement": "Use new independent runs after freezing the selected variants; do not evaluate these candidates on the test run already observed by prior cycles."
+  },
+  "shared_input": {
+    "gold_contract_version": "gold_service_window_v2.2",
+    "base_feature_set": "feature_tabular_v1",
+    "representation": "Local level and previous-window change from local_reference_manifest_v1.",
+    "reference_rows": "First eighteen pure-normal starts per run and service, excluded from fitting and validation.",
+    "feature_sets": [
+      "metrics",
+      "logs",
+      "traces",
+      "trimodal"
+    ],
+    "tasks": [
+      "system condition detection by maximum service score per window",
+      "affected-service detection against normal service-windows",
+      "affected-component localization by service ranking"
+    ]
+  },
+  "hist_gradient_boosting": {
+    "implementation": "sklearn.ensemble.HistGradientBoostingClassifier",
+    "learning_regime": "Supervised affected-service classification.",
+    "fit_population": {
+      "negative": "Non-reference pure-normal service-windows from the train run.",
+      "positive": "Pure-fault train service-windows whose service_name equals affected_component.",
+      "excluded": "Other services during train fault windows are unlabeled for fitting rather than treated as negatives."
+    },
+    "class_weighting": "Each class receives equal total sample weight.",
+    "hyperparameters": {
+      "learning_rate": 0.05,
+      "max_iter": 200,
+      "max_leaf_nodes": 15,
+      "max_depth": null,
+      "min_samples_leaf": 20,
+      "l2_regularization": 1.0,
+      "early_stopping": false,
+      "random_state": 20261121
+    },
+    "score_calibration": "Empirical percentile by service fitted on non-reference train-normal scores.",
+    "explanation": "Occlusion to zero local deviation and zero previous-window change; this measures score sensitivity and not causality."
+  },
+  "temporal_autoencoder": {
+    "implementation": "PyTorch LSTM encoder-decoder autoencoder.",
+    "learning_regime": "Unsupervised reconstruction of non-reference pure-normal sequences from the train run.",
+    "sequence_length_steps": 12,
+    "step_seconds": 10,
+    "sequence_duration_interpretation": "Twelve ordered starts span 110 seconds and represent approximately two minutes of thirty-second sliding windows.",
+    "stride_steps": 1,
+    "continuity_rule": "Split a service series whenever consecutive window starts differ from ten seconds; never cross run or service boundaries.",
+    "phase_rule": "Eligible pure windows are ordered without using the condition as an input; excluded boundary windows create a discontinuity between normal and fault phases.",
+    "architecture": {
+      "encoder": "single-layer LSTM",
+      "hidden_size": 24,
+      "latent_size": 12,
+      "decoder": "latent vector repeated for twelve steps, single-layer LSTM and linear projection",
+      "loss": "mean squared reconstruction error"
+    },
+    "optimization": {
+      "optimizer": "Adam",
+      "learning_rate": 0.001,
+      "weight_decay": 0.0001,
+      "batch_size": 32,
+      "epochs": 80,
+      "gradient_clip_norm": 1.0,
+      "shuffle": false,
+      "random_seed": 20261121,
+      "device": "cpu"
+    },
+    "input_scaling": "StandardScaler fitted on all time steps of non-reference train-normal sequences only.",
+    "anomaly_score": "Mean squared reconstruction error over all steps and features in a sequence.",
+    "score_calibration": "Empirical percentile by service fitted on train-normal sequence errors.",
+    "explanation": "Reconstruction error by original feature and relative time step; it is not a causal attribution."
+  },
+  "selection_and_reporting": {
+    "family_variant_order": [
+      "validation system average precision",
+      "validation localization mean reciprocal rank",
+      "feature-set name for deterministic tie-breaking"
+    ],
+    "threshold": "Best validation F1 with false positives as tie-breaker; freeze it for future independent test runs.",
+    "direct_comparison_constraint": "The autoencoder has fewer eligible endpoints because it requires twelve contiguous steps. Report its eligible population and do not compare its raw AP to tabular variants without acknowledging the population difference.",
+    "automatic_algorithm_selection": false
+  },
+  "software": {
+    "python": "3.14.3",
+    "numpy": "2.4.2",
+    "scikit_learn": "1.8.0",
+    "torch": "2.15.0+cpu"
+  }
+}

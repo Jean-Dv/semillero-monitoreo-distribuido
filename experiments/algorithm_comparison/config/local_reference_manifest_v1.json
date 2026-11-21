@@ -1,0 +1,58 @@
+{
+  "manifest_version": "local_reference_manifest_v1",
+  "created_at": "2026-11-21",
+  "parent_manifest": "partition_manifest_v1",
+  "purpose": "Exploratory representation iteration after the absolute-level comparison failed to generalize between runs.",
+  "data_scope": {
+    "scenario_id": "astronomy-ad-failure-v1",
+    "gold_contract_version": "gold_service_window_v2.2",
+    "feature_set": "feature_tabular_v1",
+    "namespace": "astronomy-shop",
+    "splits_and_services": "Inherited without changes from partition_manifest_v1"
+  },
+  "normal_drift_analysis": {
+    "population": "All pure normal windows in each split, reported by service and original feature.",
+    "comparisons": ["validation versus train", "test versus train"],
+    "statistics": [
+      "Kolmogorov-Smirnov distance",
+      "absolute median displacement divided by the train IQR, with train standard deviation and 1.0 as fallbacks",
+      "absolute difference in missing-value rate"
+    ],
+    "role": "Diagnostic evidence only; no threshold in this analysis selects a model or changes the preregistered representation."
+  },
+  "local_reference": {
+    "grouping": ["run_id", "service_name"],
+    "known_normal_source": "The first pure-normal period identified by the experiment phase schedule.",
+    "distinct_window_starts": 18,
+    "minimum_required_rows_per_group": 18,
+    "duration_interpretation": "Eighteen starts at a ten-second step span 170 seconds; their thirty-second source windows collectively cover 200 seconds.",
+    "exclusion": "Reference rows are excluded from model fitting, score calibration, hyperparameter selection, threshold selection and evaluation.",
+    "operational_assumption": "A future run provides a declared normal calibration period before monitoring the condition of interest."
+  },
+  "representation": {
+    "base_transform": "Apply log1p to the same non-negative magnitudes used by detector_comparison_v1.",
+    "reference_center": "Per-run, per-service median over the eighteen reference rows.",
+    "reference_scale": "Per-run, per-service IQR; use reference standard deviation if the IQR is zero or invalid, then 1.0 if both are zero or invalid.",
+    "imputation": "Replace a missing value with its local reference median; use 0 when the feature is absent throughout the local reference.",
+    "components": {
+      "local_level": "Current imputed value minus the local reference median, divided by the local reference scale.",
+      "causal_change": "Current imputed value minus the immediately preceding chronological value for the same run and service, divided by the local reference scale; use zero only when no predecessor exists."
+    },
+    "clipping": [-20.0, 20.0],
+    "feature_sets": ["metrics", "logs", "traces", "trimodal"]
+  },
+  "comparison": {
+    "algorithms": ["robust_rules", "isolation_forest", "one_class_svm"],
+    "hyperparameter_grids": "Unchanged from detector_comparison_v1.",
+    "score_calibration": "Empirical percentile by service fitted only on non-reference train-normal rows.",
+    "validation_selection_order": [
+      "system average precision",
+      "localization mean reciprocal rank",
+      "deterministic hyperparameter serialization"
+    ],
+    "threshold_selection": "Best validation F1 with false positives as the tie-breaker.",
+    "test_policy": "Do not inspect test outcomes until every algorithm and feature-set variant has been selected with validation. Evaluate the frozen selections once.",
+    "decision_policy": "Do not select an algorithm automatically. Interpret system detection, affected-service detection and localization jointly, and require new independent runs for confirmatory selection."
+  },
+  "random_seeds": [20261121]
+}
