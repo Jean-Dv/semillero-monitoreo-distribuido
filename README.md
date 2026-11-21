@@ -65,8 +65,9 @@ garantías de entrega, la trazabilidad técnica y las verificaciones realizadas.
 Sus diagramas Mermaid se conservan como figuras reproducibles dentro del propio
 documento. El informe incorpora la validación integrada y el perfil preliminar
 del 28 de octubre de 2026, distinguiéndolos de las tres repeticiones nominales
-que continúan pendientes. Documenta un artefacto de factibilidad y no modifica
-la comparación pendiente entre las dos arquitecturas candidatas.
+que se ejecutaron en la iteración posterior. Documenta un artefacto de
+factibilidad y no modifica la comparación pendiente entre las dos arquitecturas
+candidatas.
 
 El plan ejecutado se especifica en la [mejora del Gold y protocolo de
 ejecuciones](docs/arquitecturas_etl/04_mejora_gold_y_protocolo_runs.md). El plan
@@ -86,6 +87,32 @@ materiales reproducibles están en
 [`experiments/algorithm_comparison/`](experiments/algorithm_comparison/). La
 guía operativa se mantiene en
 `../AIOpsLab/deploy/etl/GUIA_EJECUCION.md`.
+
+Las iteraciones posteriores cuantifican la [deriva entre runs y la
+representación temporal
+local](docs/arquitecturas_etl/06_deriva_y_representacion_temporal_local.md) y
+añaden [gradient boosting y un autoencoder
+LSTM](docs/arquitecturas_etl/07_candidatos_supervisado_y_temporal.md). Estos
+últimos candidatos se desarrollaron solo con entrenamiento y validación; la run
+de prueba ya observada no se reutiliza y la selección confirmatoria permanece
+pendiente de nuevas ejecuciones. El [protocolo de runs
+ciegas](docs/arquitecturas_etl/08_protocolo_runs_ciegas.md) implementa la nueva
+cohorte balanceada de doce runs con control sin falla y tres posiciones de
+inyección. La asignación queda comprometida por SHA-256 y solo se revela
+después de congelar las predicciones; el lote aún no se ha ejecutado. El
+[manifiesto confirmatorio](docs/arquitecturas_etl/09_manifiesto_confirmatorio.md)
+ya fija diez variantes, la población común, las métricas y los criterios de
+admisibilidad antes de preparar esa cohorte.
+
+### Siguiente paso obligatorio
+
+Antes de preparar o ejecutar el lote debe implementarse y probarse el generador
+ciego de puntajes que materialice exactamente
+`confirmatory_manifest_v1`. Debe entrenar solo con la cohorte histórica
+permitida, producir las diez variantes congeladas, consumir únicamente códigos
+opacos y exportar el manifiesto de predicciones con hashes. Solo después de
+validar ese artefacto se autoriza `blind_batch.py prepare`; las doce runs no
+deben iniciarse todavía.
 
 ## Flujo recomendado para editar
 

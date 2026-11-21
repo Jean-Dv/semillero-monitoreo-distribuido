@@ -232,6 +232,53 @@ No cambiar la numeración sin actualizar simultáneamente `docs/propuesta_invest
   localización, pero la unión trimodal no superó consistentemente las
   ablaciones. No se seleccionó algoritmo y DSRM retorna al diseño de variables,
   representación y tarea.
+- La iteración `local_reference_manifest_v1` cuantificó 396 comparaciones de
+  deriva normal. KS fue al menos 0,20 en el 18,0 % de los pares de validación y
+  el 27,8 % de los de prueba; memoria concentró los cambios extremos. Después
+  se evaluaron niveles respecto de una referencia local y cambios frente a la
+  ventana previa, reservando dieciocho instantes normales por run y servicio.
+  La AP global máxima fue 0,645 frente a prevalencia 0,594, pero el umbral
+  marcó los 39 instantes normales de prueba como positivos; la AP del servicio
+  afectado fue 0,098 y la MRR 0,167. El mejor MRR de la iteración fue 0,289 con
+  reglas sobre logs, próximo a la referencia aleatoria 0,275. No se seleccionó
+  algoritmo y la prueba observada no se reutilizará para selección
+  confirmatoria.
+- `extended_candidates_manifest_v1` añadió gradient boosting supervisado y un
+  autoencoder temporal LSTM sin usar la run de prueba en el modelado. En
+  validación, gradient boosting sobre métricas obtuvo AP 0,234 para el servicio
+  afectado y MRR 0,335, pero marcó 38 de 40 instantes normales como positivos.
+  El autoencoder de métricas obtuvo AP global 0,697 frente a prevalencia 0,613,
+  AP del servicio afectado 0,332 frente a 0,126 y MRR 0,298 frente a 0,275;
+  todavía produjo veinte falsos positivos de veintinueve. Las poblaciones
+  tabular y secuencial son distintas, estos resultados no son confirmatorios y
+  no se seleccionó algoritmo.
+- Se diseñó e implementó `blind_protocol_v1` para la siguiente cohorte. Contiene
+  cuatro celdas de igual duración: control sin falla, falla temprana,
+  intermedia y tardía, con tres repeticiones por celda. Cada run comprende
+  cinco minutos de calentamiento y cincuenta de observación; la falla dura diez
+  minutos y se desplaza entre 10–20, 20–30 o 30–40 minutos de la observación.
+- `blind_batch.py` mezcla la asignación, genera códigos opacos, conserva el mapa
+  sellado con permisos `0600` y publica un compromiso SHA-256 antes de ejecutar.
+  La revelación exige primero congelar y resumir criptográficamente el archivo
+  de predicciones. El cegamiento es procedimental: el operador custodia la
+  asignación y el analista no recibe fases, referencias ni paquetes completos.
+- El ejecutor incorpora un ciclo de control que no modifica la bandera y
+  clasifica las nuevas runs como `blind_confirmatory_candidate`, sin omitir las
+  salvaguardas existentes. El diseño y la implementación aprobaron 27 pruebas
+  unitarias combinadas. Las doce runs todavía no se han ejecutado y no
+  constituyen resultados experimentales.
+- `confirmatory_manifest_v1` congeló antes del lote diez variantes: reglas
+  robustas, Isolation Forest, One-Class SVM, gradient boosting y autoencoder
+  LSTM, cada una sobre métricas y unión trimodal. La tarea primaria es detección
+  de condición en la población común elegible para secuencias; identificación
+  y localización permanecen secundarias. El límite operativo es seis episodios
+  falsos por hora en controles. No se permite ajuste, calibración, selección de
+  modalidad ni cambio de umbral con la cohorte ciega.
+- El SHA-256 congelado del manifiesto confirmatorio es
+  `255f33b26a7042681352f38c2a1e16b45b97950abd15222cdfad17227c1157e8`.
+  `blind_batch.py prepare` copia sus bytes al lote y registra ese hash en los
+  archivos público y de compromiso. El validador comprueba también los hashes
+  del protocolo y los artefactos de desarrollo.
 
 ## Protocolo para ciclos siguientes
 
@@ -250,12 +297,19 @@ No cambiar la numeración sin actualizar simultáneamente `docs/propuesta_invest
   costo, latencia y diferencias del entorno.
 - Resolver o mantener separado el estrato sin namespace de `accounting`, `cart`
   y `quote`; no fusionarlo por coincidencia nominal.
-- Cuantificar la deriva normal por servicio y variable entre runs, explorar
-  cambios respecto de líneas base temporales locales y revisar la definición de
-  la tarea antes de repetir la comparación.
-- Incorporar condiciones adicionales y nuevas runs independientes antes de una
-  selección confirmatoria del método; no seleccionar un algoritmo con los
-  resultados exploratorios actuales.
+- Completar la manifestación verificable de `adFailure` por modalidad. La tarea
+  primaria confirmatoria ya es detección de condición a nivel de sistema;
+  identificación del servicio y localización son secundarias y no deben
+  confundirse con la tarea primaria.
+- Aplicar sin cambios las variantes métricas y trimodales ya congeladas para
+  gradient boosting, autoencoder LSTM y las tres líneas base. No incorporar la
+  variante de logs que encabezó mecánicamente la AP previa ni seleccionar una
+  modalidad después de observar la cohorte ciega.
+- Implementar y probar el generador de puntajes que obedezca
+  `confirmatory_manifest_v1`; después preparar y ejecutar las doce runs de
+  `blind_protocol_v1` sin entregar al analista la asignación sellada, fases ni
+  datos de referencia. Las tres runs anteriores no podrán usarse como prueba
+  confirmatoria.
 - Definir cómo se adquirirán, identificarán, sincronizarán, transformarán y fusionarán métricas, logs y trazas en una representación conjunta.
 - Completar la operacionalización de «patrón», «interpretable», «apoyo a la toma de decisiones», «agente de evaluación» y «utilidad de los resultados», y establecer métricas y datos de referencia para validarlos.
 - Decidir qué capacidades concretas expondrá la extensión y cuál será la frontera entre la interfaz, el servicio de procesamiento y las fuentes de observabilidad.

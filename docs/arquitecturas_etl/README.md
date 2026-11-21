@@ -37,14 +37,41 @@ seleccionar todavía un algoritmo. Gold se acepta como base exploratoria
 reproducible, pero los métodos evaluados no generalizan la detección global ni
 demuestran una ventaja trimodal en el escenario disponible.
 
+El análisis de [deriva y representación temporal
+local](06_deriva_y_representacion_temporal_local.md) cuantifica el cambio entre
+runs y evalúa niveles respecto de una referencia local y cambios entre
+ventanas. El desarrollo de [gradient boosting y autoencoder
+temporal](07_candidatos_supervisado_y_temporal.md) completa las familias
+candidatas sobre entrenamiento y validación, sin reutilizar la prueba ya
+observada.
+
+El [protocolo de runs
+ciegas](08_protocolo_runs_ciegas.md) diseña la siguiente cohorte: un control
+sin falla y fallas temprana, intermedia y tardía, con tres repeticiones y el
+mismo horizonte por celda. Su implementación compromete la asignación mediante
+SHA-256 y no permite revelarla hasta congelar las predicciones. El artefacto y
+sus pruebas están completos; las doce runs todavía no se han ejecutado.
+
+El [manifiesto
+confirmatorio](09_manifiesto_confirmatorio.md) congela diez variantes de cinco
+familias sobre métricas y unión trimodal, junto con representación, umbrales,
+tarea primaria, control de falsas alarmas, contrato de predicciones y regla de
+selección. Su SHA-256 se integra automáticamente en el compromiso del lote.
+
+El siguiente paso no es ejecutar las runs. Primero se debe implementar y probar
+el generador ciego de puntajes contra el manifiesto congelado, incluidos los
+diez candidatos, la población común y el contrato de hashes. Una vez validado,
+se podrá preparar la asignación y ejecutar el lote sin volver a cambiar las
+decisiones científicas.
+
 La guía ejecutable para subir, redesplegar, validar, correr escenarios y
 conservar cada paquete de evidencia se mantiene junto al código en
 `../AIOpsLab/deploy/etl/GUIA_EJECUCION.md` (ruta relativa entre los dos
 repositorios hermanos).
 
 Los dos primeros documentos son notas técnicas de diseño, el tercero registra
-el artefacto base, el cuarto especifica su mejora y el quinto registra los
-resultados de la primera cohorte nominal. Ninguno
+el artefacto base, el cuarto especifica su mejora y los documentos posteriores
+registran las iteraciones experimentales. Ninguno
 modifica por sí solo la formulación académica, la numeración IEEE ni el corpus de
 `docs/propuesta_investigacion.md`.
 

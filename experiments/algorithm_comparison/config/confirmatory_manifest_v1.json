@@ -1,0 +1,463 @@
+{
+  "manifest_version": "confirmatory_manifest_v1",
+  "status": "frozen_before_blind_batch_preparation",
+  "frozen_at": "2026-11-21",
+  "purpose": "Evaluate fixed pattern-recognition candidates on blind_protocol_v1 without fitting, tuning, threshold selection, modality selection, or algorithm selection on the blind cohort.",
+  "blind_protocol": {
+    "protocol_version": "blind_protocol_v1",
+    "protocol_sha256": "0b8ff3f90524d66e75d6ce55660af0844a9b6af581606df0d609a23ab9387836",
+    "cells": 4,
+    "repetitions_per_cell": 3,
+    "complete_runs_required": 12,
+    "allocation_visibility_during_inference": "Only public-cohort.json is allowed. allocation.sealed.json, phase timelines, evaluation-reference tables, and run packages are forbidden until predictions are committed."
+  },
+  "development_provenance": {
+    "interpretation": "All three previous runs and every reported result are development evidence only. None is a confirmatory test after this freeze.",
+    "artifacts": [
+      {
+        "path": "experiments/algorithm_comparison/config/partition_manifest_v1.json",
+        "sha256": "35e6fe6d56993d58df5bc79fb15699c74ec9e448f2d2171fecbd18f8b8765a75"
+      },
+      {
+        "path": "experiments/algorithm_comparison/config/local_reference_manifest_v1.json",
+        "sha256": "91fcf8716bc39cba3ba8388a0246cfb6404b9a9b3b0cb5c2b747763b7a4424a8"
+      },
+      {
+        "path": "experiments/algorithm_comparison/config/extended_candidates_manifest_v1.json",
+        "sha256": "ccb16594d6654e29f3415f8891e5bbc104034adf43309bc7c35ba212382a0763"
+      },
+      {
+        "path": "experiments/algorithm_comparison/scripts/compare_algorithms.py",
+        "sha256": "f86801aceed39c5456b27f28c8de9ee409c48ca121aeb9d5ffdf5486cc9849c5"
+      },
+      {
+        "path": "experiments/algorithm_comparison/scripts/compare_local_reference.py",
+        "sha256": "d781226a7096b4261991e37882d489405860f4e697eaf82e0fc125148b03745a"
+      },
+      {
+        "path": "experiments/algorithm_comparison/scripts/compare_extended_candidates.py",
+        "sha256": "83ee748227f406982c0c6878255db357237838e915c700eaf6e9fd65a24b2f7c"
+      }
+    ]
+  },
+  "software": {
+    "python": "3.14.3",
+    "numpy": "2.4.2",
+    "scikit_learn": "1.8.0",
+    "torch": "2.15.0+cpu",
+    "device": "cpu",
+    "random_seed": 20261121,
+    "deterministic_torch_algorithms": true,
+    "torch_threads": 1
+  },
+  "data_contract": {
+    "gold_contract_version": "gold_service_window_v2.2",
+    "feature_set": "feature_tabular_v1",
+    "namespace": "astronomy-shop",
+    "window_seconds": 30,
+    "step_seconds": 10,
+    "services": [
+      "ad",
+      "checkout",
+      "currency",
+      "email",
+      "fraud-detection",
+      "frontend",
+      "frontend-proxy",
+      "payment",
+      "product-catalog",
+      "recommendation",
+      "shipping"
+    ],
+    "excluded_identity_stratum": [
+      "accounting",
+      "cart",
+      "quote"
+    ],
+    "required_predictor_columns": [
+      "pod_count",
+      "deployment_count",
+      "metric_point_count",
+      "request_rate",
+      "cpu_usage_cores",
+      "memory_working_set_bytes",
+      "missing_metrics",
+      "log_count",
+      "log_error_ratio",
+      "missing_logs",
+      "span_count",
+      "server_span_count",
+      "span_error_ratio",
+      "latency_p50_ms",
+      "latency_p95_ms",
+      "latency_p99_ms",
+      "dependency_edge_count",
+      "missing_traces"
+    ],
+    "forbidden_during_representation_training_and_inference": [
+      "condition",
+      "fault_type",
+      "affected_component",
+      "label_assignment_basis",
+      "cell_id",
+      "fault_start",
+      "fault_end",
+      "phase_id"
+    ],
+    "identifier_columns_not_used_as_numeric_features": [
+      "feature_id",
+      "run_id",
+      "scenario_id",
+      "window_start",
+      "window_end",
+      "service_name",
+      "service_namespace",
+      "k8s_namespace",
+      "source_references_json",
+      "gold_contract_version"
+    ]
+  },
+  "feature_sets": {
+    "metrics": [
+      "pod_count",
+      "deployment_count",
+      "metric_point_count",
+      "request_rate",
+      "cpu_usage_cores",
+      "memory_working_set_bytes",
+      "missing_metrics"
+    ],
+    "trimodal": [
+      "pod_count",
+      "deployment_count",
+      "metric_point_count",
+      "request_rate",
+      "cpu_usage_cores",
+      "memory_working_set_bytes",
+      "missing_metrics",
+      "log_count",
+      "log_error_ratio",
+      "missing_logs",
+      "span_count",
+      "server_span_count",
+      "span_error_ratio",
+      "latency_p50_ms",
+      "latency_p95_ms",
+      "latency_p99_ms",
+      "dependency_edge_count",
+      "missing_traces"
+    ]
+  },
+  "representation": {
+    "known_normal_reference": {
+      "source": "First eighteen distinct post-warmup starts for each blind run and service. The protocol guarantees that this interval precedes the earliest fault.",
+      "distinct_window_starts": 18,
+      "minimum_rows_per_run_service": 18,
+      "excluded_from_scoring_and_evaluation": true
+    },
+    "base_transform": "Apply log1p to non-negative magnitudes listed in compare_algorithms.LOG1P_FEATURES before local normalization.",
+    "reference_center": "Per-run and service median over the eighteen reference starts.",
+    "reference_scale": "Per-run and service IQR; fall back to reference standard deviation and then 1.0.",
+    "imputation": "Use the local reference median; use 0 only when the feature is absent throughout that local reference.",
+    "derived_components": [
+      "local_level=(current-reference_median)/reference_scale",
+      "causal_change=(current-immediately_previous_value)/reference_scale"
+    ],
+    "clipping": [-20.0, 20.0],
+    "blind_inference_rule": "Compute every representation chronologically without condition labels. Do not create discontinuities at unknown phase boundaries.",
+    "sequence_rule": {
+      "length_steps": 12,
+      "step_seconds": 10,
+      "stride_steps": 1,
+      "history_source": "Non-reference starts only; the eighteen reference starts are not sequence inputs.",
+      "continuity": "Never cross run, service, or a gap other than ten seconds.",
+      "evaluation_filter_after_reveal": "A common endpoint is primary-eligible only when its complete twelve-step history belongs to one pure evaluation condition. Scores are still produced blindly for every continuous eligible endpoint."
+    }
+  },
+  "training_and_calibration": {
+    "blind_cohort_role": "Inference and evaluation only.",
+    "model_fit_source": "The original development train run fixed in partition_manifest_v1.",
+    "hyperparameter_and_threshold_source": "The original development validation run. Values are copied below and may not be recomputed.",
+    "previous_test_policy": "The old test run remains development evidence and is not used to refit, recalibrate, or choose among the frozen variants.",
+    "score_calibration": "Empirical percentile by service fitted on non-reference train-normal scores only.",
+    "retraining_on_blind_data": false,
+    "threshold_recalibration_on_blind_data": false,
+    "early_stopping_on_blind_data": false,
+    "modality_selection_on_blind_data": false
+  },
+  "candidate_matrix": [
+    {
+      "model_id": "robust_rules_metrics_v1",
+      "family": "robust_rules",
+      "role": "interpretable_baseline",
+      "feature_set": "metrics",
+      "hyperparameters": {},
+      "raw_score": "maximum absolute derived feature value",
+      "system_threshold": 0.9875,
+      "affected_service_threshold": 0.9875
+    },
+    {
+      "model_id": "robust_rules_trimodal_v1",
+      "family": "robust_rules",
+      "role": "interpretable_multimodal_baseline",
+      "feature_set": "trimodal",
+      "hyperparameters": {},
+      "raw_score": "maximum absolute derived feature value",
+      "system_threshold": 0.9875,
+      "affected_service_threshold": 0.8625
+    },
+    {
+      "model_id": "isolation_forest_metrics_v1",
+      "family": "isolation_forest",
+      "role": "unsupervised_tabular_baseline",
+      "feature_set": "metrics",
+      "hyperparameters": {
+        "n_estimators": 300,
+        "max_samples": 128,
+        "max_features": 1.0,
+        "random_state": 20261121
+      },
+      "raw_score": "negative score_samples",
+      "system_threshold": 0.9375,
+      "affected_service_threshold": 0.8875
+    },
+    {
+      "model_id": "isolation_forest_trimodal_v1",
+      "family": "isolation_forest",
+      "role": "unsupervised_tabular_multimodal_baseline",
+      "feature_set": "trimodal",
+      "hyperparameters": {
+        "n_estimators": 300,
+        "max_samples": 256,
+        "max_features": 1.0,
+        "random_state": 20261121
+      },
+      "raw_score": "negative score_samples",
+      "system_threshold": 0.6375,
+      "affected_service_threshold": 0.6125
+    },
+    {
+      "model_id": "one_class_svm_metrics_v1",
+      "family": "one_class_svm",
+      "role": "one_class_baseline",
+      "feature_set": "metrics",
+      "hyperparameters": {
+        "kernel": "rbf",
+        "nu": 0.01,
+        "gamma": 0.01
+      },
+      "raw_score": "negative score_samples",
+      "system_threshold": 0.9875,
+      "affected_service_threshold": 0.6875
+    },
+    {
+      "model_id": "one_class_svm_trimodal_v1",
+      "family": "one_class_svm",
+      "role": "one_class_multimodal_baseline",
+      "feature_set": "trimodal",
+      "hyperparameters": {
+        "kernel": "rbf",
+        "nu": 0.1,
+        "gamma": 0.01
+      },
+      "raw_score": "negative score_samples",
+      "system_threshold": 0.9875,
+      "affected_service_threshold": 0.5375
+    },
+    {
+      "model_id": "hist_gradient_boosting_metrics_v1",
+      "family": "hist_gradient_boosting",
+      "role": "supervised_candidate",
+      "feature_set": "metrics",
+      "fit_population": "Train-normal non-reference service-windows as negatives and affected-service pure-fault train windows as positives; other fault services excluded; equal total class weight.",
+      "hyperparameters": {
+        "loss": "log_loss",
+        "learning_rate": 0.05,
+        "max_iter": 200,
+        "max_leaf_nodes": 15,
+        "max_depth": null,
+        "min_samples_leaf": 20,
+        "l2_regularization": 1.0,
+        "early_stopping": false,
+        "random_state": 20261121
+      },
+      "raw_score": "positive-class predict_proba",
+      "system_threshold": 0.9875,
+      "affected_service_threshold": 0.8375
+    },
+    {
+      "model_id": "hist_gradient_boosting_trimodal_v1",
+      "family": "hist_gradient_boosting",
+      "role": "supervised_multimodal_candidate",
+      "feature_set": "trimodal",
+      "fit_population": "Train-normal non-reference service-windows as negatives and affected-service pure-fault train windows as positives; other fault services excluded; equal total class weight.",
+      "hyperparameters": {
+        "loss": "log_loss",
+        "learning_rate": 0.05,
+        "max_iter": 200,
+        "max_leaf_nodes": 15,
+        "max_depth": null,
+        "min_samples_leaf": 20,
+        "l2_regularization": 1.0,
+        "early_stopping": false,
+        "random_state": 20261121
+      },
+      "raw_score": "positive-class predict_proba",
+      "system_threshold": 0.9625,
+      "affected_service_threshold": 0.8875
+    },
+    {
+      "model_id": "lstm_autoencoder_metrics_v1",
+      "family": "lstm_temporal_autoencoder",
+      "role": "temporal_candidate",
+      "feature_set": "metrics",
+      "fit_population": "Non-reference pure-normal sequences from the original development train run only.",
+      "architecture": {
+        "input_size": 14,
+        "encoder": "single-layer LSTM",
+        "hidden_size": 24,
+        "latent_size": 12,
+        "decoder": "latent vector repeated for twelve steps, single-layer LSTM and linear projection"
+      },
+      "optimization": {
+        "loss": "mean squared reconstruction error",
+        "optimizer": "Adam",
+        "learning_rate": 0.001,
+        "weight_decay": 0.0001,
+        "batch_size": 32,
+        "epochs": 80,
+        "gradient_clip_norm": 1.0,
+        "shuffle": false
+      },
+      "input_scaling": "StandardScaler fitted on all time steps of development train-normal sequences only.",
+      "raw_score": "mean squared standardized reconstruction error over all steps and features",
+      "system_threshold": 0.9827586206896551,
+      "affected_service_threshold": 0.5689655172413793
+    },
+    {
+      "model_id": "lstm_autoencoder_trimodal_v1",
+      "family": "lstm_temporal_autoencoder",
+      "role": "temporal_multimodal_candidate",
+      "feature_set": "trimodal",
+      "fit_population": "Non-reference pure-normal sequences from the original development train run only.",
+      "architecture": {
+        "input_size": 36,
+        "encoder": "single-layer LSTM",
+        "hidden_size": 24,
+        "latent_size": 12,
+        "decoder": "latent vector repeated for twelve steps, single-layer LSTM and linear projection"
+      },
+      "optimization": {
+        "loss": "mean squared reconstruction error",
+        "optimizer": "Adam",
+        "learning_rate": 0.001,
+        "weight_decay": 0.0001,
+        "batch_size": 32,
+        "epochs": 80,
+        "gradient_clip_norm": 1.0,
+        "shuffle": false
+      },
+      "input_scaling": "StandardScaler fitted on all time steps of development train-normal sequences only.",
+      "raw_score": "mean squared standardized reconstruction error over all steps and features",
+      "system_threshold": 0.9827586206896551,
+      "affected_service_threshold": 0.1896551724137931
+    }
+  ],
+  "blind_prediction_contract": {
+    "score_generation": "Generate scores for all ten frozen model_id values before opening allocation-revealed.json.",
+    "service_score_columns": [
+      "confirmatory_manifest_sha256",
+      "batch_id",
+      "run_code",
+      "run_id",
+      "model_id",
+      "feature_set",
+      "window_start",
+      "service_name",
+      "raw_score",
+      "calibrated_score",
+      "system_threshold",
+      "affected_service_threshold",
+      "is_reference_row",
+      "is_sequence_endpoint"
+    ],
+    "forbidden_prediction_columns": [
+      "condition",
+      "fault_type",
+      "affected_component",
+      "cell_id",
+      "fault_start",
+      "fault_end",
+      "phase_id"
+    ],
+    "predictions_manifest": {
+      "schema_version": "blind_predictions_manifest_v1",
+      "required_fields": [
+        "schema_version",
+        "confirmatory_manifest_sha256",
+        "batch_id",
+        "created_at",
+        "model_artifacts",
+        "score_files"
+      ],
+      "model_artifacts": "One SHA-256 entry for each fitted model or deterministic rule specification.",
+      "score_files": "SHA-256, row count, run codes, and model IDs for every score file delivered for reveal."
+    }
+  },
+  "evaluation_plan": {
+    "label_join_time": "Only after predictions-commitment.json exists and the blind allocation is revealed.",
+    "primary_task": "System condition detection on the common sequence-eligible population.",
+    "system_aggregation": "Maximum calibrated service score for each run_code, model_id, and window_start.",
+    "primary_metric": "Pooled average precision over pure normal and pure fault common endpoints, with the empirical positive prevalence reported beside it.",
+    "common_population": "Endpoints available to every tabular and temporal candidate after the eighteen-start reference and twelve-step history requirements. After reveal, require the complete source window and complete twelve-step history to belong to one pure normal or fault condition.",
+    "native_population_reporting": "Tabular and temporal native populations may be reported secondarily but may not replace the common-population comparison.",
+    "uncertainty": {
+      "method": "Cluster bootstrap by run_code",
+      "replicates": 2000,
+      "confidence_level": 0.95,
+      "random_seed": 20261121
+    },
+    "mandatory_control_gate": {
+      "population": "All common endpoints in the three no-fault control runs.",
+      "alert_episode": "Merge positive system points separated by less than thirty seconds into one episode.",
+      "maximum_alert_episodes_per_normal_hour": 6.0,
+      "interpretation": "A candidate that exceeds the gate is not operationally admissible even if its average precision is high."
+    },
+    "secondary_tasks": {
+      "affected_service_detection": "Average precision for affected-service fault windows against normal service-windows on the common population; other services during fault are excluded from this binary task.",
+      "localization": "MRR, mean rank, Hit@1 and Hit@3 for the affected component during pure fault common endpoints; tied scores use the midpoint rank.",
+      "detection_delay": "Seconds from the first common endpoint at or after fault onset to the first positive system alert, capped at the fault duration for a miss.",
+      "temporal_decoupling": "Report every metric separately for early, middle and late fault cells and for each repetition. A response fixed to run age rather than fault onset is evidence of temporal confounding.",
+      "multimodal_increment": "Within each family, report paired trimodal-minus-metrics differences for primary AP, control alert episodes per hour and localization MRR."
+    },
+    "random_localization_references": {
+      "services": 11,
+      "expected_mrr": 0.27453430407975865,
+      "expected_hit_at_3": 0.2727272727272727
+    },
+    "admissibility": [
+      "Pass the mandatory control false-alert gate.",
+      "Primary average precision must exceed empirical prevalence; report the cluster-bootstrap confidence interval of the difference.",
+      "Localization MRR and Hit@3 must both exceed their random references as point estimates.",
+      "The direction of the response must be consistent across early, middle and late cells; no cell may be silently excluded.",
+      "No contract, integrity, leakage, duration, backlog, or control-plane safeguard may fail."
+    ],
+    "selection_order_among_admissible_candidates": [
+      "Highest common-population system average precision.",
+      "If absolute AP differs by at most 0.01, lowest control alert episodes per hour.",
+      "If still tied, highest localization MRR.",
+      "If still tied, prefer robust_rules, then isolation_forest, one_class_svm, hist_gradient_boosting, and lstm_temporal_autoencoder in that order as a deterministic simplicity tie-breaker.",
+      "Within a family, prefer metrics unless trimodal improves AP by more than 0.01 without worsening the control alert rate or localization MRR."
+    ],
+    "no_winner_policy": "If no candidate is admissible, report that no algorithm was selected. Do not relax gates after reveal."
+  },
+  "prohibited_actions": [
+    "Inspecting sealed allocation, phase timelines, evaluation references, or labels before prediction commitment.",
+    "Using any blind run for fitting a model, scaler, score calibrator, threshold, hyperparameter, modality, or candidate subset.",
+    "Dropping a run, cell, service, feature, or candidate because of its blind performance.",
+    "Changing thresholds to control false alarms after seeing control labels.",
+    "Treating recovery as primary evidence or silently mixing it with normal/fault endpoints.",
+    "Selecting a different population for a candidate without reporting both common and native populations.",
+    "Revealing the allocation before all score files and model artifacts are hashed in blind_predictions_manifest_v1."
+  ]
+}
