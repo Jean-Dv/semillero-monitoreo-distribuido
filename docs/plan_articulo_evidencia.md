@@ -1,7 +1,7 @@
 # Plan del artículo y mapa de evidencia
 
 **Proyecto:** Reconocimiento interpretable de patrones en la monitorización de sistemas distribuidos  
-**Estado:** Plan de transición desde la propuesta del ciclo 6 hacia el artículo empírico  
+**Estado:** Transición al artículo empírico con evidencia de desarrollo y evaluación confirmatoria pendiente
 **Fuente de alcance:** `AGENTS.md` y `docs/propuesta_investigacion.md`
 
 ## 1 Configuración del manuscrito
@@ -18,11 +18,12 @@
 | Reproducibilidad | Control transversal, no quinta variable |
 | Citación | Numérica, estilo IEEE, claves [1]--[24] vigentes |
 
-El artículo deberá conservar la diferencia entre tres estados epistémicos:
+El artículo deberá conservar la diferencia entre cuatro estados epistémicos:
 
 1. **Evidencia bibliográfica:** afirmaciones sustentadas por el corpus.
 2. **Decisión de diseño:** elección que deberá justificarse y registrarse, pero que no constituye un hallazgo de la literatura.
-3. **Resultado empírico:** afirmación que solo podrá redactarse después de ejecutar el protocolo.
+3. **Evidencia de desarrollo:** medición propia útil para diseñar el artefacto, identificar fallos y congelar decisiones, pero no para formular la conclusión final.
+4. **Resultado confirmatorio:** afirmación reservada para la cohorte ciega y el protocolo congelado.
 
 ## 2 Estructura prevista del artículo final
 
@@ -30,7 +31,7 @@ El artículo deberá conservar la diferencia entre tres estados epistémicos:
 
 **Función.** Delimitar el problema, el artefacto, el método de investigación y el alcance de la validación.
 
-**Afirmaciones permitidas antes de la evaluación.** El estudio diseña y evaluará un artefacto; integra las tres señales; adopta DSRM; restringe la validación al entorno local controlado.
+**Afirmaciones permitidas antes de la evaluación confirmatoria.** El estudio diseña y evaluará un artefacto; integra las tres señales; adopta DSRM; restringe la validación al entorno local controlado; implementó el flujo local, produjo tres runs nominales y utilizó sus resultados como evidencia de desarrollo.
 
 **Afirmaciones reservadas.** No se indicará que el método mejora decisiones, supera líneas base, generaliza o identifica causas hasta contar con resultados.
 
@@ -78,7 +79,7 @@ Esta sección sintetizará los diez núcleos del marco teórico en cuatro bloque
 
 **Evidencia disponible.** [3], [5]--[8], [12], [13], [17]--[20]; E25--E30, E37--E38 y E43--E46.
 
-**Vacíos.** Falta operacionalizar patrón, seleccionar líneas base, fijar la unidad de salida y escoger métricas de fidelidad, correspondencia, complejidad y estabilidad.
+**Vacíos.** La detección de condición a nivel de sistema quedó fijada como tarea primaria confirmatoria y se congelaron cinco familias con dos representaciones. Continúa pendiente completar la operacionalización de interpretabilidad, evidencia y utilidad para la decisión.
 
 **Criterio de cierre.** La selección del método se deriva de una comparación ejecutada bajo el mismo protocolo y no de una preferencia previa.
 
@@ -100,7 +101,7 @@ Esta sección sintetizará los diez núcleos del marco teórico en cuatro bloque
 
 **Evidencia disponible.** E58--E63.
 
-**Vacíos.** Faltan criterios numéricos o reglas de aceptación, número de repeticiones, estrategia de partición, análisis estadístico y reglas de exclusión.
+**Estado.** El protocolo ciego fija cuatro celdas, tres repeticiones por celda, población común, reglas de exclusión, remuestreo por run y criterios de admisibilidad. La evaluación de interpretabilidad y utilidad todavía requiere tolerancias y tareas instrumentales completas.
 
 **Criterio de cierre.** Cada objetivo queda vinculado con una medida, un dato de referencia, una prueba y un criterio de avance o cierre.
 
@@ -112,7 +113,7 @@ Esta sección sintetizará los diez núcleos del marco teórico en cuatro bloque
 
 **Evidencia bibliográfica.** [11], [16]--[19], [22].
 
-**Evidencia que debe generar el proyecto.** Esquemas, diccionario de datos, manifiestos, pruebas de componentes, registros de decisiones y mediciones de calidad del flujo.
+**Evidencia generada.** Contratos Bronze, Silver, Gold y Results; `gold_service_window_v2.2`; vistas tabular y secuencial; manifiestos; pruebas de componentes; paquetes por `run_id`; mediciones de calidad y tablero conectado a ClickHouse. El flujo local constituye evidencia de factibilidad, no una selección definitiva frente a AWS Glue.
 
 **Criterio de cierre.** Una ejecución controlada produce un resultado rastreable desde la extensión hasta las observaciones de origen.
 
@@ -124,7 +125,9 @@ Esta sección sintetizará los diez núcleos del marco teórico en cuatro bloque
 
 **Evidencia bibliográfica.** [9], [14], [21].
 
-**Evidencia que debe generar el proyecto.** Matriz de escenarios, ejecuciones de referencia, condiciones introducidas, telemetría trimodal y bitácoras completas.
+**Evidencia generada.** Tres ejecuciones nominales con referencia, `adFailure` y recuperación; 7177 observaciones únicas de once servicios; telemetría trimodal y paquetes con manifiesto, cronología, offsets, checkpoints, calidad, logs y checksums. La posición fija de la condición limita su uso a desarrollo.
+
+**Evidencia pendiente.** Doce runs ciegas con tres controles y posiciones temprana, intermedia y tardía, ejecutadas únicamente después de implementar el generador congelado de puntajes.
 
 **Criterio de cierre.** Existen ejecuciones integrales repetibles para el comportamiento de referencia y al menos una condición de interés.
 
@@ -140,7 +143,20 @@ La sección se organizará por variable, no por componente de software.
 | Utilidad | Cumplimiento, exactitud, tiempo y consistencia de tareas | Agentes, condición de comparación y respuestas de referencia | Se delimita el apoyo instrumental sin inferir aceptación humana |
 | Análisis de errores | Fallos por modalidad, transformación, condición y etapa | Casos negativos y mixtos | Los errores modifican o limitan la contribución declarada |
 
-No se redactarán cifras, superioridades ni hallazgos antes de ejecutar estas pruebas.
+Las cifras de las tres runs ya pueden redactarse en una subsección denominada explícitamente **resultados de desarrollo**. No se presentarán como estimación confirmatoria, superioridad general ni selección del método. La subsección confirmatoria permanecerá sin resultados hasta ejecutar, predecir y revelar el lote ciego.
+
+#### 2.7.1 Evidencia de desarrollo disponible
+
+| Resultado | Observación disponible | Interpretación permitida |
+|---|---|---|
+| Cohorte Gold | 7177 claves únicas; 2404, 2421 y 2352 observaciones por run | Factibilidad y trazabilidad de la representación para once servicios |
+| Líneas base iniciales | AP global entre 0,479 y 0,500 frente a prevalencia 0,500 | Ausencia de generalización útil en esa partición; no selección |
+| Deriva normal | KS ≥ 0,20 en 18,0 % de pares de validación y 27,8 % de prueba | Los niveles absolutos cambian entre runs de forma no uniforme |
+| Referencia local | Mejor AP global 0,645, pero 39/39 instantes normales positivos; mejor MRR 0,289 | Un mejor ordenamiento no produjo un umbral operativo estable |
+| Gradient boosting | AP afectado 0,234, MRR 0,335 y 38/40 falsos positivos normales | Candidato supervisado de desarrollo, no detector aceptado |
+| Autoencoder LSTM | AP global 0,697 frente a 0,613; AP afectado 0,332 frente a 0,126; MRR 0,298 frente a 0,275; 20/29 falsos positivos | Candidato temporal principal, todavía con falsas alarmas altas |
+
+Estas poblaciones no siempre coinciden: el autoencoder requiere doce pasos y dispone de menos extremos elegibles. El artículo deberá informar denominadores, prevalencias y reglas temporales junto a cada métrica.
 
 ### 2.8 Discusión
 
@@ -160,31 +176,29 @@ No se redactarán cifras, superioridades ni hallazgos antes de ejecutar estas pr
 
 El paquete final deberá incluir disponibilidad de datos y código, versiones, instrucciones de reproducción, diccionarios y contratos, configuración, semillas, resultados por repetición, exclusiones, ética, financiación, contribuciones de autoría y conflictos de interés.
 
-## 3 Registro de vacíos de evidencia
+## 3 Registro actualizado de vacíos de evidencia
 
-| ID | Prioridad | Vacío | Tipo | Producto que lo cierra |
+| ID | Prioridad | Vacío | Estado actual | Producto que lo cierra |
 |---|---|---|---|---|
-| G01 | Crítica | Definición operacional de patrón y tarea | Decisión metodológica | Especificación con ejemplos positivos, negativos y granularidad |
-| G02 | Crítica | Sistema, infraestructura y mecanismo de condiciones | Decisión empírica | Protocolo y matriz de escenarios |
-| G03 | Crítica | Fuentes trimodales, identificadores, relojes y calidad | Evidencia empírica | Piloto de captura y perfil de datos |
-| G04 | Crítica | Datos de referencia y respuestas aceptables | Decisión experimental | Oráculo documentado por escenario |
-| G05 | Crítica | Líneas base, particiones, repeticiones y análisis | Diseño experimental | Plan de evaluación congelado antes de la prueba |
-| G06 | Alta | Métricas y tolerancias de interpretabilidad | Bibliográfica y metodológica | Protocolo de fidelidad, correspondencia y estabilidad |
-| G07 | Alta | Validez de la utilidad medida con agentes | Bibliográfica y experimental | Tareas, condición de comparación y límite explícito del proxy |
-| G08 | Alta | Frontera técnica y capacidades de la extensión | Evidencia técnica | Contrato de API, esquema de resultados y pruebas de integración |
-| G09 | Media | Selección de fusión, ventanas y ausencias | Evidencia comparativa | Ablaciones y análisis de sensibilidad |
-| G10 | Condicional | Contexto colombiano | Bibliográfica | Fuentes nacionales, solo si se formulan afirmaciones nacionales |
+| G01 | Crítica | Definición operacional de patrón y tarea | Parcial: detección de condición es primaria; servicio y localización son secundarias | Ejemplos positivos/negativos y vínculo definitivo con la tarea de decisión |
+| G02 | Crítica | Sistema, infraestructura y mecanismo de condiciones | Parcial: Astronomy Shop, entorno local y `adFailure` están implementados | Ejecución válida de `blind_protocol_v1` |
+| G03 | Crítica | Fuentes trimodales, identificadores, relojes y calidad | Parcialmente cerrado para once servicios; tres identidades siguen separadas | Informe final de calidad de la cohorte ciega |
+| G04 | Crítica | Datos de referencia y respuestas aceptables | Parcial: fases, condición y componente están versionados | Respuestas aceptables para las tareas de decisión y agentes |
+| G05 | Crítica | Líneas base, particiones, repeticiones y análisis | Cerrado en diseño: diez variantes y protocolo congelados | Generador ciego implementado y predicciones comprometidas |
+| G06 | Alta | Métricas y tolerancias de interpretabilidad | Abierto | Protocolo de fidelidad, correspondencia y estabilidad |
+| G07 | Alta | Validez de la utilidad medida con agentes | Abierto | Tareas, condición de comparación y límite explícito del proxy |
+| G08 | Alta | Frontera técnica y capacidades de la extensión | Parcial: Gold, Results y Grafana están separados | Contrato de API y pruebas de integración de la extensión |
+| G09 | Media | Selección de fusión, ventanas y ausencias | Parcial: métricas y trimodal están congeladas como ablación | Resultados ciegos y análisis de sensibilidad |
+| G10 | Condicional | Contexto colombiano | No iniciado y no requerido por el alcance vigente | Fuentes nacionales solo si se formulan afirmaciones nacionales |
 
 ## 4 Orden de cierre recomendado
 
-1. Cerrar G01 y G04 para saber qué salida se evaluará.
-2. Cerrar G02 y ejecutar el piloto G03.
-3. Definir G05 con base en el patrón y los datos disponibles.
-4. Cerrar G06 y G07 antes de implementar la evaluación.
-5. Diseñar G08 en paralelo con el componente de procesamiento.
-6. Resolver G09 mediante experimentos, no mediante una decisión previa.
-
-La selección del algoritmo ocurrirá después de los pasos 1--3. Elegirlo antes invertiría la relación entre problema, datos, método y evaluación establecida por DSRM.
+1. Implementar y probar el generador ciego de puntajes contra `confirmatory_manifest_v1` sin modificar sus decisiones científicas.
+2. Preparar y ejecutar las doce runs de `blind_protocol_v1`, congelar predicciones y revelar la asignación.
+3. Evaluar desempeño y ablaciones en la población común; conservar la conclusión «sin selección» si ningún candidato supera los criterios.
+4. Cerrar G06 con una evaluación de explicaciones del candidato admisible, si existe.
+5. Implementar G08 y cerrar G07 mediante tareas reproducibles con agentes, sin inferir usabilidad humana.
+6. Consolidar discusión, amenazas a la validez, materiales de reproducción y conclusión final.
 
 ## 5 Afirmaciones que permanecen prohibidas hasta contar con evidencia
 
@@ -196,6 +210,12 @@ La selección del algoritmo ocurrirá después de los pasos 1--3. Elegirlo antes
 - Los resultados se generalizan a cualquier sistema distribuido.
 - Una familia concreta de modelos es la solución requerida.
 
-## 6 Criterio para iniciar la redacción de resultados
+## 6 Criterio para redactar resultados
 
-La sección de resultados podrá abrirse cuando existan, como mínimo, una definición de patrón aprobada, un protocolo de evaluación congelado, una matriz de escenarios, una captura trimodal validada, datos de referencia, líneas base ejecutables y al menos una repetición integral reconstruible desde sus artefactos. Antes de ese punto, el manuscrito deberá denominar sus salidas «previstas», «candidatas» o «por evaluar».
+La sección de resultados de desarrollo puede redactarse porque existen un contrato multimodal, tres ejecuciones reconstruibles, datos de referencia y comparaciones ejecutables. Cada cifra deberá etiquetarse como exploratoria o de validación y conservar su población. La sección de resultados confirmatorios solo podrá abrirse cuando las doce runs estén completas, el generador haya producido puntajes para los diez candidatos, las predicciones estén comprometidas por hash y la asignación se revele después de ese compromiso.
+
+## 7 Siguiente ciclo
+
+El siguiente ciclo implementará el generador ciego de puntajes. El artefacto deberá validar el hash de `confirmatory_manifest_v1`, reconstruir los diez `model_id`, ajustar únicamente con los datos históricos permitidos, formar secuencias sin etiquetas de fase y producir puntajes por código opaco, servicio y ventana. También generará `blind_predictions_manifest_v1` con hashes de modelos y archivos. Las pruebas deberán demostrar que no lee `allocation.sealed.json`, `evaluation_reference_v1` ni cronologías de fase durante representación o inferencia.
+
+Solo después de aprobar esas pruebas se autoriza preparar el lote. Este orden evita que errores o decisiones de implementación se resuelvan después de observar nuevas condiciones. Cualquier cambio científico en variables, candidatos, umbrales, tareas o métricas exigirá una nueva versión del manifiesto antes de ejecutar las runs.

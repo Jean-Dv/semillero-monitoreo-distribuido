@@ -46,7 +46,7 @@ correo@institucion.edu.co}
 \maketitle
 
 \begin{abstract}
-La monitorización de sistemas distribuidos produce métricas, registros y trazas que describen perspectivas complementarias del comportamiento operativo. Sin embargo, sus diferencias de formato, granularidad, frecuencia y semántica dificultan analizarlas conjuntamente y convertirlas en evidencia trazable para una decisión. Este artículo presenta el diseño de una investigación orientada a construir un método interpretable de reconocimiento de patrones sobre una representación conjunta de las tres señales. La metodología general será \textit{Design Science Research Methodology} (DSRM), aplicada mediante identificación del problema, definición de objetivos, diseño y desarrollo, demostración, evaluación y comunicación. El artefacto experimental comprenderá un flujo multimodal, el método, un componente de procesamiento y una extensión para Grafana. Su validación se realizará en sistemas controlados desplegados localmente y distinguirá integración multimodal, desempeño, interpretabilidad y utilidad para tareas de decisión ejecutadas por agentes de evaluación. La propuesta no fija de antemano una familia de aprendizaje automático, no equipara visualización con interpretabilidad y no atribuye causalidad automática a los patrones identificados.
+La monitorización de sistemas distribuidos produce métricas, registros y trazas cuyas diferencias de formato, granularidad y semántica dificultan el análisis conjunto. Esta investigación sigue \textit{Design Science Research Methodology} (DSRM) para construir y evaluar un método interpretable de reconocimiento de patrones sobre las tres señales. El desarrollo produjo un flujo local reproducible y una representación por servicio y ventana. Tres repeticiones nominales generaron 7177 observaciones trazables de once servicios y permitieron explorar reglas robustas, Isolation Forest, One-Class SVM, potenciación de gradiente y un autoencoder temporal. Los resultados son mixtos: el autoencoder alcanzó una precisión promedio global de 0,697 frente a una prevalencia de 0,613, pero produjo veinte falsos positivos en veintinueve instantes normales elegibles; otras alternativas también presentaron tasas de falsas alarmas incompatibles con una selección operativa. Debido a que la condición siempre ocurrió después del periodo normal y la prueba fue consultada durante el desarrollo, estas cifras se clasifican como evidencia de desarrollo, no como comparación confirmatoria. Se congeló un protocolo ciego de doce ejecuciones que desacopla tiempo y condición. El siguiente ciclo implementará su generador de puntajes antes de producir la cohorte ciega. La extensión para Grafana, la evaluación de interpretabilidad y las tareas con agentes permanecen como trabajo futuro.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -63,7 +63,7 @@ El análisis conjunto tampoco se obtiene al reunir las fuentes en una misma vist
 
 Los profesionales reportan saturación de datos y alertas, dificultad para correlacionar señales por metadatos insuficientes y dependencia del conocimiento experto \cite{ref15,ref20}. Un método que produzca una puntuación o una visualización no resuelve por sí solo este problema. La explicación debe guardar correspondencia con el criterio del método y con variables o acontecimientos pertinentes; además, la atribución algorítmica debe distinguirse de la interpretación que sustenta una decisión \cite{ref12,ref13}.
 
-La investigación se orienta mediante la pregunta: \textit{¿De qué manera un método interpretable de reconocimiento de patrones en métricas, registros y trazas puede apoyar la toma de decisiones en la monitorización de sistemas distribuidos?} El objetivo general es apoyar dichas decisiones mediante el reconocimiento de patrones en datos multimodales. La contribución prevista es un método interpretable acompañado por el flujo y la evidencia experimental necesarios para evaluarlo; la extensión para Grafana será el medio de integración y presentación. Las conclusiones se limitarán a sistemas controlados desplegados localmente y no anticiparán una mejora antes de la validación.
+La investigación se orienta mediante la pregunta: \textit{¿De qué manera un método interpretable de reconocimiento de patrones en métricas, registros y trazas puede apoyar la toma de decisiones en la monitorización de sistemas distribuidos?} El objetivo general es apoyar dichas decisiones mediante el reconocimiento de patrones en datos multimodales. El estado actual comprende un flujo local, evidencia comparativa de desarrollo y un diseño confirmatorio congelado; todavía no comprende un método seleccionado ni evidencia de utilidad para decisiones. La extensión para Grafana será el medio de integración y presentación. Las conclusiones se limitarán a sistemas controlados desplegados localmente y no anticiparán una mejora antes de la validación.
 
 \section{Fundamentos y trabajo relacionado}
 
@@ -87,7 +87,7 @@ Detectar una desviación, clasificarla, localizar un componente y proponer una p
 
 AIOpsLab, ITBench y RCAEval aportan antecedentes para desplegar sistemas, generar carga, introducir condiciones, recopilar telemetría y definir casos reproducibles \cite{ref9,ref14,ref21}. Estos recursos orientarán el entorno empírico, pero no sustituyen la selección del sistema, la definición del patrón ni los datos de referencia propios del proyecto.
 
-\section{Metodología propuesta}
+\section{Metodología y diseño experimental}
 
 \subsection{DSRM como metodología general}
 
@@ -105,7 +105,9 @@ Los tres objetivos específicos conducirán el proceso:
 
 \subsection{Diseño del artefacto}
 
-El diseño separará cuatro responsabilidades. Las fuentes producirán o almacenarán la telemetría; el flujo adquirirá, identificará, sincronizará, transformará y fusionará las señales; el componente de procesamiento ejecutará el método; y la extensión presentará los patrones, la evidencia y los vínculos hacia los datos de origen. Esta separación evita atribuir a Grafana una integración semántica o una ejecución del método que corresponden a otros componentes.
+El diseño separa cuatro responsabilidades. Las fuentes producen o almacenan la telemetría; el flujo adquiere, identifica, sincroniza, transforma y fusiona las señales; el componente de procesamiento ejecutará el método; y la extensión presentará los patrones, la evidencia y los vínculos hacia los datos de origen. Esta separación evita atribuir a Grafana una integración semántica o una ejecución del método que corresponden a otros componentes.
+
+La implementación de referencia recibe telemetría OTLP y emplea OpenTelemetry Collector, Kafka y Flink para el transporte y procesamiento, MinIO para las capas Bronze y Silver, y ClickHouse para Gold. Este despliegue demuestra factibilidad local, pero no selecciona definitivamente la arquitectura frente a una alternativa administrada. El contrato \texttt{gold\_service\_window\_v2.2} representa un servicio en ventanas de 30 segundos con avance de 10 segundos, conserva proveniencia e indicadores de ausencia y separa los errores de cada modalidad.
 
 \begin{figure*}[t]
 \centering
@@ -140,11 +142,11 @@ Sobre esa representación se construirán líneas base y se explorarán métodos
 
 \subsection{Demostración y datos de referencia}
 
-La demostración verificará el uso integral del prototipo en un sistema distribuido desplegado localmente. Cada unidad experimental combinará sistema, versión, configuración, carga, escenario, condición y repetición. Para cada ejecución se registrarán la topología, la instrumentación, las ventanas temporales, las transformaciones y las versiones del flujo y del método.
+La demostración verificó el flujo multimodal en Astronomy Shop desplegado localmente. Cada unidad experimental combinó sistema, versión, configuración, carga, escenario, condición y repetición. Se ejecutaron tres repeticiones nominales de 35 minutos, compuestas por cinco minutos de calentamiento y periodos de diez minutos de operación normal, \texttt{adFailure} y recuperación. Cada paquete conserva topología, instrumentación, ventanas, transformaciones, offsets, checkpoints, perfiles, registros y sumas SHA-256.
 
 Los datos de referencia para la evaluación, denominados también \textit{oráculo de evaluación} en experimentación de software, indicarán las etiquetas, condiciones conocidas, componentes intervenidos, secuencias esperadas o criterios de aceptación contra los que se compararán los resultados. No son un agente ni una herramienta. Los agentes ejecutarán tareas; los datos de referencia permitirán juzgar sus respuestas y las salidas del prototipo.
 
-Cada escenario producirá un paquete trazable con telemetría, transformaciones, salida del método, evidencia presentada y bitácora. La demostración concluirá cuando existan ejecuciones completas y repetibles de los escenarios seleccionados, incluidas observaciones de referencia y al menos una condición de interés. Este resultado verificará funcionamiento integral, no efectividad general.
+Cada escenario produce un paquete trazable con telemetría, transformaciones, salida del método y bitácora. Las tres repeticiones verificaron funcionamiento integral y estabilidad del flujo; no prueban efectividad general. La cohorte primaria se restringió a once servicios con \texttt{k8s.namespace.name=astronomy-shop}. Tres servicios sin namespace permanecieron como estrato separado porque una coincidencia nominal no basta para fusionarlos de forma segura.
 
 \subsection{Evaluación}
 
@@ -168,46 +170,63 @@ Utilidad & ¿Los resultados apoyan una tarea de decisión definida? & Cumplimien
 \end{tabular}
 \end{table*}
 
-El protocolo se aplicará al método seleccionado y a las líneas base pertinentes. Los resultados se resumirán por escenario y repetición mediante estadísticas descriptivas y medidas de variabilidad. También se realizarán comparaciones entre modalidades individuales, pares y la representación trimodal cuando los datos lo permitan. La evaluación con agentes se interpretará únicamente como evidencia sobre tareas reproducibles y no permitirá inferir usabilidad, aceptación o impacto organizacional en operadores humanos.
+El protocolo confirmatorio comparará diez variantes congeladas: reglas robustas, Isolation Forest, One-Class SVM, potenciación de gradiente y autoencoder LSTM, cada una sobre métricas y unión trimodal. La tarea primaria será detectar la condición a nivel de sistema; la identificación del servicio y la localización serán secundarias. La población común, las métricas, los umbrales y la regla de selección quedaron definidos antes de generar la cohorte ciega. Ningún candidato se aceptará si supera seis episodios falsos por hora en los controles. La evaluación posterior con agentes se interpretará únicamente como evidencia sobre tareas reproducibles y no permitirá inferir usabilidad, aceptación o impacto organizacional en operadores humanos.
 
 \subsection{Validez y protección de los datos}
 
 La validez de constructo se atenderá mediante definiciones operativas vinculadas con cada objetivo. La validez interna requerirá documentar cargas, condiciones, cambios de configuración y factores concurrentes. La validez de conclusión se apoyará en repeticiones, líneas base y reporte de variabilidad. La validez externa quedará limitada a los sistemas, escenarios, datos y ventanas observados. La telemetría sensible se excluirá o anonimizará antes del análisis y de la comunicación.
 
-\section{Plan de ejecución y criterios de cierre}
+\section{Evidencia de desarrollo}
+
+\subsection{Cohorte y calidad de la representación}
+
+Las tres repeticiones produjeron 2404, 2421 y 2352 observaciones, para un total de 7177 claves Gold únicas. La cohorte conserva métricas, registros y trazas por servicio y ventana para once servicios. El análisis de calidad encontró deriva desigual incluso entre periodos normales: la distancia de Kolmogorov--Smirnov fue al menos 0,20 en el 18,0\,\% de las comparaciones de validación y en el 27,8\,\% de las de prueba. Esta observación motivó representaciones basadas en una referencia normal local y mostró que el nivel absoluto de algunas variables, en especial memoria, no era intercambiable entre ejecuciones.
+
+\subsection{Comparación exploratoria de algoritmos}
+
+La Tabla~\ref{tab:desarrollo} resume los resultados que pueden afirmarse en este estado. La primera comparación incluyó reglas robustas, Isolation Forest y One-Class SVM por modalidad y sobre la unión trimodal; HDBSCAN se informó aparte como agrupamiento transductivo. La precisión promedio global quedó entre 0,479 y 0,500 frente a una prevalencia de 0,500, sin una ventaja consistente de la unión trimodal. Una referencia normal local elevó la mejor precisión promedio global a 0,645 frente a una prevalencia de 0,594, pero clasificó como positivos los 39 instantes normales de prueba.
 
 \begin{table*}[t]
-\caption{Secuencia de trabajo y evidencia de cierre}
-\label{tab:plan}
+\caption{Resultados de desarrollo y límite de interpretación}
+\label{tab:desarrollo}
 \centering
 \footnotesize
 \renewcommand{\arraystretch}{1.15}
-\begin{tabular}{p{0.16\textwidth}p{0.43\textwidth}p{0.30\textwidth}}
+\begin{tabular}{p{0.21\textwidth}p{0.35\textwidth}p{0.33\textwidth}}
 \toprule
-\textbf{Etapa} & \textbf{Trabajo principal} & \textbf{Evidencia de cierre} \\
+\textbf{Iteración} & \textbf{Resultado observado} & \textbf{Interpretación permitida} \\
 \midrule
-Delimitación & Operacionalizar patrón, interpretabilidad, utilidad y agente de evaluación & Definiciones, métricas y criterios de aceptación \\
-Diseño experimental & Seleccionar sistema, cargas, condiciones, instrumentación y datos de referencia & Protocolo reproducible y matriz de escenarios \\
-Flujo multimodal & Definir fuentes, esquemas, identificadores, sincronización, fusión y ausencias & Conjunto multimodal versionado y trazable \\
-Exploración del método & Construir líneas base y comparar alternativas sin fijar una familia previa & Selección sustentada por resultados comparables \\
-Desarrollo & Implementar procesamiento, contratos de consulta y extensión & Prototipo funcional integrado \\
-Demostración y evaluación & Ejecutar escenarios, repeticiones, pruebas con agentes y análisis de errores & Resultados por variable, escenario y repetición \\
-Comunicación & Documentar arquitectura, datos, protocolo, resultados y límites & Artículo y materiales de reproducción \\
+Líneas base iniciales & Precisión promedio global entre 0,479 y 0,500; prevalencia 0,500 & No hubo generalización útil ni selección de algoritmo \\
+Referencia normal local & Precisión promedio global 0,645; 39/39 instantes normales positivos; mejor MRR 0,289 & Mejor ordenamiento, sin umbral operativo estable \\
+Potenciación de gradiente & Precisión promedio del servicio afectado 0,234; MRR 0,335; 38/40 falsos positivos normales & Candidato supervisado de desarrollo, no detector aceptado \\
+Autoencoder LSTM & Precisión promedio global 0,697 frente a 0,613; afectado 0,332 frente a 0,126; MRR 0,298; 20/29 falsos positivos & Candidato temporal principal, todavía con falsas alarmas altas \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-Antes de redactar resultados deberán cerrarse cuatro decisiones críticas: el entorno empírico, la definición operacional del patrón, las fuentes concretas de las tres señales y el protocolo de evaluación. Los resultados negativos o mixtos se conservarán. Si la representación trimodal no supera una línea base más simple, o si una explicación es comprensible pero poco fiel, esas observaciones formarán parte del resultado y limitarán la contribución afirmada.
+La potenciación de gradiente se implementó mediante \textit{HistGradientBoostingClassifier}; el autoencoder empleó secuencias de doce pasos. Estos candidatos no volvieron a utilizar la run de prueba para ajustar sus configuraciones. Sin embargo, sus poblaciones no son directamente idénticas: el modelo temporal pierde extremos sin historia suficiente. Por ello cada cifra se acompaña de su denominador y prevalencia, y no se establece un ranking final entre filas.
 
-\section{Contribución prevista y limitaciones}
+\subsection{Límite de la evidencia}
 
-La contribución científica prevista es un método interpretable de reconocimiento de patrones aplicado a una representación conjunta de métricas, registros y trazas. La contribución tecnológica será un prototipo experimental con responsabilidades separadas entre fuentes, flujo, procesamiento e interfaz. La contribución empírica será la evidencia obtenida al contrastar integración, desempeño, interpretabilidad y utilidad bajo un protocolo reproducible.
+En las tres ejecuciones la condición siguió siempre al periodo normal. Además, la run inicialmente reservada como prueba fue consultada durante más de una iteración. No es posible separar de manera suficiente una respuesta a \texttt{adFailure} de una respuesta al tiempo transcurrido, la deriva o efectos acumulativos. En consecuencia, todos los resultados de esta sección son evidencia de desarrollo. Se conservan porque justifican decisiones de diseño y documentan resultados negativos o mixtos, pero no sustentan superioridad general ni selección confirmatoria.
+
+\section{Trabajo futuro y siguiente ciclo}
+
+El protocolo \texttt{blind\_protocol\_v1} desacopla tiempo y condición mediante doce ejecuciones: tres controles sin falla y tres repeticiones con falla temprana, intermedia y tardía. Cada ejecución tendrá cinco minutos de calentamiento y cincuenta de observación. La asignación aleatoria se comprometerá mediante SHA-256, los ejecutores recibirán códigos opacos y las predicciones se congelarán antes de revelar las celdas.
+
+El siguiente ciclo no comenzará ejecutando las doce runs. Su primer entregable obligatorio será un generador ciego de puntajes que materialice exactamente \texttt{confirmatory\_manifest\_v1}. Deberá reconstruir las diez variantes con la cohorte histórica permitida, consumir únicamente códigos opacos, excluir condición y fase durante la inferencia y emitir un manifiesto de predicciones con hashes de modelos y archivos. Cualquier cambio científico originará una nueva versión del manifiesto antes de observar la cohorte ciega.
+
+Después de validar el generador se ejecutará el lote sin modificar versiones, carga, contratos ni configuración. Tras congelar y revelar las predicciones se analizarán precisión promedio, episodios falsos por hora en controles, localización, retraso, consistencia y diferencias por posición temporal. Si ningún candidato satisface los criterios preespecificados, se informará que no se seleccionó un algoritmo. Los ciclos posteriores abordarán la fidelidad y estabilidad de las explicaciones, el servicio de resultados, la extensión para Grafana y las tareas reproducibles con agentes de evaluación.
+
+\section{Contribución y limitaciones}
+
+La contribución tecnológica demostrada hasta el momento es un flujo experimental reproducible que conserva las tres señales, su proveniencia y una unidad de análisis común. La contribución metodológica incluye la separación explícita entre evidencia de desarrollo y confirmatoria, y un diseño ciego que desacopla tiempo y condición. La contribución científica prevista continúa siendo un método interpretable evaluado en integración, desempeño, interpretabilidad y utilidad; todavía no se ha demostrado ni seleccionado.
 
 Estas contribuciones permanecen sujetas a validación. El proyecto no incluye operación industrial, alta disponibilidad, remediación automática, certificación de seguridad ni demostración definitiva de causalidad. Tampoco incluye por ahora una población humana o un estudio de usabilidad con operadores. La evaluación con agentes no sustituirá esas formas de evidencia y las conclusiones no se generalizarán a cualquier sistema distribuido.
 
 \section{Conclusiones}
 
-La propuesta articula un problema de integración multimodal, reconocimiento de patrones, interpretabilidad y apoyo a decisiones dentro de un único artefacto experimental. DSRM permitirá relacionar la formulación del problema con el diseño, la demostración y la evaluación, mientras que las prácticas técnicas de aprendizaje automático se seleccionarán según los datos y los criterios definidos. El siguiente avance verificable será cerrar el entorno empírico y las definiciones operativas antes de seleccionar una representación o un método concreto.
+El ciclo de desarrollo verificó que es posible formar una cohorte trimodal trazable y comparar familias tabulares y temporales en un sistema local controlado. También mostró que una mejor precisión promedio no basta: las falsas alarmas y la deriva impidieron aceptar un detector, y el orden fijo entre tiempo y condición limita la interpretación causal de las comparaciones. Por tanto, no se declara un algoritmo ganador ni apoyo demostrado a decisiones. El siguiente avance verificable será implementar y probar el generador ciego congelado; después podrá ejecutarse la cohorte confirmatoria y decidir, con criterios preespecificados, si alguna alternativa merece avanzar a interpretabilidad e integración con la extensión.
 
 \begin{thebibliography}{00}
 

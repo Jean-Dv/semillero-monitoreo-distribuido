@@ -1,12 +1,12 @@
 # Propuesta de investigación
 
 **Proyecto:** Reconocimiento interpretable de patrones en la monitorización de sistemas distribuidos  
-**Versión:** Ciclo 6 en desarrollo  
-**Estado:** Borrador para la presentación de la propuesta
+**Versión:** Ciclo 7: transición hacia la evaluación confirmatoria
+**Estado:** Documento de proyecto actualizado con evidencia de desarrollo
 
 ## Nota de alcance
 
-El documento se sustenta en veinticuatro fuentes: veintidós antecedentes sobre observabilidad, análisis multimodal, interpretabilidad y evaluación, y dos referencias metodológicas incorporadas en este ciclo. El contexto disponible es internacional y técnico; no se presentan cifras específicas de Colombia. La propuesta se limita a un prototipo experimental validado en sistemas controlados desplegados localmente.
+El documento se sustenta en veinticuatro fuentes: veintidós antecedentes sobre observabilidad, análisis multimodal, interpretabilidad y evaluación, y dos referencias metodológicas. El contexto disponible es internacional y técnico; no se presentan cifras específicas de Colombia. La propuesta se limita a un prototipo experimental validado en sistemas controlados desplegados localmente. Las secciones 1–7 conservan la formulación académica acordada; las secciones 8 y 9 distinguen la evidencia técnica obtenida, sus límites y el trabajo futuro. Los resultados actuales son de desarrollo y no sustituyen la evaluación confirmatoria.
 
 ## 1 Planteamiento del problema
 
@@ -50,7 +50,7 @@ Apoyar las decisiones en la monitorización de sistemas distribuidos mediante un
 
 El proyecto llegará hasta un prototipo funcional experimental compuesto por un flujo de datos multimodal, un método interpretable de aprendizaje automático, un componente de procesamiento y una extensión para Grafana. El flujo abarcará adquisición, identificadores compartidos, sincronización temporal, transformaciones por modalidad, fusión y tratamiento de datos faltantes. El prototipo presentará los patrones y la evidencia asociada sin atribuir a Grafana la recolección, el almacenamiento, la unificación semántica o la ejecución del método.
 
-La investigación estudiará conjuntamente métricas, registros y trazas. La técnica de aprendizaje automático, las variables de entrada y la representación final se seleccionarán durante el desarrollo; no se presupone aprendizaje profundo, grafos, Transformers, modelos de lenguaje ni otra arquitectura. Las capacidades de detección, clasificación, priorización o localización solo se incorporarán si la definición de patrón y los resultados experimentales las sustentan.
+La investigación estudiará conjuntamente métricas, registros y trazas. La formulación no presupone aprendizaje profundo, grafos, Transformers, modelos de lenguaje ni otra arquitectura. Durante el desarrollo se compararon líneas base, un árbol con potenciación de gradiente y un autoencoder temporal; estas familias permanecen como candidatos y no como método seleccionado. Las capacidades de detección, clasificación, priorización o localización solo se incorporarán si la definición de patrón y la evaluación confirmatoria las sustentan.
 
 La validación se restringirá a sistemas controlados desplegados localmente, configuraciones reproducibles, condiciones conocidas y ventanas temporales documentadas. Los resultados no se generalizarán a todos los sistemas distribuidos. No se incluye despliegue industrial, operación continua, alta disponibilidad, remediación automática, certificación de seguridad ni demostración definitiva de causalidad. Los agentes de evaluación ejecutarán tareas previamente definidas; no constituyen una población humana ni sustituyen un estudio de usabilidad, aceptación o impacto organizacional con operadores.
 
@@ -211,6 +211,38 @@ El plan sigue las actividades de DSRM y mantiene una secuencia de dependencias. 
 | 6 Demostración | Ejecutar escenarios controlados, verificar el flujo completo y registrar resultados y fallos de integración | Evidencia de funcionamiento de extremo a extremo |
 | 7 Validación | Ejecutar pruebas con agentes, comparar con los datos de referencia y valorar integración, desempeño, interpretabilidad y utilidad | Resultados, análisis de errores y límites de validez |
 | 8 Comunicación | Consolidar documentación, materiales de reproducción, informe final y presentación del prototipo | Entregables académicos y técnicos del proyecto |
+
+## 8 Estado actual y evidencia de desarrollo
+
+### 8.1 Flujo multimodal y cohorte técnica
+
+La actividad de diseño y desarrollo produjo un prototipo local que recibe telemetría OTLP de Astronomy Shop, conserva Bronze y Silver en Parquet, forma observaciones Gold en tiempo de evento y expone resultados consultables desde Grafana. La implementación utiliza OpenTelemetry Collector, Kafka, Flink, MinIO y ClickHouse; esta elección demuestra factibilidad en el entorno controlado y no selecciona definitivamente la arquitectura local frente a una alternativa administrada.
+
+El contrato canónico `gold_service_window_v2.2` representa un servicio y una ventana de treinta segundos con avance de diez segundos. La clave combina ejecución, ventana, servicio y namespace Kubernetes; las modalidades conservan errores separados, unidades verificadas, indicadores de ausencia y proveniencia. La cohorte primaria se restringió a once servicios de `astronomy-shop`. `accounting`, `cart` y `quote` permanecen como estrato separado porque sus señales sin namespace no pueden fusionarse de manera segura por coincidencia nominal.
+
+Se ejecutaron tres repeticiones nominales con calentamiento, operación normal, `adFailure` y recuperación. Los paquetes registran configuración, cronología, offsets, checkpoints, calidad, perfil, logs y sumas SHA-256. La cohorte congelada contiene 7177 observaciones con claves únicas: 2404, 2421 y 2352 por run. Las ejecuciones verifican la factibilidad y estabilidad del flujo; no prueban por sí solas el desempeño de un método de reconocimiento.
+
+### 8.2 Comparaciones exploratorias
+
+La primera comparación evaluó reglas robustas, Isolation Forest y One-Class SVM sobre métricas, registros, trazas y unión trimodal. HDBSCAN se informó aparte como agrupamiento transductivo. En la run tratada entonces como prueba, la precisión promedio de detección global quedó entre 0,479 y 0,500 frente a una prevalencia de 0,500, y la unión trimodal no superó consistentemente las ablaciones. Por ello no se seleccionó un algoritmo.
+
+El análisis posterior encontró deriva desigual entre periodos normales: la distancia KS fue al menos 0,20 en el 18,0 % de las comparaciones de validación y en el 27,8 % de las de prueba, con desplazamientos especialmente visibles en memoria. Una representación basada en referencia normal local y cambio causal elevó la mejor precisión promedio global a 0,645 frente a prevalencia 0,594, pero el umbral marcó los 39 instantes normales de prueba como positivos. La mejor localización de esa iteración fue MRR 0,289 con reglas sobre registros, próxima a la referencia aleatoria aproximada de 0,275.
+
+El desarrollo añadió `HistGradientBoostingClassifier` y un autoencoder LSTM de doce pasos sin volver a utilizar la run de prueba para ajustar esos candidatos. En validación, gradient boosting sobre métricas obtuvo precisión promedio 0,234 para el servicio afectado y MRR 0,335, pero produjo 38 falsos positivos en 40 instantes normales. El autoencoder de métricas obtuvo precisión promedio global 0,697 frente a prevalencia 0,613, precisión promedio 0,332 para el servicio afectado frente a 0,126 y MRR 0,298 frente a 0,275; todavía produjo veinte falsos positivos entre veintinueve instantes normales elegibles. Las poblaciones tabular y secuencial son distintas, por lo que estas cifras no constituyen una comparación final directa.
+
+### 8.3 Límite de la evidencia y decisión de avance
+
+Las tres runs anteriores siempre situaron la condición después del periodo normal y la prueba fue consultada durante más de una iteración. En consecuencia, no puede separarse suficientemente una respuesta a `adFailure` de una respuesta al tiempo transcurrido, la deriva o efectos acumulativos del entorno. Toda la evidencia anterior se clasifica como desarrollo, incluidos los resultados negativos y mixtos.
+
+Para la siguiente evaluación se implementó `blind_protocol_v1`: tres controles sin falla y tres repeticiones con falla temprana, intermedia y tardía, todas con cinco minutos de calentamiento y cincuenta de observación. `confirmatory_manifest_v1` congeló diez variantes —reglas robustas, Isolation Forest, One-Class SVM, gradient boosting y autoencoder LSTM, cada una sobre métricas y unión trimodal— junto con representación, hiperparámetros, umbrales, población común, métricas y regla de selección. La tarea primaria será detección de condición a nivel de sistema; identificación del servicio y localización serán secundarias. Ningún candidato se aceptará si supera seis episodios falsos por hora en los controles.
+
+## 9 Trabajo futuro y siguiente ciclo
+
+El siguiente ciclo no comenzará ejecutando las doce runs. Primero se implementará y probará el generador ciego de puntajes que materialice exactamente `confirmatory_manifest_v1`. Este componente deberá reconstruir las diez variantes con la cohorte histórica permitida, consumir únicamente códigos opacos, excluir condiciones y fases durante la inferencia y producir un manifiesto de predicciones con hashes de modelos y archivos de puntajes. Cualquier decisión científica que requiera cambiar el manifiesto deberá originar una versión nueva antes de observar la cohorte ciega.
+
+Una vez validado el generador, se preparará la asignación aleatoria comprometida mediante SHA-256 y se ejecutarán las doce runs sin modificar versiones, carga, contratos ni configuración. Las predicciones se congelarán antes de revelar las celdas. Después de la revelación se evaluarán precisión promedio, falsas alarmas en controles, localización, retraso, consistencia entre repeticiones y diferencias entre falla temprana, intermedia y tardía. Si ningún candidato cumple los criterios preespecificados, se informará que no se seleccionó un algoritmo; los límites no se relajarán retrospectivamente.
+
+Los ciclos posteriores deberán completar la evaluación de interpretabilidad, implementar el servicio de resultados y la extensión para Grafana, y definir las tareas reproducibles de los agentes de evaluación. La utilidad observada con agentes se limitará a cumplimiento, exactitud, tiempo y consistencia de tareas; no se presentará como evidencia de usabilidad o aceptación humana.
 
 ## Referencias
 

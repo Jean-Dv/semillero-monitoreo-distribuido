@@ -4,9 +4,9 @@
 
 Construir, por ciclos, el planteamiento del problema de una investigación sobre detección de patrones en la monitorización de sistemas distribuidos. La redacción debe basarse en el corpus de `papers/`, distinguir evidencia de inferencia y usar citación numérica y referencias en estilo IEEE.
 
-## Alcance vigente: ciclo 6 (borrador para presentación)
+## Alcance vigente: ciclo 7 (transición al artículo empírico)
 
-- Incluido: planteamiento sintetizado, pregunta de investigación reformulada, objetivo general, tres objetivos específicos, alcances y limitaciones, justificación, diez núcleos del marco teórico, metodología DSRM, plan de trabajo y referencias.
+- Incluido: planteamiento sintetizado, pregunta de investigación reformulada, objetivo general, tres objetivos específicos, alcances y limitaciones, justificación, diez núcleos del marco teórico, metodología DSRM, plan de trabajo, evidencia de desarrollo, trabajo futuro y referencias.
 - Excluido del documento de presentación: hipótesis, marco conceptual separado y metodología distinta de DSRM.
 - El contexto macro disponible es internacional. El corpus actual no contiene evidencia cuantitativa específica para Colombia; no inventar ni extrapolar cifras nacionales.
 - Objeto provisional: patrones obtenidos mediante el análisis conjunto de métricas, registros (logs) y trazas de sistemas distribuidos. Las tres señales forman parte del núcleo del proyecto; ninguna se tratará únicamente como complemento.
@@ -28,6 +28,9 @@ Construir, por ciclos, el planteamiento del problema de una investigación sobre
 - La demostración y la evaluación son actividades distintas: la primera verifica el uso integral del prototipo en escenarios concretos; la segunda compara los resultados con objetivos, líneas base y datos de referencia.
 - La evaluación conserva las cuatro variables de delimitación: integración multimodal, desempeño, interpretabilidad y utilidad. La reproducibilidad se trata como control transversal, no como una quinta variable.
 - El documento incluye dos figuras propias: una cadena conceptual del problema sin herramientas específicas y un esquema de la aplicación iterativa de DSRM. Las figuras complementan el argumento y no reemplazan la evidencia ni las definiciones operativas.
+- El documento vigente y el borrador IEEE distinguen cuatro estados epistémicos: evidencia de literatura, decisiones de diseño, evidencia de desarrollo y resultados confirmatorios. Las tres runs nominales y todas las comparaciones realizadas con ellas pertenecen al tercer estado.
+- El artículo puede informar las 7177 observaciones, la deriva y los resultados negativos o mixtos de los candidatos, pero no declarar un algoritmo ganador: el orden fijo entre tiempo y condición y la consulta iterativa de la prueba impiden una comparación confirmatoria.
+- El siguiente ciclo comienza con la implementación y prueba del generador ciego de puntajes para `confirmatory_manifest_v1`. Solo después se prepara y ejecuta el lote de doce runs, se congelan las predicciones y se revela la asignación.
 
 ## Decisiones vigentes para la formulación de objetivos
 

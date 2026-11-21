@@ -15,7 +15,9 @@ Los ciclos 1 a 5 consolidaron:
 7. justificación, delimitación y alcance; y
 8. diez núcleos del marco teórico y veinte definiciones del marco conceptual.
 
-El ciclo 6 prepara el borrador para la presentación de la propuesta. Reformula la pregunta sin anticipar una mejora, reduce la formulación a tres objetivos específicos, justifica la necesidad del prototipo, selecciona DSRM como única metodología general y añade un plan de trabajo. La aplicación de DSRM se detalla mediante insumos, actividades, productos y criterios de avance para sus seis fases, y se acompaña con figuras propias del problema y del ciclo metodológico. La delimitación conserva cuatro variables tecnológicas: integración multimodal, desempeño del reconocimiento de patrones, interpretabilidad y utilidad para la toma de decisiones. El alcance llega hasta un prototipo funcional experimental y una validación reproducible en sistemas controlados desplegados localmente; no comprende una implementación industrial.
+El ciclo 6 preparó el borrador para la presentación de la propuesta. Reformuló la pregunta sin anticipar una mejora, redujo la formulación a tres objetivos específicos, justificó la necesidad del prototipo, seleccionó DSRM como única metodología general y añadió un plan de trabajo. La delimitación conserva cuatro variables tecnológicas: integración multimodal, desempeño del reconocimiento de patrones, interpretabilidad y utilidad para la toma de decisiones. El alcance llega hasta un prototipo funcional experimental y una validación reproducible en sistemas controlados desplegados localmente; no comprende una implementación industrial.
+
+El ciclo 7 actualiza el documento vigente y el borrador IEEE con la evidencia obtenida durante el desarrollo: tres runs nominales, 7177 observaciones Gold, deriva entre ejecuciones y comparaciones de líneas base, potenciación de gradiente y autoencoder LSTM. Estas cifras no se presentan como resultado confirmatorio ni como selección del método, porque el diseño anterior no desacopló tiempo y condición. El trabajo futuro inmediato es materializar el manifiesto confirmatorio en un generador ciego de puntajes y, después de validarlo, ejecutar la cohorte ciega de doce runs.
 
 No se formula una hipótesis. El problema, incluida la pregunta, se mantiene dentro de 600 palabras; alcances y limitaciones dentro de 250; la justificación dentro de 300; y el marco teórico dentro de 1500.
 
@@ -27,14 +29,14 @@ El corpus bibliográfico actual contiene veinticuatro documentos. A los veintid�
 .
 |-- AGENTS.md                         # memoria compacta y reglas para próximos ciclos
 |-- README.md                         # guía para trabajar el proyecto
-|-- articulo_ieee.tex                 # borrador IEEE derivado y alineado con el ciclo 6
+|-- articulo_ieee.tex                 # borrador IEEE con evidencia de desarrollo y trabajo futuro
 |-- docs/
 |   |-- arquitecturas_etl/            # alternativas técnicas para el flujo en tiempo real
 |   |   |-- README.md                 # comparación y criterios de selección
 |   |   |-- 01_local_kafka_flink_clickhouse.md
 |   |   |-- 02_aws_glue.md
 |   |   `-- 03_prototipo_local_implementado.md
-|   |-- propuesta_investigacion.md    # fuente narrativa vigente del ciclo 6
+|   |-- propuesta_investigacion.md    # fuente narrativa vigente del ciclo 7
 |   |-- proyecto_investigacion.md     # fuente conservada del ciclo 5
 |   |-- matriz_evidencia.md           # trazabilidad: afirmación, fuente y página
 |   `-- plan_articulo_evidencia.md    # estructura del artículo, vacíos y criterios de cierre
