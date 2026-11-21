@@ -1,0 +1,8 @@
+data/*.csv
+data/*.sha256
+reports/*.json
+reports/*.csv
+__pycache__/
+*.pyc
+!data/.gitkeep
+!reports/.gitkeep

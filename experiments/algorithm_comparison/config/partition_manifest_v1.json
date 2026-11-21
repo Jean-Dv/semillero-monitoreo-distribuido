@@ -1,0 +1,80 @@
+{
+  "manifest_version": "partition_manifest_v1",
+  "created_at": "2026-11-21",
+  "scenario_id": "astronomy-ad-failure-v1",
+  "gold_contract_version": "gold_service_window_v2.2",
+  "feature_set": "feature_tabular_v1",
+  "evaluation_reference": "evaluation_reference_v1",
+  "window_seconds": 30,
+  "step_seconds": 10,
+  "namespace": "astronomy-shop",
+  "services": [
+    "ad",
+    "checkout",
+    "currency",
+    "email",
+    "fraud-detection",
+    "frontend",
+    "frontend-proxy",
+    "payment",
+    "product-catalog",
+    "recommendation",
+    "shipping"
+  ],
+  "excluded_identity_stratum": [
+    "accounting",
+    "cart",
+    "quote"
+  ],
+  "splits": {
+    "train": [
+      "8d2c4e1a-8a91-4a35-afb2-3dbd009141c1"
+    ],
+    "validation": [
+      "9425edd0-c16e-4964-9c6f-dfe2193f91cf"
+    ],
+    "test": [
+      "5b95bd7f-a198-4e2e-b8ce-6c75f55ce008"
+    ]
+  },
+  "phase_policy": {
+    "train_conditions": ["normal"],
+    "primary_evaluation_conditions": ["normal", "fault"],
+    "excluded_conditions": ["warmup"],
+    "secondary_conditions": ["recovery"],
+    "boundary_rule": "A window belongs to a phase only when its complete [window_start, window_end] interval is contained in that phase. Other windows are excluded from primary evaluation."
+  },
+  "task_policy": {
+    "system_detection": "Aggregate service anomaly scores by window_start; normal is negative and fault is positive.",
+    "affected_service_detection": "Normal service-windows are negative; fault windows for affected_component are positive. Other services during fault are not treated as negatives.",
+    "localization": "Rank services by anomaly score during pure fault windows and evaluate the rank of affected_component."
+  },
+  "leakage_policy": {
+    "split_unit": "run_id",
+    "fit_preprocessing_on": "train normal windows only",
+    "forbidden_feature_columns": [
+      "condition",
+      "fault_type",
+      "affected_component",
+      "label_assignment_basis"
+    ],
+    "identifier_columns_not_used_as_numeric_features": [
+      "feature_id",
+      "run_id",
+      "scenario_id",
+      "window_start",
+      "window_end",
+      "service_name",
+      "service_namespace",
+      "k8s_namespace",
+      "source_references_json",
+      "gold_contract_version"
+    ]
+  },
+  "random_seeds": [20261121],
+  "notes": [
+    "Warmup is excluded before model fitting.",
+    "Recovery is secondary and does not determine the primary model selection.",
+    "The empty-namespace identity stratum is preserved for quality analysis and is not merged by service name."
+  ]
+}
