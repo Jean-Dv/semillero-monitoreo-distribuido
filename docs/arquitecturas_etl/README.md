@@ -27,12 +27,15 @@ La [mejora del Gold y protocolo de
 ejecuciones](04_mejora_gold_y_protocolo_runs.md) especifica e informa la
 iteración vigente: un Gold canónico por servicio y ventana, conjuntos derivados
 para algoritmos tabulares y temporales, criterios de calidad, tres runs nominales
-y reglas para una comparación sin fuga temporal. Los contratos v2.2 y el
-protocolo automatizado ya están implementados; las tres runs nominales correctas
-y la aceptación del Gold permanecen pendientes. Los paquetes generados durante
-el desarrollo se conservan localmente y no son evidencia experimental. La
-iteración no selecciona un algoritmo ni crea un Gold independiente para cada
-candidato.
+y reglas para una comparación sin fuga temporal. Los contratos v2.2, el
+protocolo automatizado y las tres runs nominales ya se ejecutaron.
+
+La [aceptación de la cohorte y comparación
+exploratoria](05_aceptacion_gold_y_comparacion_exploratoria.md) registra la
+calidad observada, el manifiesto por `run_id`, las ablaciones y la decisión de no
+seleccionar todavía un algoritmo. Gold se acepta como base exploratoria
+reproducible, pero los métodos evaluados no generalizan la detección global ni
+demuestran una ventaja trimodal en el escenario disponible.
 
 La guía ejecutable para subir, redesplegar, validar, correr escenarios y
 conservar cada paquete de evidencia se mantiene junto al código en
@@ -40,7 +43,8 @@ conservar cada paquete de evidencia se mantiene junto al código en
 repositorios hermanos).
 
 Los dos primeros documentos son notas técnicas de diseño, el tercero registra
-el artefacto base y el cuarto especifica y registra su iteración vigente. Ninguno
+el artefacto base, el cuarto especifica su mejora y el quinto registra los
+resultados de la primera cohorte nominal. Ninguno
 modifica por sí solo la formulación académica, la numeración IEEE ni el corpus de
 `docs/propuesta_investigacion.md`.
 

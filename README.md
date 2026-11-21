@@ -68,17 +68,24 @@ del 28 de octubre de 2026, distinguiéndolos de las tres repeticiones nominales
 que continúan pendientes. Documenta un artefacto de factibilidad y no modifica
 la comparación pendiente entre las dos arquitecturas candidatas.
 
-El siguiente paso se especifica en el [plan de mejora del Gold y protocolo de
+El plan ejecutado se especifica en la [mejora del Gold y protocolo de
 ejecuciones](docs/arquitecturas_etl/04_mejora_gold_y_protocolo_runs.md). El plan
 mantiene una representación Gold canónica, deriva conjuntos tabulares y
 secuenciales para los algoritmos candidatos y establece las tres runs que deben
 validar identidad, semántica, cobertura y temporalidad antes del modelado.
-Gold v2.2, sus contratos y el protocolo automatizado ya están implementados; el
-paso vigente es ejecutar las tres repeticiones nominales correctas con
-`k8s_namespace = astronomy-shop` como cohorte primaria y conservar las señales
-sin namespace como estrato de calidad separado. Los paquetes de desarrollo se
-conservan localmente y no se presentan como evidencia experimental. La guía
-operativa actualizada está en `../AIOpsLab/deploy/etl/GUIA_EJECUCION.md`.
+Gold v2.2, sus contratos, el protocolo automatizado y las tres repeticiones
+nominales ya están implementados y ejecutados.
+
+La [aceptación de la cohorte y comparación
+exploratoria](docs/arquitecturas_etl/05_aceptacion_gold_y_comparacion_exploratoria.md)
+documenta las 7177 observaciones congeladas, el manifiesto por `run_id` y la
+comparación inicial de reglas, Isolation Forest, One-Class SVM y HDBSCAN. El
+resultado no selecciona todavía un algoritmo: la detección global no generalizó
+y la combinación trimodal no superó consistentemente las ablaciones. Los
+materiales reproducibles están en
+[`experiments/algorithm_comparison/`](experiments/algorithm_comparison/). La
+guía operativa se mantiene en
+`../AIOpsLab/deploy/etl/GUIA_EJECUCION.md`.
 
 ## Flujo recomendado para editar
 

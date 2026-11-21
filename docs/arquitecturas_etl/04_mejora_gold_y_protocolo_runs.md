@@ -1,5 +1,11 @@
 # Plan de mejora del Gold y protocolo de ejecuciones
 
+> **Estado posterior.** Las tres ejecuciones nominales descritas aquí se
+> completaron el 21 de noviembre de 2026. La aceptación de la cohorte y la
+> comparación exploratoria resultante se registran en
+> `05_aceptacion_gold_y_comparacion_exploratoria.md`. Este documento se conserva
+> como especificación previa a la ejecución.
+
 ## 1. Propósito y estado
 
 Este documento especifica la siguiente iteración del ETL local implementado en

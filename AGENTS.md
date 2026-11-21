@@ -182,12 +182,11 @@ No cambiar la numeración sin actualizar simultáneamente `docs/propuesta_invest
   Flink, los cuatro temas, la conectividad desde Kubernetes, las pruebas
   unitarias, la ruta OTLP integrada, los checkpoints, la persistencia
   Bronze/Silver en Parquet/MinIO, Gold en ClickHouse y la consulta desde
-  Grafana. Estas verificaciones son de implementación y no sustituyen las tres
-  repeticiones nominales del protocolo de 105 minutos.
-- Las mediciones generadas durante el desarrollo se conservan localmente y no
-  se versionan ni se presentan como evidencia experimental. La cobertura, el
-  caudal, el retraso, la estabilidad y la aceptación de Gold deberán calcularse
-  de nuevo con las tres repeticiones nominales correctas.
+  Grafana. Las tres repeticiones nominales se completaron el 21 de noviembre de
+  2026 con paquetes y cronologías válidos.
+- Las mediciones permanecen locales y no se versionan. Se versionan las
+  consultas, el manifiesto, los programas y el informe necesarios para
+  reproducir la cohorte y su comparación.
 - Las pruebas locales revelaron presión de heap al construir lotes JDBC grandes;
   el lote se redujo a 20 filas. La validación prolongada de memoria permanece
   pendiente del protocolo nominal.
@@ -203,12 +202,13 @@ No cambiar la numeración sin actualizar simultáneamente `docs/propuesta_invest
   unidades, la rejilla temporal y los indicadores de ausencia. `service.namespace`
   se conserva como contexto y no divide la clave; las identidades no resueltas
   permanecen en Silver. Las señales sin namespace se mantienen como estrato
-  separado. Las métricas cuantitativas de cobertura, unicidad e integridad
-  quedan pendientes de las runs nominales.
+  separado. La cohorte primaria congelada contiene 7177 claves únicas de once
+  servicios. `accounting`, `cart` y `quote` permanecen fuera de ella porque sus
+  señales sin namespace no se fusionan por nombre.
 - El cierre del ejecutor ya no depende solo de una espera fija: exige tres
   conteos Gold no vacíos e iguales antes de capturar el paquete. Esta lógica
-  está cubierta por pruebas unitarias; su tiempo de estabilización se medirá en
-  las ejecuciones nominales.
+  está cubierta por dieciocho pruebas unitarias y se verificó en las
+  ejecuciones nominales.
 - Cada run genera un paquete con manifiesto, configuración, offsets y
   checkpoints, perfil, calidad Gold, cronología, logs y checksums. La guía de
   operación está en `../AIOpsLab/deploy/etl/GUIA_EJECUCION.md`. Los criterios de
@@ -218,8 +218,20 @@ No cambiar la numeración sin actualizar simultáneamente `docs/propuesta_invest
   estabilidad del plano de control y conserva por separado los
   errores de ejecución y restauración. Flink usa RocksDB incremental, intervalo
   de 60 segundos, pausa mínima de 30 segundos y un solo checkpoint concurrente.
-  El comportamiento prolongado de estas salvaguardas se confirmará con las
-  ejecuciones nominales.
+  Las tres runs conservaron el mismo job sin checkpoints fallidos ni
+  restauraciones globales. Hubo dos errores JDBC transitorios y la tercera run
+  concentró eventos tardíos únicamente en recuperación y fronteras.
+- Se congelaron las particiones mediante `partition_manifest_v1`: primera run
+  para entrenamiento normal, segunda para validación y tercera para prueba;
+  calentamiento se excluye, recuperación es secundaria y las ventanas de
+  frontera no entran en la evaluación primaria.
+- La comparación exploratoria v1 evaluó reglas robustas, Isolation Forest y
+  One-Class SVM sobre métricas, logs, trazas y unión trimodal; HDBSCAN se trató
+  como agrupamiento transductivo. La AP de detección global en prueba quedó
+  entre 0,479 y 0,500, alrededor de la prevalencia 0,500. Hubo señal parcial de
+  localización, pero la unión trimodal no superó consistentemente las
+  ablaciones. No se seleccionó algoritmo y DSRM retorna al diseño de variables,
+  representación y tarea.
 
 ## Protocolo para ciclos siguientes
 
@@ -233,14 +245,17 @@ No cambiar la numeración sin actualizar simultáneamente `docs/propuesta_invest
 
 - Definir el entorno empírico o caso de estudio concreto: aplicación, banco de datos, infraestructura local controlada, agentes de evaluación y mecanismo de generación o inyección de condiciones de interés.
 - Determinar las fuentes concretas desde las que la extensión de Grafana obtendrá métricas, logs y trazas.
-- Ejecutar las tres repeticiones nominales con la cohorte primaria
-  `k8s_namespace = astronomy-shop`; después comparar, con las mediciones estacionarias, la
-  arquitectura local y la alternativa administrada con AWS Glue.
-- Consolidar la correspondencia de las señales sin namespace, ejecutar las tres
-  runs nominales, decidir la aceptación de `gold_service_window_v2.2` y congelar las
-  particiones por `run_id` antes de entrenar; ajustar todo preprocesamiento solo
-  con datos de entrenamiento.
-- Seleccionar y justificar el enfoque de aprendizaje automático, sus variables de entrada y el esquema de entrenamiento o inferencia.
+- Comparar la arquitectura local con la alternativa administrada de AWS Glue
+  únicamente después de cerrar la utilidad de la representación y cuantificar
+  costo, latencia y diferencias del entorno.
+- Resolver o mantener separado el estrato sin namespace de `accounting`, `cart`
+  y `quote`; no fusionarlo por coincidencia nominal.
+- Cuantificar la deriva normal por servicio y variable entre runs, explorar
+  cambios respecto de líneas base temporales locales y revisar la definición de
+  la tarea antes de repetir la comparación.
+- Incorporar condiciones adicionales y nuevas runs independientes antes de una
+  selección confirmatoria del método; no seleccionar un algoritmo con los
+  resultados exploratorios actuales.
 - Definir cómo se adquirirán, identificarán, sincronizarán, transformarán y fusionarán métricas, logs y trazas en una representación conjunta.
 - Completar la operacionalización de «patrón», «interpretable», «apoyo a la toma de decisiones», «agente de evaluación» y «utilidad de los resultados», y establecer métricas y datos de referencia para validarlos.
 - Decidir qué capacidades concretas expondrá la extensión y cuál será la frontera entre la interfaz, el servicio de procesamiento y las fuentes de observabilidad.
